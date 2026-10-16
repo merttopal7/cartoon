@@ -1,0 +1,59 @@
+// Yüz testleri: şekil anahtarı olmayan yüze üretilen ağız şekilleri (Meşe), konuşmada çene, otomatik ifadeler.
+// Kullanım: node tools/test_face.mjs   (dev sunucusu açık olmalı: http://localhost:5174)
+import puppeteer from 'puppeteer-core';
+
+const URL = process.env.ENGINE_URL ?? 'http://localhost:5174/';
+const BROWSER = process.env.CHROME_PATH ?? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+
+const browser = await puppeteer.launch({ executablePath: BROWSER, headless: true, args: ['--no-sandbox'], protocolTimeout: 600000 });
+try {
+  const page = await browser.newPage();
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.__engine?.THREE, { timeout: 120000 });
+  const results = await page.evaluate(async () => {
+    const { parseScenario } = await import('/src/schema.ts');
+    const { buildFilm } = await import('/src/engine/film.ts');
+    const { AssetLibrary } = await import('/src/engine/assets.ts');
+    const out = [];
+    const check = (name, ok, detail = '') => out.push({ name, ok, detail });
+    const lib = new AssetLibrary();
+    const f = { id: 'youtube_16x9', width: 1920, height: 1080 };
+    const load = async (id) => (await buildFilm(parseScenario(await (await fetch(`scenarios/${id}.yaml`)).text()).scenario, lib)).film;
+
+    // 1) Meşe: çene açma / gülümseme / üzgün şekilleri üretilir; konuşurken çene açılır, susunca kapanır
+    const b1 = await load('bolum-1-ormanin-bekcileri');
+    const mese = b1.scenes[0].characters.get('mese');
+    let body;
+    mese.rig.root.traverse((o) => { if (o.isSkinnedMesh && /Body_Mesh/.test(o.name)) body = o; });
+    const dict = body?.morphTargetDictionary ?? {};
+    check('Meşe: ağız şekilleri üretildi', ['jawopen', 'smile', 'sad'].every((k) => k in dict), Object.keys(dict).join(','));
+    const jawAt = (t) => { b1.evaluate(t, f); return body.morphTargetInfluences[dict.jawopen]; };
+    const talking = [51, 52.8, 54.8].map(jawAt);
+    const silent = [48.0, 57.5].map(jawAt);
+    check('Meşe: konuşurken çene açılır, susunca kapanır', talking.every((v) => v > 0.8) && silent.every((v) => v < 0.05), `konuşma ${talking.map((v) => v.toFixed(2))}, sessiz ${silent.map((v) => v.toFixed(2))}`);
+    b1.dispose();
+
+    // 2) Otomatik ifadeler: güç toplarken kızgın, vurulunca şaşkın
+    const te = await load('test-dort-element');
+    const sc = te.scenes[0];
+    const expr = (id, t) => { te.evaluate(t, f); return sc.characters.get(id).pose.expr; };
+    const uses = sc.abilities.allUses();
+    const spike = uses.find((a) => a.name === 'yer_dikeni');
+    const charging = expr('toprak', spike.start + spike.recipe.chargeEnd * 0.5).angry;
+    const hit = expr(spike.target, spike.start + spike.recipe.impactOffset + 0.3).surprised;
+    const calm = expr('toprak', 12.0);
+    check('güç toplarken kızgın, vurulunca şaşkın', charging > 0.5 && hit > 0.5, `kızgın ${charging.toFixed(2)}, şaşkın ${hit.toFixed(2)}`);
+    check('sakin anda ifade yok', Object.values(calm).every((v) => v < 0.05), JSON.stringify(calm));
+    te.dispose();
+    return out;
+  });
+  let failed = 0;
+  for (const r of results) {
+    console.log(`${r.ok ? 'GEÇTİ' : 'KALDI'}  ${r.name}${r.detail ? `  (${r.detail})` : ''}`);
+    if (!r.ok) failed++;
+  }
+  console.log(failed ? `\n${failed} test kaldı` : '\nTüm testler geçti');
+  process.exitCode = failed ? 1 : 0;
+} finally {
+  await browser.close();
+}

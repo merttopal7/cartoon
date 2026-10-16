@@ -865,6 +865,8 @@ export async function buildFilm(
           );
           clipStart += c.duration;
         }
+        // Güç toplarken kararlı/kızgın yüz (senaryodaki emote'larla birleşir; en güçlüsü geçerli)
+        caster.schedule({ who: action.who, at: start, do: 'emote', expression: 'angry', duration: recipe.chargeEnd + 0.4 }, start, warnFn);
 
         // Çoklu hedef varsa her hedefe aynı anda vuracak şekilde etki (impact) olayı ekle
         validTargets.forEach((targetId, idx) => {
@@ -1002,6 +1004,8 @@ export async function buildFilm(
         impactTime,
         warnFn,
       );
+      // Vurulan karakter şaşırır
+      target.schedule({ who: targetId, at: impactTime, do: 'emote', expression: 'surprised', duration: 1.1 }, impactTime, warnFn);
 
       // 3. 3B Yetenek Sistemine kaydet
       abilities.add({

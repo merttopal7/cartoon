@@ -4,6 +4,7 @@ import { ROOT_SPEED, SOURCE_HIPS_HEIGHT, SOURCE_SKELETON } from '../clips';
 import { mapHumanoid, retargetHumanoid } from './humanoid';
 import { FootIK, type GroundFn, type Leg } from './foot-ik';
 import { toonMaterial } from '../toon';
+import { addFaceMorphs, type FaceSpec } from './face-morphs';
 
 /** Motorun aradığı morph target adları (küçük harf, "_"/boşluk/"." olmadan). ARKit ve VRM adları da tanınır. */
 const MORPHS = {
@@ -152,7 +153,10 @@ export class ModelRig implements Rig {
     private readonly aliases: Record<string, string> = {},
     eyelids?: { bones: string; axis: 'x' | 'y' | 'z'; open: number },
     mouth?: { bones: string; axis: 'x' | 'y' | 'z'; open: number },
+    face?: FaceSpec,
   ) {
+    // Şekil anahtarı olmayan yüze ağız şekilleri (çene açma, gülümseme, üzgün); aşağıdaki morph taraması bulur
+    if (face) addFaceMorphs(model, face);
     this.height = size.height;
     this.unitScale = size.scale;
     // Bağlama pozu genelde T-poz; açık kollar kadraj genişliğini şişirmesin.

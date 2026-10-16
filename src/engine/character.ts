@@ -131,6 +131,9 @@ interface TimedAction {
   cutAt?: number;
 }
 
+/** Oynarken karakterin otomatik güldüğü klipler. */
+const HAPPY_CLIP = /jump_?joy|danc|hip_?hop|celebrat|cheer|victory|singing/i;
+
 /** Kesilen yürüyüşün animasyonunun ve savrulma yayının sönümlenme süresi (sn). */
 const CUT_FADE = 0.3;
 
@@ -414,7 +417,13 @@ export class Character {
     p.facing = this.facingAt(t, ctx);
 
     for (const ta of this.timed) {
-      if (ta.action.do === 'clip') continue;
+      if (ta.action.do === 'clip') {
+        // Sevinç klipleri (sevinçle zıplama, dans) sırasında yüz güler
+        if (HAPPY_CLIP.test(ta.action.name) && t >= ta.start && t <= ta.end) {
+          p.expr.happy = Math.max(p.expr.happy, envelope(t, ta.start, ta.end - ta.start, 0.3));
+        }
+        continue;
+      }
       const end = ta.cutAt !== undefined ? Math.min(ta.end, ta.cutAt + CUT_FADE) : ta.end;
       if (t < ta.start || t > end) continue;
       const a = ta.action;

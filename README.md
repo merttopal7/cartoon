@@ -130,6 +130,15 @@ scenes:
     environment: { preset: night, grade: night }   # sahne bazında ezilir
 ```
 
+### Yüz: ağız ve ifadeler
+
+- **Konuşma:** ağız sesin yüksekliğiyle açılıp kapanır. Toprak'ta ağız doku tablosundan, Defne'de çizilen anime ağızdan, şekil anahtarı olan modellerde `jawopen`/`mouth` şeklinden gelir.
+- **Ağız şekli olmayan yüz** (Meşe/Erika): varlığa `face` yazılır, yüklemede çene açma, gülümseme ve üzgün şekilleri üretilir ([face-morphs.ts](src/engine/rigs/face-morphs.ts)). Değerler modelin bağlama uzayında (FBX birimi; y yukarı, z ileri):
+  `face: { mesh: Body_Mesh, seam: 159.0, hinge: [161.5, 0.5], width: 5.3, corner: [2.3, 10.1] }` (dudak çizgisi, çene menteşesi, alt çene yarı genişliği, ağız köşesi).
+- **Otomatik ifadeler:** yetenek kullanan güç toplarken kızgın/kararlı, vurulan karakter ~1 sn şaşkın, sevinç kliplerinde (`jump_joy`, dans, şarkı) mutlu. Senaryodaki `emote` eylemleriyle birleşir (en güçlüsü geçerli). Karabey'in yüzü miğferle kapalıdır.
+
+Testler: `node tools/test_face.mjs`.
+
 **Karakter renk dengesi:** dokusu çok açık (pastel) bir karakter aynı ışıkta diğerlerinden fırlıyorsa varlığına `brightness` (renk çarpanı, doğrusal ışıkta; 0.6 ≈ göze %20 daha koyu) ve `saturation` yazılır. Defne: `brightness: 0.6, saturation: 0.88`.
 
 Maliyet (önizleme, 759×427): renk tonu ~2 ms, kontur ~1.5 ms; parlama yalnızca yetenek sırasında. Shader'lar yüklemede hazırlanır, ilk karelerde takılma olmaz. Kareleri gözle kontrol etmek için: `node tools/capture_frames.mjs <senaryo> <klasör> <t1,t2> render 1920` (`CROP=x,y,genişlik,yükseklik` oranlarıyla kırpma).

@@ -162,6 +162,26 @@ const modelAsset = z
       .object({ bones: z.string().default('lip_btm|teeth_low|jaw'), axis: z.enum(['x', 'y', 'z']), open: z.number() })
       .strict()
       .optional(),
+    /**
+     * Ağız şekil anahtarı da ağız kemiği de olmayan yüze yüklemede ağız şekilleri üretilir (çene açma, gülümseme,
+     * üzgün); konuşma ve ifadeler bunları kullanır. Değerler modelin bağlama uzayında (FBX birimi; y yukarı, z ileri).
+     * Bkz. src/engine/rigs/face-morphs.ts.
+     */
+    face: z
+      .object({
+        mesh: z.string(),
+        bone: z.string().default('Head$'),
+        /** Dudak çizgisinin yüksekliği */
+        seam: z.number(),
+        /** Çene menteşesi [y, z] (kulak hizası) */
+        hinge: z.tuple([z.number(), z.number()]),
+        /** Alt çenenin yarı genişliği */
+        width: z.number().positive(),
+        /** Ağız köşesi [x, z] */
+        corner: z.tuple([z.number(), z.number()]),
+      })
+      .strict()
+      .optional(),
     /** Karakterin varsayılan ElevenLabs ses kimliği veya ses adı */
     voice: z.string().optional(),
     /** Karakterin elementi; kullandığı yeteneklerin elementiyle uyuşmazsa yüklemede uyarı verilir. */

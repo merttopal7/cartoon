@@ -146,7 +146,7 @@ export class AssetLibrary {
     const [model, extra] = await Promise.all([this.load(def.src), this.loadAnimations(def)]);
     const scene = cloneSkinned(model.scene);
     const size = prepareModel(scene, def, model.isFbx, OUTLINE.character);
-    return new ModelRig(scene, size, [...model.animations, ...extra], def.clips, def.eyelids, def.mouth);
+    return new ModelRig(scene, size, [...model.animations, ...extra], def.clips, def.eyelids, def.mouth, def.face);
   }
 
   async prop(def: AssetDef): Promise<THREE.Object3D> {
