@@ -92,6 +92,8 @@ Klipler idle'a `fade` sürede (varsayılan 0.4 sn) yumuşakça girer ve çıkar:
 
 `size`, `angle` ve `elevation` alanlarına `{ from: ..., to: ... }` verilirse çekim boyunca hareket eder (dolly, orbit, crane).
 
+**Yetenek odağı:** Yetenek kullanılırken kamera, çekim tanımının üstüne yeteneğin etkisine doğru yaklaşır. Bu odak zaman içinde yumuşatılır: 2 sn'den kısa aralarla gelen yeteneklerde kamera geri çekilmez, odak karakterden karaktere akarak geçer, kadraj boyutu yavaş değişir. Hareketi önceden sezer (gelecek yetenekler de hesaba katılır); yine yalnızca zamana bağlıdır. Bkz. `src/engine/focus-track.ts`.
+
 **Kamera açıklığı:** Kamera arazinin altına inmez. Haritadaki çamlardan o çekimde kameranın içine girdiği, hedefi örttüğü ya da kameranın hemen önünde kadrajı kapattığı ağaçlar çekimin tamamında ana kameradan gizlenir (gölgeleri kalır). Ağaç yalnızca kesmede kaybolduğu için fark edilmez. Yetenekle devrilen ağaçlar, devrildikleri çekimde hiç gizlenmez; sonraki çekimlerde kamera onlara girerse onlar da gizlenir. Gizlenen ağaçları kaldırmak için kamerayı o ağaçtan uzaklaştırın. Bkz. `src/engine/camera-clearance.ts`.
 
 ### Hareketler (`actions`)

@@ -16,6 +16,7 @@ import { AbilitySystem, getAbilityRecipe, type ActiveAbilityHUDInfo } from './ab
 import { setupLods } from './lod';
 import { CLEARANCE_SAMPLE_STEP, CameraClearance, type CameraSample } from './camera-clearance';
 import { ImpactFeel } from './impact';
+import { FocusTrack } from './focus-track';
 
 export interface BuiltShot {
   index: number;
@@ -52,6 +53,8 @@ export class BuiltScene implements SceneContext {
   clearance: CameraClearance | null = null;
   /** Yetenek isabetlerinde hit-stop ve kamera sarsıntısı (sahnede isabet varsa). */
   impact: ImpactFeel | null = null;
+  /** Yeteneklerin kamera odağı, zaman içinde yumuşatılmış (peş peşe yeteneklerde kamera pompalamasın). */
+  focus: FocusTrack | null = null;
 
   /** Karakterlerin ve efektlerin değerlendirildiği zaman: isabetlerde kısa süre yavaşlar (hit-stop). */
   actionTime(lt: number): number {
@@ -345,7 +348,7 @@ export class Film {
     const resolvedCam = resolveCamera(shot.camera, format, this.options.handheld);
     const shotProgress = EASES[resolvedCam.ease](clamp((lt - shot.start) / shot.duration));
     const wt = sc.actionTime(lt);
-    const abilityFocus = sc.abilities?.getActiveCameraFocus(wt, sc.characters) ?? null;
+    const abilityFocus = sc.focus?.at(wt) ?? null;
     if (
       abilityFocus &&
       abilityFocus.birdEyeWeight !== undefined &&
@@ -373,8 +376,10 @@ export class Film {
           const base = sc.subject(target, wt, right, shotProgress);
           if (abilityFocus && abilityFocus.zoomWeight > 0) {
             const rawW = clamp(abilityFocus.zoomWeight, 0, 1);
-            const isBirdEye = (abilityFocus.birdEyeWeight ?? 0) > 0.01;
-            const maxBlend = isBirdEye ? 0.90 : 0.72;
+            // Kuş bakışı oranlarına sürekli geçiş (eskiden ağırlık 0.01'i geçince tek karede ~10 m sıçrıyordu)
+            const b = clamp(abilityFocus.birdEyeWeight ?? 0, 0, 1);
+            const bird = b * b * (3 - 2 * b);
+            const maxBlend = THREE.MathUtils.lerp(0.72, 0.9, bird);
             const w = rawW * rawW * (3 - 2 * rawW) * maxBlend;
             const focusGround = new THREE.Vector3(
               abilityFocus.effectCenter.x,
@@ -382,8 +387,12 @@ export class Film {
               abilityFocus.effectCenter.z,
             );
             base.center.lerp(focusGround, w);
-            base.width = THREE.MathUtils.lerp(base.width, abilityFocus.suggestedSize * (isBirdEye ? 0.92 : 0.78), w);
-            base.height = THREE.MathUtils.lerp(base.height, abilityFocus.suggestedSize * (isBirdEye ? 0.85 : 0.68), w * (isBirdEye ? 0.95 : 0.85));
+            base.width = THREE.MathUtils.lerp(base.width, abilityFocus.suggestedSize * THREE.MathUtils.lerp(0.78, 0.92, bird), w);
+            base.height = THREE.MathUtils.lerp(
+              base.height,
+              abilityFocus.suggestedSize * THREE.MathUtils.lerp(0.68, 0.85, bird),
+              w * THREE.MathUtils.lerp(0.85, 0.95, bird),
+            );
           }
           return base;
         },
@@ -890,6 +899,7 @@ export async function buildFilm(
       def.overlays ?? [],
       abilities,
     );
+    if (abilities.getScheduledCasts().length) built.focus = new FocusTrack(abilities, characters);
     const impacts = abilities.impactEvents();
     if (impacts.length) built.impact = new ImpactFeel(impacts, { shake: s.film.impact_shake, hitStop: s.film.hit_stop });
     const trees = abilities.clearanceTrees();
