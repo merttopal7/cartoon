@@ -7,7 +7,10 @@
 # Alanlar:
 #   title         Ekranda görünen ad
 #   aliases       Senaryoda aynı yeteneği çağıran diğer adlar
-#   effect        Görsel efekt: fire | tornado | rain | shadow | tree_fall (kodu src/engine/abilities.ts)
+#   effect        Görsel efekt: fire | tornado | rain | shadow | tree_fall | earth (kodu src/engine/ability-fx/)
+#   element       ates | su | toprak | hava (golge: elementsiz eski yetenekler). Karakter varlığında `element`
+#                 tanımlıysa ve yeteneğinkiyle uyuşmuyorsa yüklemede uyarı verilir.
+#                 Ormanın Bekçileri: Karabey ateş, Meşe su, Toprak toprak, Defne hava.
 #   target        character (varsayılan) | map_tree (haritadaki Realistic_Pine_* ağacı; hedef karakter gerekmez)
 #   icon          HUD ikonu (src/ui/ability-icons.ts içindeki anahtar); verilmezse yeteneğin kendi adı
 #   clips         Kullananın sırayla oynattığı klipler:
@@ -28,10 +31,30 @@
 # fırlatma anı, aynı sıradaki klipte aynı orana (ör. klibin %42'si) kaydırılır.
 # =============================================================================
 
+# --- ATEŞ ---------------------------------------------------------------------
+
+# Karabey: büyü toplar (casting), kılıcıyla saldırırken ateş topunu fırlatır. Çoklu hedefte her hedefe bir top.
+alev_buyusu:
+  title: Alev Büyüsü
+  aliases: [ates_buyusu, ates_firtinasi, fire_spell]
+  effect: fire
+  element: ates
+  icon: ates_topu
+  clips:
+    - { name: casting, duration: 1.30 }
+    - { name: attack_2 }
+  release: { clip: attack_2, at: 0.82 }
+  flight: 0.62
+  linger: 1.30
+  knockback: { arc: 1.0, duration: 0.85 }
+  impact_clip: impact_3
+  target_clips: [impact_3, dodge_back, fall_flat]
+
 ates_topu:
   title: Ateş Topu
   aliases: [fireball]
   effect: fire
+  element: ates
   clips:
     - { name: hook_punch }
   release: { clip: hook_punch, at: 0.92 }
@@ -45,6 +68,7 @@ alev_tekmesi:
   title: Alev Tekmesi
   aliases: [flame_kick]
   effect: fire
+  element: ates
   icon: ates_topu
   clips:
     - { name: macaco_side, duration: 1.35 }
@@ -56,11 +80,14 @@ alev_tekmesi:
   impact_clip: impact_3
   target_clips: [impact_3, fall_flat]
 
-# Hortum, kullananın içinde Hurricane Kick dönerken oluşur; uçan tekmeyle hedefe gönderilir.
+# --- HAVA ----------------------------------------------------------------------
+
+# Defne: hortum, kullananın içinde Hurricane Kick dönerken oluşur; uçan tekmeyle hedefe gönderilir.
 ruzgar_hortumu:
   title: Rüzgar Hortumu
   aliases: [hortum, wind_tornado, kasirga_tufani, whirlwind_kick]
   effect: tornado
+  element: hava
   clips:
     - { name: hurricane_kick, duration: 2.25, loop: true }
     - { name: flying_kick, duration: 1.65 }
@@ -71,12 +98,15 @@ ruzgar_hortumu:
   impact_clip: impact_2
   target_clips: [impact_2, fall_flat]
 
-# Okçu: yayı çeker, sol eldeki yayda güç toplar, kiriş bırakıldığı anda (aim_recoil 0.15 sn) ok çıkar.
-# Kiriş kemiği de bu kliplerin zamanına göre çekilip bırakılır (src/engine/rigs/model.ts).
+# --- SU ------------------------------------------------------------------------
+
+# Meşe: yayı çeker, sol eldeki yayda güç toplar, kiriş bırakıldığı anda (aim_recoil 0.15 sn) su oku çıkar;
+# hedefte sağanak yağmur bulutu oluşur. Kiriş kemiği de bu kliplerin zamanına göre çekilip bırakılır.
 firtina_oku:
-  title: Fırtına Oku
-  aliases: [yagmur_oku, rain_arrow, storm_arrow, yagmur, yagmur_bulutu, orman_yagmuru, rain]
+  title: Sağanak Oku
+  aliases: [yagmur_oku, rain_arrow, storm_arrow, yagmur, yagmur_bulutu, orman_yagmuru, rain, su_oku, water_arrow]
   effect: rain
+  element: su
   clips:
     - { name: draw_arrow, fade: 0.2 }
     - { name: aim_overdraw, duration: 1.0, fade: 0.15 }
@@ -88,10 +118,32 @@ firtina_oku:
   impact_clip: impact_3
   target_clips: [impact_3, death, fall_flat]
 
+# --- TOPRAK --------------------------------------------------------------------
+
+# Toprak: kollarını gererek güç toplar, diz çöküp yere dokunur (release); ondan hedefe doğru sırayla yerden
+# kaya dikenler fışkırır, hedefin altında üç büyük diken ve toz bulutu.
+yer_dikeni:
+  title: Yer Dikenleri
+  aliases: [toprak_dikeni, kaya_dikeni, earth_spikes]
+  effect: earth
+  element: toprak
+  clips:
+    - { name: stretch, duration: 1.0 }
+    - { name: point, duration: 1.85, fade: 0.25 }
+  release: { clip: point, at: 0.35 }
+  flight: 0.75
+  linger: 1.15
+  knockback: { arc: 1.1, duration: 0.9 }
+  impact_clip: impact_3
+  target_clips: [impact_3, fall_flat, death]
+
+# --- GÖLGE (elementsiz eski yetenekler; Ormanın Bekçileri'nde artık kullanılmıyor) -----------------
+
 golge_kilic:
   title: Gölge Kılıç
   aliases: [golge_dalgasi, shadow_slash]
   effect: shadow
+  element: golge
   icon: karanlik_buyu
   clips:
     - { name: power_up, duration: 1.35 }
@@ -108,6 +160,7 @@ karanlik_buyu:
   title: Karanlık Büyü
   aliases: [shadow_storm]
   effect: shadow
+  element: golge
   clips:
     - { name: casting, duration: 1.30 }
     - { name: attack_2, duration: 1.55 }
@@ -118,12 +171,13 @@ karanlik_buyu:
   impact_clip: dodge_back
   target_clips: [dodge_back, fall_flat]
 
-# Güç toplar, yatay kılıç darbesiyle haritadaki çamı keser (release = kesik); ağaç devrilip yere çarpar (isabet).
-# Kesik, devrilme ve sürüklenme efekti kesik anına göre zamanlanır.
+# Karabey: güç toplar, kızgın yatay kılıç darbesiyle haritadaki çamı keser (release = kesik); ağaç devrilip
+# yere çarpar (isabet). Kesik, devrilme ve sürüklenme efekti kesik anına göre zamanlanır.
 agac_devirme:
   title: Ağaç Devirme
   aliases: [tree_fall]
   effect: tree_fall
+  element: ates
   target: map_tree
   clips:
     - { name: power_up, duration: 1.15 }

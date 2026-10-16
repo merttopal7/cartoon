@@ -122,7 +122,12 @@ export const CHARACTER_PLACEHOLDERS = ['bear', 'bunny'] as const;
 export const PROP_PLACEHOLDERS = ['tree', 'bush', 'rock', 'house'] as const;
 
 const placeholderAsset = z
-  .object({ placeholder: z.enum([...CHARACTER_PLACEHOLDERS, ...PROP_PLACEHOLDERS]), color: color.optional(), voice: z.string().optional() })
+  .object({
+    placeholder: z.enum([...CHARACTER_PLACEHOLDERS, ...PROP_PLACEHOLDERS]),
+    color: color.optional(),
+    voice: z.string().optional(),
+    element: z.enum(['ates', 'su', 'toprak', 'hava']).optional(),
+  })
   .strict();
 const modelAsset = z
   .object({
@@ -159,6 +164,8 @@ const modelAsset = z
       .optional(),
     /** Karakterin varsayılan ElevenLabs ses kimliği veya ses adı */
     voice: z.string().optional(),
+    /** Karakterin elementi; kullandığı yeteneklerin elementiyle uyuşmazsa yüklemede uyarı verilir. */
+    element: z.enum(['ates', 'su', 'toprak', 'hava']).optional(),
     /** Ayrı dosyadaki animasyonlar: klip adı → dosya, ör. { walk: models/kedi-walk.fbx } (Mixamo "Without Skin") */
     animations: z.record(z.string(), z.string()).optional(),
   })

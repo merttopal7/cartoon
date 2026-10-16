@@ -17,7 +17,9 @@ const abilitySchema = z
   .object({
     title: z.string().min(1),
     aliases: z.array(z.string().min(1)).default([]),
-    effect: z.enum(['fire', 'tornado', 'rain', 'shadow', 'tree_fall']),
+    effect: z.enum(['fire', 'tornado', 'rain', 'shadow', 'tree_fall', 'earth']),
+    /** Element: karakterin elementiyle uyuşmazsa yüklemede uyarı verilir (gölge: elementsiz eski yetenekler) */
+    element: z.enum(['ates', 'su', 'toprak', 'hava', 'golge']),
     target: z.enum(['character', 'map_tree']).default('character'),
     icon: z.string().optional(),
     clips: z.array(clipSchema).min(1),

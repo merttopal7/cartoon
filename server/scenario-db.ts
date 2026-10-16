@@ -21,8 +21,13 @@ const BUILTIN_METADATA: Record<string, { title: string; description: string; tag
   },
   'bolum-2-karabeyin-golgesi': {
     title: 'Bölüm 2: Karabey\'in Gölgesi',
-    description: 'Ulu Çınar Yolu\'nda büyük karşılaşma: Toprak, Defne ve Meşe, Karanlık Muhafız Karabey\'e karşı akrobatik mücadele veriyor.',
-    tags: 'orman, bekçiler, karabey, toprak, defne, meşe, düello, aksiyon',
+    description: 'Ulu Çınar Yolu\'nda dört elementin düellosu: Toprak (toprak), Defne (hava) ve Meşe (su), ateşin efendisi Karabey\'e karşı.',
+    tags: 'orman, bekçiler, karabey, toprak, defne, meşe, düello, aksiyon, element',
+  },
+  'test-dort-element': {
+    title: 'Test: Dört Element',
+    description: 'Seslendirmesiz test bölümü: Karabey ateş, Meşe su, Toprak toprak, Defne hava; her element yeteneği sırayla ve birlikte.',
+    tags: 'test, element, ateş, su, toprak, hava, yetenek',
   },
   'harita-toprak-yol': {
     title: 'Orman Haritası (Toprak Yol)',
@@ -111,6 +116,13 @@ export class ScenarioDatabase {
   }
 
   getAll(): Omit<ScenarioRecord, 'content'>[] {
+    // Diske yeni yerleşik senaryo eklendiyse ya da silindiyse listeyi tazele (sunucuyu yeniden başlatmadan görünsün)
+    const scenariosDir = path.join(this.rootDir, 'public', 'scenarios');
+    if (fs.existsSync(scenariosDir)) {
+      const onDisk = fs.readdirSync(scenariosDir).filter((f) => /\.ya?ml$/.test(f)).map((f) => f.replace(/\.ya?ml$/, '')).sort();
+      const inDb = (this.db.prepare(`SELECT id FROM scenarios WHERE category = 'builtin' ORDER BY id`).all() as { id: string }[]).map((r) => r.id);
+      if (onDisk.join('|') !== [...inDb].sort().join('|')) this.seedBuiltins();
+    }
     const stmt = this.db.prepare(`
       SELECT id, title, description, category, tags, created_at, updated_at
       FROM scenarios

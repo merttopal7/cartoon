@@ -28,7 +28,7 @@ export const CANONICAL_ABILITY_ICONS: Record<string, AbilityIconMeta> = {
   ates_topu: {
     id: 'ates_topu',
     title: 'Ateş Topu',
-    characterName: 'Toprak',
+    characterName: 'Karabey',
     bgColor: '#E65100',
     accentColor: '#FFB74D',
     svg: `<svg class="ability-svg-icon" viewBox="0 0 24 24" width="28" height="28" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -69,7 +69,7 @@ export const CANONICAL_ABILITY_ICONS: Record<string, AbilityIconMeta> = {
 
   firtina_oku: {
     id: 'firtina_oku',
-    title: 'Fırtına Oku',
+    title: 'Sağanak Oku',
     characterName: 'Meşe',
     bgColor: '#1D4ED8',
     accentColor: '#93C5FD',
@@ -105,6 +105,25 @@ export const CANONICAL_ABILITY_ICONS: Record<string, AbilityIconMeta> = {
     ],
   },
 
+  yer_dikeni: {
+    id: 'yer_dikeni',
+    title: 'Yer Dikenleri',
+    characterName: 'Toprak',
+    bgColor: '#6B4423',
+    accentColor: '#E7C28F',
+    svg: `<svg class="ability-svg-icon" viewBox="0 0 24 24" width="28" height="28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 3L15.6 20.5H8.4L12 3Z" fill="#FFFFFF" fill-opacity="0.25" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M5.4 10.5L7.9 20.5H2.9L5.4 10.5Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M18.6 8.5L21.1 20.5H16.1L18.6 8.5Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M2 21.5H22" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+    </svg>`,
+    paths: [
+      { d: 'M12 3L15.6 20.5H8.4L12 3Z', stroke: true, strokeWidth: 2 },
+      { d: 'M5.4 10.5L7.9 20.5H2.9L5.4 10.5ZM18.6 8.5L21.1 20.5H16.1L18.6 8.5Z', fill: true, stroke: true, strokeWidth: 1.6 },
+      { d: 'M2 21.5H22', stroke: true, strokeWidth: 2 },
+    ],
+  },
+
   agac_devirme: {
     id: 'agac_devirme',
     title: 'Ağaç Devirme',
@@ -133,7 +152,9 @@ export const CANONICAL_ABILITY_ICONS: Record<string, AbilityIconMeta> = {
 export function getAbilityIconMeta(name: string): AbilityIconMeta {
   const def = resolveAbility(name);
   const key = def?.icon ?? def?.id ?? 'ates_topu';
-  return CANONICAL_ABILITY_ICONS[key] ?? CANONICAL_ABILITY_ICONS.ates_topu;
+  const icon = CANONICAL_ABILITY_ICONS[key] ?? CANONICAL_ABILITY_ICONS.ates_topu;
+  // Ekrandaki ad yetenek tanımından: ikonu paylaşan yetenekler (ör. Alev Büyüsü / Ateş Topu) kendi adını gösterir
+  return def ? { ...icon, title: def.title } : icon;
 }
 
 export function formatCharacterDisplayName(id: string): string {

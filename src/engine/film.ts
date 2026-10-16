@@ -36,12 +36,16 @@ export interface FilmOptions {
 
 /** Çekimler arası karartmalı geçişin yarım süresi (sn): önceki çekim kararır, yenisi açılır. */
 const SHOT_FADE = 0.4;
+/** Element adları (uyarılar için). */
+const ELEMENT_NAMES: Record<string, string> = { ates: 'ateş', su: 'su', toprak: 'toprak', hava: 'hava', golge: 'gölge' };
 /** Yetenek kliplerinin birbirine ve idle'a geçiş süresi (reçetede klip başına ezilebilir). */
 const ABILITY_CLIP_FADE = 0.3;
 /** Dönüş hızı (rad/sn) ve süre sınırları (sn). */
 const TURN_SPEED = (320 * Math.PI) / 180;
 const MIN_TURN = 0.25;
 const MAX_TURN = 0.7;
+/** Yandan bakışta kameranın döndüğü en büyük açı (derece). */
+const SIDE_VIEW_MAX = 45;
 /** İsabet sarsıntısının genliği: güç 1'de kamera–hedef uzaklığının bu oranı (≈0.57°). */
 const SHAKE_SCALE = 0.01;
 /** Savrulma yayı: taban + metre başına yükseklik (m); reçetedeki arcHeight üst sınırdır. */
@@ -367,6 +371,28 @@ export class Film {
         to: THREE.MathUtils.lerp(elevTo, abilityFocus.elevationOverride, birdW),
       };
     }
+    // Yandan bakış (yer dikenleri): kamera saldırı çizgisine dik yöne, şu anki açısına en yakın yandan döner
+    if (abilityFocus?.sideWeight && abilityFocus.lineAngle !== undefined) {
+      const k = EASES[resolvedCam.ease](clamp((lt - shot.start) / shot.duration));
+      const a = resolvedCam.angle;
+      const from = typeof a === 'object' && a !== null && 'from' in a ? a.from : a;
+      const to = typeof a === 'object' && a !== null && 'from' in a ? a.to : a;
+      const facingDeg = resolvedCam.relative ? (sc.facingOf(resolvedCam.target, wt) * 180) / Math.PI : 0;
+      const baseAz = THREE.MathUtils.lerp(from, to, k) + facingDeg;
+      const line = (abilityFocus.lineAngle * 180) / Math.PI;
+      const wrap = (d: number) => ((((d + 180) % 360) + 360) % 360) - 180;
+      // İki yan neredeyse eşit uzaktaysa (kamera çizginin arkasında) saldırının ekranda soldan sağa aktığı yan
+      // seçilir (kullanan solda, hedef sağda); yoksa her yetenekte rastgele bir yana dönebiliyordu.
+      // Kameranın sağ ekseni (cos az, −sin az); hedef sağda ⇔ sin(çizgi − az) > 0.
+      const sides = [wrap(line + 90 - baseAz), wrap(line - 90 - baseAz)];
+      const leftToRight = (d: number) => Math.sin(((line - (baseAz + d)) * Math.PI) / 180) > 0;
+      const toSide =
+        Math.abs(Math.abs(sides[0]) - Math.abs(sides[1])) < 30
+          ? (sides.find(leftToRight) ?? sides[0])
+          : sides.sort((x, y) => Math.abs(x) - Math.abs(y))[0];
+      const turn = THREE.MathUtils.clamp(toSide, -SIDE_VIEW_MAX, SIDE_VIEW_MAX) * abilityFocus.sideWeight;
+      resolvedCam.angle = baseAz + turn - facingDeg;
+    }
     const aim = applyCamera(
       cam,
       resolvedCam,
@@ -626,6 +652,7 @@ export async function buildFilm(
     }
 
     const abilities = new AbilitySystem();
+    if (terrain) abilities.setGround((x, z) => terrain!.heightAt(x, z));
     group.add(abilities.group);
     abilities.bindSceneTrees(group);
 
@@ -697,6 +724,7 @@ export async function buildFilm(
 
     const timelineEvents: TimelineEvent[] = [];
     const recipeWarned = new Set<string>();
+    const charAssets = new Map(def.characters.map((c) => [c.id, c.asset]));
 
     // Derleme sırasında yön hesabı için (kamera henüz yok)
     const compileCtx: SceneContext = {
@@ -723,6 +751,13 @@ export async function buildFilm(
         }
         // Süreler kullananın gerçek kliplerinden; aynı uyarı (her kullanımda tekrar eden) bir kez yazılır
         const { recipe, warnings: recipeWarnings } = buildRecipe(def, (n) => caster.rig.clipDuration?.(n), action.clips);
+        const casterAsset = s.assets[charAssets.get(action.who) ?? ''];
+        const casterElement = casterAsset && 'element' in casterAsset ? casterAsset.element : undefined;
+        if (casterElement && def.element !== casterElement) {
+          recipeWarnings.push(
+            `"${action.who}" ${ELEMENT_NAMES[casterElement]} elementinde ama "${action.name}" bir ${ELEMENT_NAMES[def.element]} yeteneği`,
+          );
+        }
         for (const w of recipeWarnings) {
           if (!recipeWarned.has(w)) {
             recipeWarned.add(w);

@@ -9,6 +9,7 @@ import { updateFireball } from './ability-fx/fire';
 import { updateTornado } from './ability-fx/tornado';
 import { updateRain } from './ability-fx/rain';
 import { updateTreeFall } from './ability-fx/tree-fall';
+import { updateEarth, type GroundFn } from './ability-fx/earth';
 
 /** Devrilen ağacın yere çarpışının vuruş gücü. */
 const TREE_IMPACT = 0.9;
@@ -21,7 +22,7 @@ export const TREE_REF_RELEASE = 1.65;
 /** Yetenek adı veya takma adı; geçerli adlar src/data/abilities.yaml'den gelir. */
 export type AbilityName = string;
 
-export type AbilityEffectType = 'fire' | 'tornado' | 'rain' | 'shadow' | 'tree_fall';
+export type AbilityEffectType = 'fire' | 'tornado' | 'rain' | 'shadow' | 'tree_fall' | 'earth';
 
 /**
  * Bir yetenek kullanımının zaman çizelgesi (yerel saniye). src/data/abilities.yaml'deki tanımdan,
@@ -93,6 +94,13 @@ export interface ActiveAbilityFocus {
   birdEyeWeight?: number;
   /** Kuş uçuşu kamera eğim açısı (derece) */
   elevationOverride?: number;
+  /**
+   * Yandan bakış ağırlığı (0..1): yerden ilerleyen efektlerde (yer dikenleri) kamera saldırı çizgisini yandan
+   * görecek şekilde döner; arkadan bakınca dalga kullananın arkasında üst üste biniyordu.
+   */
+  sideWeight?: number;
+  /** Saldırı çizgisinin yatay yönü (radyan, kamera açısıyla aynı kural: atan2(dx, dz)) */
+  lineAngle?: number;
 }
 
 export interface ActiveAbilityHUDInfo {
@@ -114,12 +122,24 @@ const LIGHT_POOL_SIZE = 2;
  * Karakter hedefli efektler: her biri ability-fx/ altında kendi dosyasında. Yeni bir efekt için dosyayı ekleyip
  * buraya kaydetmek ve src/data/abilities.yaml'de `effect` olarak kullanmak yeterli.
  */
-const CHARACTER_EFFECTS = {
+type EffectUpdate = (
+  v: AbilityVisual,
+  local: number,
+  lt: number,
+  caster: Character,
+  target: Character,
+  chargeEnd: number,
+  impactOffset: number,
+  totalDuration: number,
+  ground?: GroundFn,
+) => void;
+const CHARACTER_EFFECTS: Record<Exclude<AbilityEffectType, 'tree_fall'>, EffectUpdate> = {
   shadow: updateShadow,
   tornado: updateTornado,
   rain: updateRain,
   fire: updateFireball,
-} satisfies Partial<Record<AbilityEffectType, (...args: Parameters<typeof updateFireball>) => void>>;
+  earth: updateEarth,
+};
 
 export class AbilitySystem {
   readonly group = new THREE.Group();
@@ -132,6 +152,12 @@ export class AbilitySystem {
    * Her yeteneğin kendi ışığı sahneye eklenmez, yalnızca değerleri tutar; en parlak olanlar havuza kopyalanır.
    */
   private readonly lightPool: THREE.PointLight[] = [];
+  /** Arazi yüksekliği (yerden çıkan efektler için, ör. yer dikenleri); yoksa kullanan/hedef yüksekliği. */
+  private ground?: GroundFn;
+
+  setGround(ground: GroundFn) {
+    this.ground = ground;
+  }
 
   constructor() {
     this.group.name = 'ability_effects_group';
@@ -306,6 +332,8 @@ export class AbilitySystem {
         count: number;
         birdEyeWeight?: number;
         elevationOverride?: number;
+        sideWeight?: number;
+        lineAngle?: number;
       }
     >();
 
@@ -415,6 +443,17 @@ export class AbilitySystem {
         effectCenter.y += caster.rig.height * 0.62;
       }
 
+      // Yer dikenleri: güç toplarken kamera yana döner, isabetten sonra geri gelir
+      let sideWeight: number | undefined;
+      let lineAngle: number | undefined;
+      if (effectType === 'earth') {
+        const turnIn = clamp((local - (chargeEnd - 0.9)) / 0.9, 0, 1);
+        const turnOut = clamp((local - (impactOffset + 0.5)) / 0.8, 0, 1);
+        const k = turnIn * (1 - turnOut);
+        sideWeight = k * k * (3 - 2 * k);
+        lineAngle = Math.atan2(dir.x, dir.z);
+      }
+
       const groupSize = v.ability.groupSize ?? 1;
       const suggestedSize =
         effectType === 'tree_fall'
@@ -447,6 +486,8 @@ export class AbilitySystem {
           count: 1,
           birdEyeWeight,
           elevationOverride,
+          sideWeight,
+          lineAngle,
         });
       }
     }
@@ -461,6 +502,8 @@ export class AbilitySystem {
         suggestedSize: g.sizeSum / g.count,
         birdEyeWeight: g.birdEyeWeight,
         elevationOverride: g.elevationOverride,
+        sideWeight: g.sideWeight,
+        lineAngle: g.lineAngle,
       });
     }
 
@@ -474,7 +517,13 @@ export class AbilitySystem {
     let invProd = 1;
     let maxBirdEye = 0;
     let birdEyeElev: number | undefined;
+    let maxSide = 0;
+    let sideLine: number | undefined;
     for (const f of activeList) {
+      if (f.sideWeight !== undefined && f.sideWeight > maxSide) {
+        maxSide = f.sideWeight;
+        sideLine = f.lineAngle;
+      }
       combinedCenter.addScaledVector(f.effectCenter, f.zoomWeight);
       combinedSize += f.suggestedSize * f.zoomWeight;
       totalW += f.zoomWeight;
@@ -496,6 +545,8 @@ export class AbilitySystem {
       effectCenter: combinedCenter,
       suggestedSize: combinedSize,
       birdEyeWeight: maxBirdEye > 0 ? maxBirdEye : undefined,
+      sideWeight: maxSide > 0 ? maxSide : undefined,
+      lineAngle: sideLine,
       elevationOverride: birdEyeElev,
     };
   }
@@ -618,7 +669,7 @@ export class AbilitySystem {
       v.vortexMat.uniforms.uTime.value = local;
       v.outerVortexMat.uniforms.uTime.value = local;
 
-      CHARACTER_EFFECTS[effectType as keyof typeof CHARACTER_EFFECTS](v, local, lt, caster, target, chargeEnd, impactOffset, totalDuration);
+      CHARACTER_EFFECTS[effectType as keyof typeof CHARACTER_EFFECTS](v, local, lt, caster, target, chargeEnd, impactOffset, totalDuration, this.ground);
 
       (v.smokePoints.geometry.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
       (v.smokePoints.geometry.getAttribute('aColor') as THREE.BufferAttribute).needsUpdate = true;

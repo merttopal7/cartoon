@@ -1,11 +1,24 @@
 import * as THREE from 'three';
 import type { ScheduledAbility } from '../abilities';
 import * as SH from './shaders';
+import { toonMaterial } from '../toon';
 
 export const SMOKE_COUNT = 36;
 export const DETAIL_COUNT = 48;
 export const MAX_SEEDS = Math.max(SMOKE_COUNT, DETAIL_COUNT);
 export const LIGHTNING_SEGMENTS = 18;
+/** Toprak yeteneğinde yol boyunca fışkıran diken sayısı ve hedefin altındaki büyük diken sayısı. */
+export const EARTH_WAVE_SPIKES = 10;
+export const EARTH_BIG_SPIKES = 3;
+
+/** Toprak (yer dikenleri) efektinin parçaları; yalnızca bu efekti kullanan yeteneklerde kurulur. */
+export interface EarthParts {
+  group: THREE.Group;
+  /** Kullanandan hedefe sırayla yerden fışkıran dikenler */
+  wave: THREE.Mesh[];
+  /** Hedefin altında fışkıran büyük dikenler */
+  big: THREE.Mesh[];
+}
 
 export interface AbilityVisual {
   ability: ScheduledAbility;
@@ -46,6 +59,53 @@ export interface AbilityVisual {
   detailAngles: Float32Array;
   detailAlphas: Float32Array;
   seeds: Float32Array;
+  earth?: EarthParts;
+}
+
+/** Tohumlu sözde rastgele (0..1); diken biçimleri her çalıştırmada aynı. */
+function seeded(n: number): number {
+  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+/**
+ * Kaya diken geometrisi: tabanı y=0'da, boyu 1, yarıçapı 1 olan yamuk bir koni (ölçekle boyutlanır).
+ * Köşeler tohumla oynatılır ki her diken farklı, kırık taş gibi görünsün.
+ */
+function rockSpikeGeometry(seed: number): THREE.BufferGeometry {
+  const g = new THREE.ConeGeometry(1, 1, 7, 3).toNonIndexed();
+  g.translate(0, 0.5, 0);
+  const pos = g.attributes.position;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    if (v.y > 0.98) continue; // sivri uç yerinde kalsın
+    const key = Math.round(v.x * 97) * 31 + Math.round(v.z * 89) * 17 + Math.round(v.y * 13);
+    const k = 0.75 + seeded(seed * 13.7 + key) * 0.5;
+    v.x *= k;
+    v.z *= k;
+    v.y += (seeded(seed * 7.3 + key) - 0.5) * 0.08 * (1 - v.y);
+    pos.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+function buildEarthParts(): EarthParts {
+  const group = new THREE.Group();
+  group.visible = false;
+  const light = toonMaterial('#7b6248', { flat: true });
+  const dark = toonMaterial('#5c4835', { flat: true });
+  const make = (i: number) => {
+    const m = new THREE.Mesh(rockSpikeGeometry(i + 1), i % 3 === 0 ? dark : light);
+    m.visible = false;
+    m.castShadow = true;
+    group.add(m);
+    return m;
+  };
+  const wave = Array.from({ length: EARTH_WAVE_SPIKES }, (_, i) => make(i));
+  const big = Array.from({ length: EARTH_BIG_SPIKES }, (_, i) => make(EARTH_WAVE_SPIKES + i));
+  return { group, wave, big };
 }
 
 /** Bir yetenek kullanımının tüm görsel parçalarını kurar (sahneye eklemez; ışık havuza kopyalanır). */
@@ -59,9 +119,12 @@ export function buildVisual(ability: ScheduledAbility): AbilityVisual {
   const isRain = effectType === 'rain';
   const isTornado = effectType === 'tornado';
   const isTreeFall = effectType === 'tree_fall';
+  const isEarth = effectType === 'earth';
 
   // 1. Dinamik Işık
-  const lightColor = isTornado
+  const lightColor = isEarth
+    ? 0xd6a35c
+    : isTornado
     ? 0x94a3b8
     : isRain
       ? 0xbae6fd
@@ -481,7 +544,7 @@ export function buildVisual(ability: ScheduledAbility): AbilityVisual {
   detailGeo.setAttribute('aAlpha', new THREE.BufferAttribute(detailAlphas, 1));
   detailGeo.setAttribute('aSeed', new THREE.BufferAttribute(detailSeedAttr, 1));
 
-  const effectMode = isShadow ? 3.0 : isRain ? 2.0 : isTornado || isTreeFall ? 1.0 : 0.0;
+  const effectMode = isShadow ? 3.0 : isRain ? 2.0 : isTornado || isTreeFall || isEarth ? 1.0 : 0.0;
   const detailMat = new THREE.ShaderMaterial({
     vertexShader: SH.PARTICLE_VERTEX_SHADER,
     fragmentShader: SH.VOLUMETRIC_DETAIL_FRAGMENT,
@@ -497,6 +560,9 @@ export function buildVisual(ability: ScheduledAbility): AbilityVisual {
   detailPoints.frustumCulled = false;
   detailPoints.renderOrder = 11;
   root.add(detailPoints);
+
+  const earth = isEarth ? buildEarthParts() : undefined;
+  if (earth) root.add(earth.group);
 
   return {
     ability,
@@ -537,5 +603,6 @@ export function buildVisual(ability: ScheduledAbility): AbilityVisual {
     detailAngles,
     detailAlphas,
     seeds,
+    earth,
   };
 }
