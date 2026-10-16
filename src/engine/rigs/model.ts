@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Pose, Rig } from '../pose';
 import { ROOT_SPEED, SOURCE_HIPS_HEIGHT, SOURCE_SKELETON } from '../clips';
 import { mapHumanoid, retargetHumanoid } from './humanoid';
+import { FootIK, type GroundFn, type Leg } from './foot-ik';
 import { toonMaterial } from '../toon';
 
 /** Motorun aradığı morph target adları (küçük harf, "_"/boşluk/"." olmadan). ARKit ve VRM adları da tanınır. */
@@ -53,6 +54,7 @@ function loopSeamError(clip: THREE.AnimationClip): number {
 const LIMBS = {
   upLegL: /leftupleg$/, upLegR: /rightupleg$/,
   legL: /leftleg$/, legR: /rightleg$/,
+  footL: /leftfoot$/, footR: /rightfoot$/,
   armL: /leftarm$/, armR: /rightarm$/,
   foreArmL: /leftforearm$/, foreArmR: /rightforearm$/,
   spine: /spine1?$/,
@@ -101,6 +103,9 @@ export class ModelRig implements Rig {
   private readonly touchedPos = new Map<THREE.Object3D, THREE.Vector3>();
   private readonly morphs = new Map<MorphKey, { mesh: THREE.Mesh; index: number }[]>();
   private readonly limbs: Partial<Record<Limb, THREE.Bone>> = {};
+  /** Ayak IK'sı için bacaklar (uyluk, baldır, ayak); arazi verilince FootIK kurulur. */
+  private readonly legs: Leg[] = [];
+  private footIK?: FootIK;
   /** Model biriminden metreye çarpan (kök hareket hızını metre/sn'ye çevirmek için). */
   private readonly unitScale: number;
   /** Göz kapağı morph'u yoksa: kırpma anında göz mesh'i ten rengine boyanır. */
@@ -301,6 +306,16 @@ export class ModelRig implements Rig {
     }
 
     this.head = head;
+
+    // Ayak IK'sı için bacaklar: önce Mixamo adları, yoksa genel insansı eşleme (Thigh_L, Calf_L, Foot_L …)
+    const L = this.limbs;
+    if (L.upLegL && L.legL && L.footL && L.upLegR && L.legR && L.footR) {
+      this.legs.push({ upLeg: L.upLegL, leg: L.legL, foot: L.footL }, { upLeg: L.upLegR, leg: L.legR, foot: L.footR });
+    } else {
+      const h = mapHumanoid(model);
+      const [ul, ll, fl, ur, lr, fr] = ['leftupleg', 'leftleg', 'leftfoot', 'rightupleg', 'rightleg', 'rightfoot'].map((k) => h?.get(k));
+      if (ul && ll && fl && ur && lr && fr) this.legs.push({ upLeg: ul, leg: ll, foot: fl }, { upLeg: ur, leg: lr, foot: fr });
+    }
     this.bowArch1 = bowArch1;
     this.bowArch2 = bowArch2;
     this.rightStringFinger = rightStringFinger;
@@ -343,6 +358,10 @@ export class ModelRig implements Rig {
 
   clipDuration(name: string) {
     return this.findAction(name)?.getClip().duration;
+  }
+
+  setGround(ground: GroundFn) {
+    this.footIK = this.legs.length === 2 ? new FootIK(this.legs, this.height, ground) : undefined;
   }
 
   prepareWarmup(): () => void {
@@ -488,6 +507,14 @@ export class ModelRig implements Rig {
     }
 
     if (!hasWalk && p.walkWeight > 0) this.proceduralWalk(p);
+    if (this.footIK) {
+      // Havadayken (zıplama, savrulma yayı) ayaklar araziye çekilmez
+      const airborne = THREE.MathUtils.smoothstep(p.jumpLift, 0.02, 0.12) + (hasJump ? p.jumpWeight : 0);
+      // Hızlı koşuda söner: ayak her karede ~20 cm ilerler, altındaki eğim sürekli değişir ve IK dizi
+      // titretirdi; ayak yere zaten çok kısa basar. Yürüyüş ve normal koşu (~2 m/sn) tam etkili.
+      const sprint = THREE.MathUtils.smoothstep(p.walkSpeed * p.walkWeight, 2.5, 5);
+      this.footIK.apply(this.root, this.inner, Math.max(0, 1 - airborne) * (1 - sprint), (b) => this.touch(b));
+    }
     if (this.head && (p.headPitch || p.headYaw)) {
       this.touch(this.head);
       this.root.updateMatrixWorld(true);

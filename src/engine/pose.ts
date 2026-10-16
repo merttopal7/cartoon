@@ -106,4 +106,6 @@ export interface Rig {
   clipDuration?(name: string): number | undefined;
   /** Shader ısıtması için yalnızca zaman zaman görünen malzemeleri (ör. kapalı göz) sahneye koyar; geri alma döndürür. */
   prepareWarmup?(): () => void;
+  /** Arazi yüksekliği verilirse ayaklar eğimli zemine basar (ayak IK'sı). */
+  setGround?(ground: (x: number, z: number) => number | null): void;
 }

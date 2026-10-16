@@ -202,6 +202,7 @@ scenes:
 ```
 
 - `terrain: true` olan modelden bir yükseklik haritası çıkarılır ve karakterler arazinin yüzeyine basar. Yürürken, zıplarken ve inişlerde zemini takip ederler. Arazi otomatik bulunur: saydam olmayan mesh'ler arasında düz üçgenlerinin alanı en büyük olan. Ağaç, çalı ve çimen kartları elenir.
+- **Ayak IK'sı:** Eğimde ayaklar arazinin üstüne basar: kalça, basan ayaklardan en alçaktakine göre iner, her bacak iki kemikli IK ile ayağı araziye taşır (havadaki ayak yüksekliğini korur), basan ayağın tabanı eğime en çok 25° yatar. Zıplama ve savrulmada, ayrıca hızlı koşuda (2.5–5 m/sn arası söner) devre dışıdır; düz zeminde poz değişmez. Mixamo ve insansı (Thigh_L, Calf_L, Foot_L …) iskeletlerde çalışır. Bkz. `src/engine/rigs/foot-ik.ts`; ölçüm: `node tools/measure_feet.mjs`.
 - Harita kendi zeminini getiriyorsa düz zemin `ground_plane: false` ile kapatılabilir ya da `ground_level` ile aşağı indirilebilir.
 - Statik modeller yüklenirken de otomatik birleştirilir. Dönüştürülmemiş bir FBX harita da çalışır, yalnızca daha yavaş yüklenir.
 

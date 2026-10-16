@@ -606,6 +606,8 @@ export async function buildFilm(
         warnings.push(`${def.id}: "${c.id}" modelinde "idle" klibi yok; boşta dururken hareketsiz kalır (ilk klibin ilk karesindeki poz)`);
       rig.root.name = `character_${c.id}`;
       rig.root.userData.isCharacter = true;
+      // Ayaklar eğimli araziye basar (ayak IK'sı); kök yüksekliği ise ortalamalı zeminden
+      if (terrain) rig.setGround?.((x, z) => terrain!.heightAt(x, z));
       characters.set(c.id, new Character(c.id, rig, new THREE.Vector3(...c.at), deg(c.facing), groundAt));
       group.add(rig.root);
     }
