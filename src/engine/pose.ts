@@ -108,4 +108,9 @@ export interface Rig {
   prepareWarmup?(): () => void;
   /** Arazi yüksekliği verilirse ayaklar eğimli zemine basar (ayak IK'sı). */
   setGround?(ground: (x: number, z: number) => number | null): void;
+  /**
+   * Ayak sesleri için yürüme/koşu klibinin ritmi: klip süresi (period), verilen hızdaki oynatma hızı ve
+   * ayakların yere bastığı klip anları. Klip zamanı = sahne zamanı × rate (mod period).
+   */
+  gait?(clip: string, speed: number): { period: number; rate: number; contacts: number[] } | undefined;
 }

@@ -1,6 +1,15 @@
 /**
  * Web Audio timeline playback & synchronization for cartoon dialogues.
  */
+import { reverbImpulse } from './sfx/dsp';
+import type { AmbienceCue, SfxCue } from './sfx/cues';
+
+/** Önizlemede efektlerin önceden zamanlandığı pencere (sn): kare atlansa da ses tam anında çalar. */
+const SFX_LOOKAHEAD = 0.25;
+/** Konuşma sırasında ortam sesinin kısıldığı oran. */
+const AMBIENCE_DUCK = 0.55;
+/** Ortam sesinin sahne başında/sonunda açılıp kapanma süresi (sn). */
+const AMBIENCE_EDGE = 0.8;
 
 export interface AudioCue {
   id: string;
@@ -43,6 +52,15 @@ export class AudioTimeline {
   private lastTime = 0;
   private leadIn = 0.70;  // Varsayılan: ses başlamadan 700ms önce
   private leadOut = 0.70; // Varsayılan: ses bitmeden 700ms önce
+
+  /** Ses efektleri (yetenekler, ayak sesleri, yazılar); konuşma sayılmaz (ducking ve ağız hareketi yok). */
+  private sfxCues: SfxCue[] = [];
+  private ambienceCues: AmbienceCue[] = [];
+  private sfxInput: GainNode | null = null;
+  private readonly sfxSources = new Map<string, AudioBufferSourceNode>();
+  /** Bu oynatmada zamanlanmış efektler (atlama/durdurmada sıfırlanır; aynı efekt iki kez çalmasın). */
+  private readonly sfxPlayed = new Set<string>();
+  private readonly ambSources = new Map<AmbienceCue, { src: AudioBufferSourceNode; gain: GainNode }>();
 
   private musicConfig: MusicConfig = {
     src: '/audio/main-theme/jyproject-carousel-dreams-396029.mp3',
@@ -99,7 +117,7 @@ export class AudioTimeline {
     if (!this.masterGain) {
       this.masterGain = ctx.createGain();
       this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : this.volume, ctx.currentTime);
-      this.masterGain.connect(ctx.destination);
+      this.masterGain.connect(createLimiter(ctx, ctx.destination));
     }
     return this.masterGain;
   }
@@ -112,6 +130,140 @@ export class AudioTimeline {
       this.musicGainNode.connect(this.getMasterGain());
     }
     return this.musicGainNode;
+  }
+
+  /** Ses efektlerini ve ortam seslerini ayarlar (film derlenirken). */
+  setSfx(cues: SfxCue[], ambience: AmbienceCue[]): void {
+    this.stopSfx();
+    this.sfxCues = [...cues].sort((a, b) => a.start - b.start);
+    this.ambienceCues = ambience;
+  }
+
+  getSfxCues(): SfxCue[] {
+    return this.sfxCues;
+  }
+
+  hasSfx(): boolean {
+    return this.sfxCues.length > 0 || this.ambienceCues.length > 0;
+  }
+
+  /**
+   * Efekt kanalı: hafif açık hava yankısı + tepe sınırlayıcı (aynı anda çok efekt üst üste binince
+   * patlamasın). Konuşma ve müzik bu kanaldan geçmez, seviyeleri değişmez.
+   */
+  private createSfxChain(ctx: BaseAudioContext, dest: AudioNode): GainNode {
+    const input = ctx.createGain();
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -10;
+    comp.knee.value = 6;
+    comp.ratio.value = 4;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.15;
+    const verb = ctx.createConvolver();
+    const ir = reverbImpulse(ctx.sampleRate);
+    const irBuf = ctx.createBuffer(2, ir[0].length, ctx.sampleRate);
+    ir.forEach((c, i) => irBuf.copyToChannel(c, i));
+    verb.buffer = irBuf;
+    const wet = ctx.createGain();
+    wet.gain.value = 0.18;
+    input.connect(comp);
+    input.connect(verb);
+    verb.connect(wet);
+    wet.connect(comp);
+    comp.connect(dest);
+    return input;
+  }
+
+  private getSfxInput(): GainNode {
+    if (!this.sfxInput) this.sfxInput = this.createSfxChain(this.getContext(), this.getMasterGain());
+    return this.sfxInput;
+  }
+
+  /** Ortam sesinin t anındaki kazancı: sahne kenarlarında açılıp kapanır, konuşmada kısılır, film sonunda söner. */
+  private ambienceGainAt(cue: AmbienceCue, t: number): number {
+    if (t < cue.start || t >= cue.end) return 0;
+    let g = cue.gain * Math.min(1, (t - cue.start) / AMBIENCE_EDGE, (cue.end - t) / AMBIENCE_EDGE);
+    if (this.isVoiceActive(t)) g *= AMBIENCE_DUCK;
+    const fadeOut = this.musicConfig.fadeOut;
+    if (this.filmDuration > 0 && fadeOut > 0) g *= Math.max(0, Math.min(1, (this.filmDuration - t) / fadeOut));
+    return Math.max(0, g);
+  }
+
+  private playSfx(cue: SfxCue, when: number, offset: number) {
+    const ctx = this.getContext();
+    const src = ctx.createBufferSource();
+    src.buffer = cue.buffer;
+    const gain = ctx.createGain();
+    gain.gain.value = cue.gain;
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = cue.pan;
+    src.connect(gain);
+    gain.connect(pan);
+    pan.connect(this.getSfxInput());
+    src.onended = () => {
+      if (this.sfxSources.get(cue.id) === src) this.sfxSources.delete(cue.id);
+      try {
+        pan.disconnect();
+      } catch {}
+    };
+    src.start(when, offset);
+    this.sfxSources.set(cue.id, src);
+    this.sfxPlayed.add(cue.id);
+  }
+
+  /** Efektleri önceden zamanlar, ortam döngülerini açar/kapatır. jumped: zaman sıçradı (seek). */
+  private updateSfx(time: number, jumped: boolean) {
+    const ctx = this.getContext();
+    if (jumped) this.stopSfx();
+    const now = ctx.currentTime;
+    for (const cue of this.sfxCues) {
+      if (cue.start > time + SFX_LOOKAHEAD) break;
+      if (this.sfxPlayed.has(cue.id) || cue.start + cue.buffer.duration <= time) continue;
+      const delay = cue.start - time;
+      this.playSfx(cue, now + Math.max(0, delay), Math.max(0, -delay));
+    }
+    for (const cue of this.ambienceCues) {
+      const inside = time >= cue.start && time < cue.end;
+      const playing = this.ambSources.get(cue);
+      if (inside && !playing) {
+        const src = ctx.createBufferSource();
+        src.buffer = cue.buffer;
+        src.loop = true;
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        src.connect(gain);
+        gain.connect(this.getMasterGain());
+        src.start(0, (time - cue.start) % cue.buffer.duration);
+        this.ambSources.set(cue, { src, gain });
+      } else if (!inside && playing) {
+        this.stopAmbience(cue);
+      }
+      const p = this.ambSources.get(cue);
+      if (p) p.gain.gain.setTargetAtTime(this.ambienceGainAt(cue, time), now, 0.08);
+    }
+  }
+
+  private stopAmbience(cue: AmbienceCue) {
+    const p = this.ambSources.get(cue);
+    if (!p) return;
+    try {
+      p.src.stop();
+      p.src.disconnect();
+      p.gain.disconnect();
+    } catch {}
+    this.ambSources.delete(cue);
+  }
+
+  private stopSfx() {
+    for (const src of this.sfxSources.values()) {
+      try {
+        src.stop();
+        src.disconnect();
+      } catch {}
+    }
+    this.sfxSources.clear();
+    this.sfxPlayed.clear();
+    for (const cue of [...this.ambSources.keys()]) this.stopAmbience(cue);
   }
 
   setVolume(v: number): void {
@@ -301,8 +453,11 @@ export class AudioTimeline {
         }
       }
       this.startMusicAt(time);
+      this.updateSfx(time, true);
       return;
     }
+
+    this.updateSfx(time, false);
 
     // Normal akış: başlangıç anı bu kareye denk gelen sesleri başlat
     for (const cue of this.cues) {
@@ -399,6 +554,7 @@ export class AudioTimeline {
     }
     this.activeSources.clear();
     this.stopMusic();
+    this.stopSfx();
   }
 
   getCues(): AudioCue[] {
@@ -413,13 +569,15 @@ export class AudioTimeline {
     const totalFrames = Math.max(1, Math.ceil(duration * sampleRate));
     const numberOfChannels = 2;
     const offlineCtx = new OfflineAudioContext(numberOfChannels, totalFrames, sampleRate);
+    // Tüm miks tepe sınırlayıcıdan geçer (konuşma + müzik + efektler üst üste bindiğinde taşmasın)
+    const out = createLimiter(offlineCtx, offlineCtx.destination);
 
     // 1. Diyaloglar
     for (const cue of this.cues) {
       if (!cue.buffer) continue;
       const src = offlineCtx.createBufferSource();
       src.buffer = cue.buffer;
-      src.connect(offlineCtx.destination);
+      src.connect(out);
       src.start(Math.max(0, cue.start));
     }
 
@@ -431,7 +589,7 @@ export class AudioTimeline {
 
       const musicGain = offlineCtx.createGain();
       musicSrc.connect(musicGain);
-      musicGain.connect(offlineCtx.destination);
+      musicGain.connect(out);
 
       // Ducking ve Fade otomasyonu (25 Hz çözünürlük)
       const points = Math.max(2, Math.floor(duration * 25));
@@ -442,6 +600,40 @@ export class AudioTimeline {
       }
       musicGain.gain.setValueCurveAtTime(curve, 0, duration);
       musicSrc.start(Math.max(0, this.musicConfig.start));
+    }
+
+    // 3. Ses efektleri (yankı + sınırlayıcı kanalından) ve döngülü ortam sesleri
+    if (this.sfxCues.length) {
+      const input = this.createSfxChain(offlineCtx, out);
+      for (const cue of this.sfxCues) {
+        if (cue.start >= duration) continue;
+        const src = offlineCtx.createBufferSource();
+        src.buffer = cue.buffer;
+        const gain = offlineCtx.createGain();
+        gain.gain.value = cue.gain;
+        const pan = offlineCtx.createStereoPanner();
+        pan.pan.value = cue.pan;
+        src.connect(gain);
+        gain.connect(pan);
+        pan.connect(input);
+        src.start(cue.start);
+      }
+    }
+    for (const cue of this.ambienceCues) {
+      const end = Math.min(cue.end, duration);
+      if (end - cue.start < 0.05) continue;
+      const src = offlineCtx.createBufferSource();
+      src.buffer = cue.buffer;
+      src.loop = true;
+      const gain = offlineCtx.createGain();
+      const points = Math.max(2, Math.floor((end - cue.start) * 25));
+      const curve = new Float32Array(points);
+      for (let i = 0; i < points; i++) curve[i] = this.ambienceGainAt(cue, cue.start + (i / (points - 1)) * (end - cue.start - 1e-3));
+      gain.gain.setValueCurveAtTime(curve, cue.start, end - cue.start);
+      src.connect(gain);
+      gain.connect(out);
+      src.start(cue.start);
+      src.stop(end);
     }
 
     return await offlineCtx.startRendering();
@@ -491,6 +683,21 @@ export class AudioTimeline {
     }
     return { hasCue: false, active: false, level: 0 };
   }
+}
+
+/**
+ * Ana çıkış sınırlayıcısı: yalnızca tepeler -1.5 dBFS'i aşınca devreye girer (normal seviyede ses değişmez),
+ * üst üste binen sesler dışa aktarımda kırpılıp cızırdamasın.
+ */
+function createLimiter(ctx: BaseAudioContext, dest: AudioNode): AudioNode {
+  const lim = ctx.createDynamicsCompressor();
+  lim.threshold.value = -1.5;
+  lim.knee.value = 0;
+  lim.ratio.value = 20;
+  lim.attack.value = 0.002;
+  lim.release.value = 0.12;
+  lim.connect(dest);
+  return lim;
 }
 
 /** AudioBuffer'ı standart uncompressed 16-bit PCM WAV Blob'una dönüştürür. */

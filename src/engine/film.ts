@@ -19,6 +19,7 @@ import { CLEARANCE_SAMPLE_STEP, CameraClearance, type CameraSample } from './cam
 import { ImpactFeel } from './impact';
 import { FocusTrack } from './focus-track';
 import { RoadPath } from './road';
+import { buildSfx } from './sfx/cues';
 
 export interface BuiltShot {
   index: number;
@@ -442,6 +443,27 @@ export class Film {
     }
     if (sc.clearance?.liftAboveGround(cam.position) && !looked) cam.lookAt(aim);
     return aim;
+  }
+
+  /**
+   * Ses efektlerini konumlandırmak için t anındaki kamera (dinleyici): konum, sağ/ileri eksenler ve yatay
+   * görüş açısının yarısının tanjantı. Ekrandaki görüntüyü değiştirmez (ayrı kamerayla hesaplanır).
+   */
+  listenerAt(t: number, format: FormatPreset) {
+    t = clamp(t, 0, this.duration - 1e-6);
+    const sc = this.scenes.find((s) => t < s.start + s.duration) ?? this.scenes[this.scenes.length - 1];
+    const lt = t - sc.start;
+    const shot = sc.shots.find((s) => lt < s.start + s.duration) ?? sc.shots[sc.shots.length - 1];
+    const cam = this.probeCamera;
+    this.placeCamera(cam, sc, shot, lt, t, format);
+    cam.updateMatrixWorld();
+    const aspect = format.width / format.height;
+    return {
+      position: cam.position.clone(),
+      right: new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion),
+      forward: new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion),
+      tanHalf: Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2) * aspect,
+    };
   }
 
   /** Çekim boyunca kamera yolunu (konum + bakış noktası) örnekler. */
@@ -1010,6 +1032,15 @@ export async function buildFilm(
     start: musicDef?.start ?? 0,
     enabled: musicDef?.enabled ?? true,
   });
+
+  // Ses efektleri (sentezlenir; dosya indirilmez)
+  onProgress?.('Ses efektleri hazırlanıyor…', 0.95);
+  const sfx = await buildSfx(
+    film,
+    s.scenes.map((d) => d.environment.preset),
+    s.film.sfx,
+  );
+  film.audio.setSfx(sfx.cues, sfx.ambience);
 
   for (const scene of scenes) {
     scene.audio = film.audio;

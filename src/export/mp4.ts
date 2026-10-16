@@ -50,7 +50,8 @@ export async function exportMp4({ film, viewport, format, onProgress, signal }: 
   const audioCues = film.audio.getCues().filter((c) => c.buffer);
   const musicBuffer = film.audio.getMusicBuffer();
   const musicConfig = film.audio.getMusicConfig();
-  const hasAudio = audioCues.length > 0 || (musicBuffer !== null && musicConfig.enabled && musicConfig.volume > 0);
+  const hasAudio =
+    audioCues.length > 0 || film.audio.hasSfx() || (musicBuffer !== null && musicConfig.enabled && musicConfig.volume > 0);
   const sampleRate = 44100;
   const numberOfChannels = 2;
   let useAudio = false;

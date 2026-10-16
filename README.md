@@ -88,6 +88,29 @@ Yetenekler [src/data/abilities.yaml](src/data/abilities.yaml) dosyasında tanım
 
 **Vuruş hissi:** Her yetenek isabetinde (devrilen ağacın yere çarpışı dahil) kamera kısa ve sönümlü bir sarsıntı yapar, karakterler ve efektler bir an duraksar (hit-stop). Güç savrulma mesafesinden hesaplanır (0.35 m ≈ 0.7, 2.8 m ≈ 1.45); eylem başına `impact: 1.2` ile ezilir, `impact: 0` kapatır. Hit-stop toplam süreyi değiştirmez: duraksamadan sonra hareket ~0.25 sn biraz hızlı akıp gerçek zamana yetişir; sesler, müzik ve sonraki eylemler kaymaz. Kamera hareketi duraksamaz. Bkz. `src/engine/impact.ts`.
 
+### Ses efektleri
+
+Ses efektleri dosyadan okunmaz, koddan sentezlenir ([src/engine/sfx/](src/engine/sfx/)); telif hakkı sorunu yoktur. Senaryoya bir şey yazmadan otomatik eklenirler:
+
+- **Yetenekler:** her elementin güç toplama, fırlatma ve isabet sesi (ateş uğultusu ve patlama, yerden fışkıran kaya dikenleri, hortum rüzgârı, ok ve su sıçraması/sağanak), ağaç kesme-gıcırtı-devrilme, isabette darbe
+- **Hareket:** ayak sesleri (yürüme/koşu klibinde ayağın yere bastığı karede), savrulma ve zıplama sonrası yere düşüş
+- **Ekran:** çizgi roman balonunda "pop", başlık kartında zil, isim kartında ve kamera geçişlerinde hışırtı
+- **Ortam:** döngülü orman sesi (rüzgâr, yaprak, kuşlar; `night` ön ayarında cırcır böcekleri), konuşmada kısılır
+
+Sesler kameraya uzaklıkla kısılır ve ekrandaki yerine göre sağa/sola kayar; hit-stop'tan etkilenmez, görüntüyle aynı karede duyulur. Önizlemede ve MP4/WAV dışa aktarımında aynıdır.
+
+```yaml
+film:
+  sfx:
+    volume: 1        # efekt seviyesi (0–1.5)
+    ambience: 0.3    # orman ortamı (0 = kapalı)
+    footsteps: true
+    ui: true         # yazı ve geçiş sesleri
+    # enabled: false  → tüm efektler kapalı
+```
+
+Dinlemek ve test için: `node tools/test_sfx.mjs <klasör>` her sesi art arda içeren `sfx_galeri.wav` ve bölümlerden miks kesitleri yazar.
+
 ### Kamera
 
 | Alan | Değer | Açıklama |
@@ -267,7 +290,7 @@ assets-src/            ham kaynaklar (git dışı)
 
 ## Sonraki adımlar
 
-- Ses: müzik ve efekt katmanları, AAC ses izi
+- Müzik: telifsiz, kendi ürettiğimiz müzik (Pixabay müziği YouTube'da telif uyarısı aldı)
 - TTS ve lip-sync (viseme → morph)
 - Sahne geçişleri (fade, wipe), altyazı gömme, kapak görseli (thumbnail)
 - Zaman çizelgesi editörü

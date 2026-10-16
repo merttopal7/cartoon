@@ -551,6 +551,11 @@ export class AbilitySystem {
     };
   }
 
+  /** Tüm yetenek kullanımları, çoklu hedefte her kol ayrı (ses efektleri: isabet her hedefte duyulur). */
+  allUses(): ScheduledAbility[] {
+    return this.visuals.map((v) => v.ability);
+  }
+
   /** Sahnedeki tüm yetenek kullanımlarını (çoklu hedefli kolları tekilleştirerek) döndürür. */
   getScheduledCasts(): ScheduledAbility[] {
     const seen = new Set<string>();

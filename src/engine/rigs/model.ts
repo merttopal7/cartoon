@@ -112,8 +112,11 @@ export class ModelRig implements Rig {
   /** Ayak IK'sı için bacaklar (uyluk, baldır, ayak); arazi verilince FootIK kurulur. */
   private readonly legs: Leg[] = [];
   private footIK?: FootIK;
-  /** Kök hareketi olmayan (yerinde) yürüme/koşu kliplerinin basan ayaktan ölçülen doğal hızı (m/sn). */
-  private readonly inPlaceSpeeds = new Map<THREE.AnimationAction, number>();
+  /**
+   * Yürüme/koşu kliplerinin adım ölçümü: yerinde (kök hareketi olmayan) kliplerde basan ayaktan ölçülen
+   * doğal hız (m/sn) ve ayakların yere bastığı anlar (klip saniyesi; ayak sesleri için).
+   */
+  private readonly gaits = new Map<THREE.AnimationAction, { speed: number; contacts: number[] }>();
   /** Son karede yürüme klibinin oynatma hızı ve dayandığı doğal hız (tanı ve ölçüm araçları için). */
   lastWalk = { rate: 1, natural: 0, source: '' as 'kök' | 'ayak' | 'yok' | '' };
   /** Model biriminden metreye çarpan (kök hareket hızını metre/sn'ye çevirmek için). */
@@ -376,9 +379,14 @@ export class ModelRig implements Rig {
    * yalnızca klibe bağlıdır. Ölçülemezse 0 (eski sabit hız kuralı kullanılır).
    */
   private inPlaceSpeed(action: THREE.AnimationAction): number {
-    let v = this.inPlaceSpeeds.get(action);
-    if (v !== undefined) return v;
-    v = 0;
+    return this.gaitOf(action).speed;
+  }
+
+  private gaitOf(action: THREE.AnimationAction): { speed: number; contacts: number[] } {
+    const cached = this.gaits.get(action);
+    if (cached) return cached;
+    let v = 0;
+    const contacts: number[] = [];
     if (this.legs.length === 2) {
       const d = action.getClip().duration;
       const N = 120;
@@ -405,9 +413,56 @@ export class ModelRig implements Rig {
       }
       speeds.sort((a, b) => a - b);
       if (speeds.length >= 4) v = speeds[Math.floor(speeds.length / 2)];
+      // Basış anı: ayak en düşük yüksekliğin 3.5 cm yakınına indikten sonra inişinin durduğu örnek (ses o karede
+      // duyulmalı; eşiği geçtiği an ayak hâlâ iniyor, ses ~50 ms erken kalıyordu). Döngü başa sarar (N ≈ 0).
+      for (const k of [0, 1]) {
+        const ys = samples.slice(0, N).map((s) => s[k].y);
+        const near = Math.min(...ys) + 0.035;
+        for (let i = 0; i < N; i++) {
+          if (ys[i] >= near || ys[(i + N - 1) % N] < near) continue;
+          let j = i;
+          while (j < i + N / 4 && ys[(j + 1) % N] < ys[j % N] - 0.0015) j++;
+          contacts.push(((j % N) / N) * d);
+        }
+      }
+      contacts.sort((a, b) => a - b);
     }
-    this.inPlaceSpeeds.set(action, v);
-    return v;
+    const g = { speed: v, contacts };
+    this.gaits.set(action, g);
+    return g;
+  }
+
+  /** Yürüme klibinin sahnedeki hıza göre oynatma hızı (ayaklar kaymasın diye); apply ile aynı kural. */
+  private walkRateFor(
+    action: THREE.AnimationAction | undefined,
+    speed: number,
+    measure = true,
+  ): { rate: number; natural: number; inPlace: number; rootSpeed: number } {
+    const rootSpeed = action ? (ROOT_SPEED.get(action.getClip()) ?? 0) * this.unitScale : 0;
+    const footSpeed = action ? (measure ? this.inPlaceSpeed(action) : (this.gaits.get(action)?.speed ?? 0)) : 0;
+    const inPlace = footSpeed > 0.1 && rootSpeed < footSpeed * IN_PLACE_RATIO ? footSpeed : 0;
+    // Yerinde kliplerde alt sınır daha yüksek: daha yavaşı ağır çekim gibi görünür (biraz kayma kabul)
+    const rate =
+      !inPlace && rootSpeed > 0.1 && speed > 0
+        ? Math.min(1.65, Math.max(0.6, speed / rootSpeed))
+        : inPlace > 0.1 && speed > 0
+          ? Math.min(1.6, Math.max(0.75, speed / inPlace))
+          : speed > 3.5
+            ? 1.45
+            : 1;
+    return { rate, natural: inPlace || rootSpeed, inPlace, rootSpeed };
+  }
+
+  /**
+   * Ayak sesleri için yürüyüş ritmi: klip süresi, verilen hızdaki oynatma hızı ve basış anları.
+   * Klip zamanı = sahne zamanı × rate (mod period); apply ile aynı.
+   */
+  gait(clip: string, speed: number): { period: number; rate: number; contacts: number[] } | undefined {
+    const action = this.findAction(clip || 'walk');
+    if (!action) return undefined;
+    const { contacts } = this.gaitOf(action);
+    if (contacts.length === 0) return undefined;
+    return { period: action.getClip().duration, rate: this.walkRateFor(action, speed).rate, contacts };
   }
 
   setGround(ground: GroundFn) {
@@ -499,19 +554,9 @@ export class ModelRig implements Rig {
     // yürüyorsa klip %82 hızda oynar; ayaklar zeminde kaymaz.
     const walkName = p.walkClip || 'walk';
     const walkAction = this.findAction(walkName);
-    const rootSpeed = walkAction ? (ROOT_SPEED.get(walkAction.getClip()) ?? 0) * this.unitScale : 0;
-    const footSpeed = walkAction ? (this.inPlaceSpeeds.get(walkAction) ?? 0) : 0;
-    const inPlace = footSpeed > 0.1 && rootSpeed < footSpeed * IN_PLACE_RATIO ? footSpeed : 0;
-    // Yerinde kliplerde alt sınır daha yüksek: daha yavaşı ağır çekim gibi görünür (biraz kayma kabul)
-    const walkRate =
-      !inPlace && rootSpeed > 0.1 && p.walkSpeed > 0
-        ? Math.min(1.65, Math.max(0.6, p.walkSpeed / rootSpeed))
-        : inPlace > 0.1 && p.walkSpeed > 0
-          ? Math.min(1.6, Math.max(0.75, p.walkSpeed / inPlace))
-          : p.walkSpeed > 3.5
-            ? 1.45
-            : 1;
-    this.lastWalk = { rate: walkRate, natural: inPlace || rootSpeed, source: inPlace ? 'ayak' : rootSpeed > 0.1 ? 'kök' : 'yok' };
+    // Ölçüm yalnızca karenin başında yapılır (kemikleri değiştirir); burada ölçülmüş değer okunur
+    const { rate: walkRate, natural, inPlace, rootSpeed } = this.walkRateFor(walkAction, p.walkSpeed, false);
+    this.lastWalk = { rate: walkRate, natural, source: inPlace ? 'ayak' : rootSpeed > 0.1 ? 'kök' : 'yok' };
     const hasWalk = drive(walkName, p.walkTime * walkRate, p.walkWeight, true, false);
     drive('wave', p.waveTime, p.waveWeight, false);
     const hasJump = drive('jump', p.jumpTime, p.jumpWeight, false);

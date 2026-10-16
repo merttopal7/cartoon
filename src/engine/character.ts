@@ -324,6 +324,55 @@ export class Character {
     return out;
   }
 
+  /**
+   * Ses efektleri için hareket olayları (sahne zamanı, karakterin hit-stop'lu zamanı):
+   * - step: ayağın yere bastığı anlar (klibin gerçek basış anlarından; klipsiz karakterde bacak salınımından),
+   *   weight = yürüyüşün o anki ağırlığı (başlarken/biterken azalır)
+   * - land: savrulmanın ya da zıplamanın yere iniş anı
+   */
+  motionEvents(): { kind: 'step' | 'land'; time: number; weight: number; run: boolean }[] {
+    const out: { kind: 'step' | 'land'; time: number; weight: number; run: boolean }[] = [];
+    for (const ta of this.timed) {
+      const a = ta.action;
+      if (ta.knockback) {
+        out.push({ kind: 'land', time: Math.min(ta.end, ta.cutAt ?? Infinity), weight: 1, run: false });
+        continue;
+      }
+      if (a.do === 'jump') {
+        out.push({ kind: 'land', time: ta.start + (ta.end - ta.start) * 0.8, weight: 0.6, run: false });
+        continue;
+      }
+      if (a.do !== 'walk_to' || !ta.walk) continue;
+      const dur = ta.end - ta.start;
+      const end = ta.cutAt !== undefined ? Math.min(ta.end, ta.cutAt + CUT_FADE) : ta.end;
+      const speed = ta.walk.length / dur;
+      const clip = a.clip ?? '';
+      const run = /run|jog|sprint/i.test(clip) || speed > 2.5;
+      const weightAt = (t: number) => {
+        const cutFade = ta.cutAt !== undefined && t > ta.cutAt ? 1 - easeInOut(clamp((t - ta.cutAt) / CUT_FADE)) : 1;
+        return envelope(t, ta.start, dur, 0.35) * cutFade;
+      };
+      const times: number[] = [];
+      const gait = this.rig.gait?.(clip, speed);
+      if (gait) {
+        // Klip zamanı = t × rate (mod period) → basış anı c için t = (k·period + c) / rate
+        const k0 = Math.floor((ta.start * gait.rate) / gait.period) - 1;
+        const k1 = Math.ceil((end * gait.rate) / gait.period);
+        for (let k = k0; k <= k1; k++) for (const c of gait.contacts) times.push((k * gait.period + c) / gait.rate);
+      } else {
+        // Prosedürel yürüyüş: bacak salınımının uç noktaları (faz π/2 + mπ)
+        const w = (speed / (this.rig.height * 0.72)) * TAU;
+        for (let m = Math.floor((ta.start * w) / Math.PI) - 1; m <= Math.ceil((end * w) / Math.PI); m++) times.push((Math.PI / 2 + m * Math.PI) / w);
+      }
+      for (const t of times.sort((x, y) => x - y)) {
+        if (t < ta.start || t > end) continue;
+        const weight = weightAt(t);
+        if (weight > 0.25) out.push({ kind: 'step', time: t, weight, run });
+      }
+    }
+    return out.sort((x, y) => x.time - y.time);
+  }
+
   /** Gövdenin baktığı yön (radyan, 0 = +Z). Yürüyüş yönü ve turn hareketlerinden hesaplanır. */
   facingAt(t: number, ctx: SceneContext): number {
     const pos = this.positionAt(t, new THREE.Vector3());

@@ -341,6 +341,23 @@ export const scenarioSchema = z
           })
           .partial()
           .optional(),
+        /**
+         * Ses efektleri: koddan sentezlenir (telifsiz). Yetenekler, ayak sesleri, düşüşler, ekran yazıları,
+         * geçişler ve orman ortam sesi otomatik eklenir.
+         */
+        sfx: z
+          .object({
+            enabled: z.boolean().default(true),
+            /** Efektlerin seviyesi (1 = varsayılan) */
+            volume: z.number().min(0).max(1.5).default(1),
+            /** Ortam sesi (rüzgâr, kuşlar; gece cırcır böcekleri) seviyesi; 0 = kapalı */
+            ambience: z.number().min(0).max(1).default(0.3),
+            footsteps: z.boolean().default(true),
+            /** Ekran yazıları (balon, başlık, isim kartı) ve kamera geçişi sesleri */
+            ui: z.boolean().default(true),
+          })
+          .strict()
+          .default({}),
       })
       .strict()
       .default({}),
