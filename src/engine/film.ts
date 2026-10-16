@@ -12,7 +12,8 @@ import { setupVegetationWind, type WindSystem } from './wind';
 import { AudioTimeline, type AudioCue } from './audio';
 import { buildSceneRenderDetails } from './details';
 import { renderMotionGraphicsLayer, type TransitionCue } from './motion-graphics';
-import { AbilitySystem, getAbilityRecipe, type ActiveAbilityHUDInfo } from './abilities';
+import { AbilitySystem, type AbilityRecipe, type ActiveAbilityHUDInfo } from './abilities';
+import { buildRecipe, resolveAbility } from './ability-registry';
 import { setupLods } from './lod';
 import { CLEARANCE_SAMPLE_STEP, CameraClearance, type CameraSample } from './camera-clearance';
 import { ImpactFeel } from './impact';
@@ -665,7 +666,7 @@ export async function buildFilm(
           time: number;
           action: Extract<Action, { do: 'ability' }>;
           start: number;
-          recipe: ReturnType<typeof getAbilityRecipe>;
+          recipe: AbilityRecipe;
         }
       | {
           kind: 'ability_impact';
@@ -675,11 +676,12 @@ export async function buildFilm(
           groupIndex: number;
           groupSize: number;
           start: number;
-          recipe: ReturnType<typeof getAbilityRecipe>;
+          recipe: AbilityRecipe;
         }
       | { kind: 'ability_turn'; time: number; who: string; targets: string[] };
 
     const timelineEvents: TimelineEvent[] = [];
+    const recipeWarned = new Set<string>();
 
     // Derleme sırasında yön hesabı için (kamera henüz yok)
     const compileCtx: SceneContext = {
@@ -699,10 +701,22 @@ export async function buildFilm(
           warnFn(`Yeteneği kullanan karakter bulunamadı: ${action.who}`);
           continue;
         }
-        const recipe = getAbilityRecipe(action.name, action.clips);
+        const def = resolveAbility(action.name);
+        if (!def) {
+          warnFn(`Bilinmeyen yetenek: ${action.name} (tanımlar: src/data/abilities.yaml)`);
+          continue;
+        }
+        // Süreler kullananın gerçek kliplerinden; aynı uyarı (her kullanımda tekrar eden) bir kez yazılır
+        const { recipe, warnings: recipeWarnings } = buildRecipe(def, (n) => caster.rig.clipDuration?.(n), action.clips);
+        for (const w of recipeWarnings) {
+          if (!recipeWarned.has(w)) {
+            recipeWarned.add(w);
+            warnFn(w);
+          }
+        }
 
         // Ağaç Devirme gibi çevreye yönelik (hasar vermeyen) yetenekler haritadaki gerçek ağacı devirir
-        if (recipe.effectType === 'tree_fall') {
+        if (recipe.targetKind === 'map_tree') {
           let clipStart = start;
           for (const c of recipe.clips) {
             caster.schedule(

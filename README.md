@@ -74,6 +74,16 @@ shots:
 
 Klipler idle'a `fade` sürede (varsayılan 0.4 sn) yumuşakça girer ve çıkar: `{ do: clip, name: capoeira, fade: 0.5 }`. Arka arkaya gelen iki klip arasındaki geçiş de yeni klibin `fade` süresidir (kısa klipte en çok %40'ı). Başı ile sonu uyuşmayan döngü klipleri (ör. "Action Idle To Fight Idle" gibi geçiş animasyonları) yüklemede tespit edilir; her turun sonu yeni turun başıyla 0.3 sn karıştırılır ki döngüde sıçrama olmasın. Yürüme/koşu döngüleri bundan muaftır.
 
+### Yetenekler (`do: ability`)
+
+```yaml
+- { who: toprak, do: ability, name: ates_topu, target: karabey, at: 34.6, knockback: 0.4, impact_clip: impact_3 }
+- { who: karabey, do: ability, name: karanlik_buyu, target: [toprak, defne, mese], at: 43.9 }   # çoklu hedef
+- { who: karabey, do: ability, name: agac_devirme, target: Realistic_Pine_057, at: 31.2 }      # harita ağacı
+```
+
+Yetenekler [src/data/abilities.yaml](src/data/abilities.yaml) dosyasında tanımlıdır: adlar ve takma adlar, oynatılan klipler, fırlatma anı (`release: { clip, at }`), uçuş ve sönme süreleri, savrulma, hedefin tepki klibi ve HUD ikonu. Yeni yetenek eklemek ya da zamanlamayı değiştirmek için yalnızca bu dosya düzenlenir; geçerli adlar, karakterlere yüklenecek klipler ve doğrulama oradan türetilir. Süresi yazılmayan klip gerçek süresiyle oynar; fırlatma anı klibe bağlı olduğundan klip değişince birlikte kayar. Kullananda olmayan ya da yazılan süreden belirgin kısa klipler yüklemede uyarı verir. Görsel efektler (`effect`) `src/engine/abilities.ts` içindedir. Testler: `node tools/test_abilities.mjs`.
+
 **Vuruş hissi:** Her yetenek isabetinde (devrilen ağacın yere çarpışı dahil) kamera kısa ve sönümlü bir sarsıntı yapar, karakterler ve efektler bir an duraksar (hit-stop). Güç savrulma mesafesinden hesaplanır (0.35 m ≈ 0.7, 2.8 m ≈ 1.45); eylem başına `impact: 1.2` ile ezilir, `impact: 0` kapatır. Hit-stop toplam süreyi değiştirmez: duraksamadan sonra hareket ~0.25 sn biraz hızlı akıp gerçek zamana yetişir; sesler, müzik ve sonraki eylemler kaymaz. Kamera hareketi duraksamaz. Bkz. `src/engine/impact.ts`.
 
 ### Kamera

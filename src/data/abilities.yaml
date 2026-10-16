@@ -1,0 +1,136 @@
+# =============================================================================
+# YETENEK TANIMLARI — her yetenek yalnızca burada tanımlanır.
+# -----------------------------------------------------------------------------
+# Motor bu dosyadan şunları türetir: senaryoda geçerli yetenek adları (takma adlar dahil),
+# karakterlere yüklenecek klipler, zaman çizelgesi (fırlatma, isabet, sönme), savrulma ve HUD ikonu.
+#
+# Alanlar:
+#   title         Ekranda görünen ad
+#   aliases       Senaryoda aynı yeteneği çağıran diğer adlar
+#   effect        Görsel efekt: fire | tornado | rain | shadow | tree_fall (kodu src/engine/abilities.ts)
+#   target        character (varsayılan) | map_tree (haritadaki Realistic_Pine_* ağacı; hedef karakter gerekmez)
+#   icon          HUD ikonu (src/ui/ability-icons.ts içindeki anahtar); verilmezse yeteneğin kendi adı
+#   clips         Kullananın sırayla oynattığı klipler:
+#                   name      klip adı
+#                   duration  oynatma süresi (sn). Verilmezse klibin gerçek süresi. Uzun bir klibin yalnızca
+#                             başını oynatmak için kısaltın; döngülü (loop) kliplerde istenen toplam süre.
+#                   loop      süre boyunca döngüyle oynasın
+#                   fade      bu klibe geçiş süresi (sn); varsayılan 0.3
+#   release       Efektin hedefe fırladığı an: { clip: <klip adı>, at: <o klibin başından saniye> }
+#   flight        Fırlatmadan isabete uçuş süresi (sn)
+#   linger        İsabetten sonra efektin sönmesi (sn)
+#   knockback     Hedefin savrulması: arc = en çok yay yüksekliği (m; asıl yükseklik mesafeyle ölçeklenir),
+#                 duration = savrulma süresi (sn). Mesafeyi senaryo verir (knockback: 0.4).
+#   impact_clip   Hedefin varsayılan tepki klibi (senaryoda impact_clip ile ezilir)
+#   target_clips  Hedefe ayrıca yüklenecek tepki klipleri
+#
+# Senaryoda `clips: [a, b]` verilirse yetenek bu kliplerle oynar: süreler kliplerin gerçek süresidir ve
+# fırlatma anı, aynı sıradaki klipte aynı orana (ör. klibin %42'si) kaydırılır.
+# =============================================================================
+
+ates_topu:
+  title: Ateş Topu
+  aliases: [fireball]
+  effect: fire
+  clips:
+    - { name: hook_punch }
+  release: { clip: hook_punch, at: 0.92 }
+  flight: 0.58
+  linger: 1.45
+  knockback: { arc: 1.15, duration: 0.9 }
+  impact_clip: death
+  target_clips: [death, fall_flat]
+
+alev_tekmesi:
+  title: Alev Tekmesi
+  aliases: [flame_kick]
+  effect: fire
+  icon: ates_topu
+  clips:
+    - { name: macaco_side, duration: 1.35 }
+    - { name: flying_kick }
+  release: { clip: flying_kick, at: 0.10 }
+  flight: 0.60
+  linger: 1.30
+  knockback: { arc: 1.20, duration: 0.9 }
+  impact_clip: impact_3
+  target_clips: [impact_3, fall_flat]
+
+# Hortum, kullananın içinde Hurricane Kick dönerken oluşur; uçan tekmeyle hedefe gönderilir.
+ruzgar_hortumu:
+  title: Rüzgar Hortumu
+  aliases: [hortum, wind_tornado, kasirga_tufani, whirlwind_kick]
+  effect: tornado
+  clips:
+    - { name: hurricane_kick, duration: 2.25, loop: true }
+    - { name: flying_kick, duration: 1.65 }
+  release: { clip: hurricane_kick, at: 2.25 }
+  flight: 0.80
+  linger: 1.30
+  knockback: { arc: 1.55, duration: 1.05 }
+  impact_clip: impact_2
+  target_clips: [impact_2, fall_flat]
+
+# Okçu: yayı çeker, sol eldeki yayda güç toplar, kiriş bırakıldığı anda (aim_recoil 0.15 sn) ok çıkar.
+# Kiriş kemiği de bu kliplerin zamanına göre çekilip bırakılır (src/engine/rigs/model.ts).
+firtina_oku:
+  title: Fırtına Oku
+  aliases: [yagmur_oku, rain_arrow, storm_arrow, yagmur, yagmur_bulutu, orman_yagmuru, rain]
+  effect: rain
+  clips:
+    - { name: draw_arrow, fade: 0.2 }
+    - { name: aim_overdraw, duration: 1.0, fade: 0.15 }
+    - { name: aim_recoil, fade: 0.15 }
+  release: { clip: aim_recoil, at: 0.15 }
+  flight: 0.63
+  linger: 1.90
+  knockback: { arc: 0.65, duration: 0.85 }
+  impact_clip: impact_3
+  target_clips: [impact_3, death, fall_flat]
+
+golge_kilic:
+  title: Gölge Kılıç
+  aliases: [golge_dalgasi, shadow_slash]
+  effect: shadow
+  icon: karanlik_buyu
+  clips:
+    - { name: power_up, duration: 1.35 }
+    - { name: slash_2, duration: 1.60 }
+  release: { clip: slash_2, at: 0.85 }
+  flight: 0.62
+  linger: 0.88
+  knockback: { arc: 0.32, duration: 0.8 }
+  impact_clip: dodge_back
+  target_clips: [dodge_back, fall_flat]
+
+# Duman kullananın başının üstünde toplanır, çoklu hedefte kollara ayrılıp hepsine aynı anda girer.
+karanlik_buyu:
+  title: Karanlık Büyü
+  aliases: [shadow_storm]
+  effect: shadow
+  clips:
+    - { name: casting, duration: 1.30 }
+    - { name: attack_2, duration: 1.55 }
+  release: { clip: attack_2, at: 0.82 }
+  flight: 0.62
+  linger: 0.86
+  knockback: { arc: 0.32, duration: 0.8 }
+  impact_clip: dodge_back
+  target_clips: [dodge_back, fall_flat]
+
+# Güç toplar, yatay kılıç darbesiyle haritadaki çamı keser (release = kesik); ağaç devrilip yere çarpar (isabet).
+# Kesik, devrilme ve sürüklenme efekti kesik anına göre zamanlanır.
+agac_devirme:
+  title: Ağaç Devirme
+  aliases: [tree_fall]
+  effect: tree_fall
+  target: map_tree
+  clips:
+    - { name: power_up, duration: 1.15 }
+    - { name: slash_2, duration: 1.65 }
+  release: { clip: slash_2, at: 0.50 }
+  flight: 0.73
+  linger: 1.32
+  knockback: { arc: 0.95, duration: 0.85 }
+  impact_clip: fall_flat
+  target_clips: [fall_flat, dodge_back]

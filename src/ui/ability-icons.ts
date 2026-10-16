@@ -1,4 +1,4 @@
-import type { AbilityName } from '../engine/abilities';
+import { resolveAbility } from '../engine/ability-registry';
 
 export interface AbilityIconDrawCmd {
   d: string;
@@ -129,35 +129,10 @@ export const CANONICAL_ABILITY_ICONS: Record<string, AbilityIconMeta> = {
   },
 };
 
-const ABILITY_ALIAS_MAP: Record<AbilityName, keyof typeof CANONICAL_ABILITY_ICONS> = {
-  ates_topu: 'ates_topu',
-  fireball: 'ates_topu',
-  alev_tekmesi: 'ates_topu',
-  flame_kick: 'ates_topu',
-  ruzgar_hortumu: 'ruzgar_hortumu',
-  hortum: 'ruzgar_hortumu',
-  wind_tornado: 'ruzgar_hortumu',
-  kasirga_tufani: 'ruzgar_hortumu',
-  whirlwind_kick: 'ruzgar_hortumu',
-  yagmur_oku: 'firtina_oku',
-  rain_arrow: 'firtina_oku',
-  firtina_oku: 'firtina_oku',
-  storm_arrow: 'firtina_oku',
-  yagmur: 'firtina_oku',
-  yagmur_bulutu: 'firtina_oku',
-  orman_yagmuru: 'firtina_oku',
-  rain: 'firtina_oku',
-  golge_kilic: 'karanlik_buyu',
-  golge_dalgasi: 'karanlik_buyu',
-  shadow_slash: 'karanlik_buyu',
-  karanlik_buyu: 'karanlik_buyu',
-  shadow_storm: 'karanlik_buyu',
-  agac_devirme: 'agac_devirme',
-  tree_fall: 'agac_devirme',
-};
-
-export function getAbilityIconMeta(name: AbilityName | string): AbilityIconMeta {
-  const key = ABILITY_ALIAS_MAP[name as AbilityName] ?? 'ates_topu';
+/** Yetenek adı veya takma adından HUD ikonu; eşleme src/data/abilities.yaml'deki `icon` alanından (yoksa yeteneğin kendi adı). */
+export function getAbilityIconMeta(name: string): AbilityIconMeta {
+  const def = resolveAbility(name);
+  const key = def?.icon ?? def?.id ?? 'ates_topu';
   return CANONICAL_ABILITY_ICONS[key] ?? CANONICAL_ABILITY_ICONS.ates_topu;
 }
 

@@ -6,215 +6,41 @@ import { impactStrengthFor, type ImpactEvent } from './impact';
 
 /** Devrilen ağacın yere çarpışının vuruş gücü. */
 const TREE_IMPACT = 0.9;
+/**
+ * Ağaç devirme efektinin (kılıç kesiği, devrilme, sürüklenme, kamera) zamanları 1.65 sn'lik kesik anına göre
+ * yazıldı. Tanımdaki kesik anı (release) farklıysa efekt zamanı o kadar kaydırılır; animasyonla senkron kalır.
+ */
+const TREE_REF_RELEASE = 1.65;
 
-export type AbilityName =
-  | 'ates_topu'
-  | 'fireball'
-  | 'alev_tekmesi'
-  | 'flame_kick'
-  | 'ruzgar_hortumu'
-  | 'hortum'
-  | 'wind_tornado'
-  | 'kasirga_tufani'
-  | 'whirlwind_kick'
-  | 'yagmur_oku'
-  | 'rain_arrow'
-  | 'firtina_oku'
-  | 'storm_arrow'
-  | 'yagmur'
-  | 'yagmur_bulutu'
-  | 'orman_yagmuru'
-  | 'rain'
-  | 'golge_kilic'
-  | 'golge_dalgasi'
-  | 'shadow_slash'
-  | 'karanlik_buyu'
-  | 'shadow_storm'
-  | 'agac_devirme'
-  | 'tree_fall';
+/** Yetenek adı veya takma adı; geçerli adlar src/data/abilities.yaml'den gelir. */
+export type AbilityName = string;
 
 export type AbilityEffectType = 'fire' | 'tornado' | 'rain' | 'shadow' | 'tree_fall';
 
+/**
+ * Bir yetenek kullanımının zaman çizelgesi (yerel saniye). src/data/abilities.yaml'deki tanımdan,
+ * kullananın gerçek klip süreleriyle ability-registry.ts:buildRecipe üretir.
+ */
 export interface AbilityRecipe {
+  /** Kanonik yetenek kimliği (takma ad değil) */
+  id: string;
   effectType: AbilityEffectType;
-  /** Karakterin sırayla oynatacağı 1 veya 2 animasyon klibi */
+  /** Hedef türü: karakter ya da haritadaki ağaç */
+  targetKind: 'character' | 'map_tree';
+  /** Karakterin sırayla oynatacağı klipler */
   clips: { name: string; duration: number; loop?: boolean; /** Bu klibe geçiş süresi (sn); varsayılan 0.3 */ fade?: number }[];
-  /** Güç toplama / karakteri çevreleme evresinin bitip efektin hedefe yöneldiği yerel saniye */
+  /** Güç toplama evresinin bitip efektin hedefe yöneldiği an (fırlatma) */
   chargeEnd: number;
-  /** Efektin hedefe ulaştığı yerel saniye */
+  /** Efektin hedefe ulaştığı an (isabet) */
   impactOffset: number;
-  /** Efektin tamamen sönümlendiği toplam süre */
+  /** Efektin tamamen sönümlendiği an */
   totalDuration: number;
-  /** Hedefin savrulurken havada çizeceği kavis yüksekliği (m) */
+  /** Hedefin savrulurken çizeceği en büyük yay yüksekliği (m) */
   arcHeight: number;
   /** Hedefin savrulma süresi (sn) */
   knockbackDuration: number;
   /** Hedefin varsayılan tepki/düşüş animasyonu */
   defaultImpactClip: string;
-}
-
-export function getAbilityRecipe(name: AbilityName, customClips?: string[]): AbilityRecipe {
-  let recipe: AbilityRecipe;
-  switch (name) {
-    case 'ates_topu':
-    case 'fireball':
-      recipe = {
-        effectType: 'fire',
-        clips: [{ name: 'hook_punch', duration: 2.17 }],
-        chargeEnd: 0.92,
-        impactOffset: 1.50,
-        totalDuration: 2.95,
-        arcHeight: 1.15,
-        knockbackDuration: 0.90,
-        defaultImpactClip: 'death',
-      };
-      break;
-
-    case 'alev_tekmesi':
-    case 'flame_kick':
-      recipe = {
-        effectType: 'fire',
-        clips: [
-          { name: 'macaco_side', duration: 1.35 },
-          { name: 'flying_kick', duration: 1.50 },
-        ],
-        chargeEnd: 1.45,
-        impactOffset: 2.05,
-        totalDuration: 3.35,
-        arcHeight: 1.20,
-        knockbackDuration: 0.90,
-        defaultImpactClip: 'impact_3',
-      };
-      break;
-
-    case 'ruzgar_hortumu':
-    case 'hortum':
-    case 'wind_tornado':
-    case 'kasirga_tufani':
-    case 'whirlwind_kick':
-      recipe = {
-        effectType: 'tornado',
-        // Tornado Defne'nin içinde oluşana kadar (2.25s) Hurricane Kick.fbx çalışır; hedefe gönderirken flying_kick oynar
-        clips: [
-          { name: 'hurricane_kick', duration: 2.25, loop: true },
-          { name: 'flying_kick', duration: 1.65, loop: false },
-        ],
-        chargeEnd: 2.25,
-        impactOffset: 3.05,
-        totalDuration: 4.35,
-        arcHeight: 1.55,
-        knockbackDuration: 1.05,
-        defaultImpactClip: 'impact_2',
-      };
-      break;
-
-    case 'yagmur_oku':
-    case 'rain_arrow':
-    case 'firtina_oku':
-    case 'storm_arrow':
-    case 'yagmur':
-    case 'yagmur_bulutu':
-    case 'orman_yagmuru':
-    case 'rain':
-      recipe = {
-        effectType: 'rain',
-        // 1) draw_arrow (1.02s): Erika yayına ok yerleştirir ve sol elindeki yayı kaldırıp kirişi çeker (tam FBX süresi: 1.017s)
-        // 2) aim_overdraw (1.00s): Ok çıkmadan önce sol elindeki yayda parlayarak güç toplar (1.02s .. 2.02s)
-        // 3) aim_recoil (0.68s): 2.02s + 0.15s = 2.17s'de sağ el kirişi bıraktığı anda ok doğrudan sol elden çıkar;
-        //    klibin sonunda (2.70s) yay doğal olarak tam idle pozuna iner (tam FBX süresi: 0.683s)
-        clips: [
-          { name: 'draw_arrow', duration: 1.02, loop: false, fade: 0.2 },
-          { name: 'aim_overdraw', duration: 1.00, loop: false, fade: 0.15 },
-          { name: 'aim_recoil', duration: 0.68, loop: false, fade: 0.15 },
-        ],
-        chargeEnd: 2.17,
-        impactOffset: 2.80,
-        totalDuration: 4.70,
-        arcHeight: 0.65,
-        knockbackDuration: 0.85,
-        defaultImpactClip: 'impact_3',
-      };
-      break;
-
-    case 'golge_kilic':
-    case 'golge_dalgasi':
-    case 'shadow_slash':
-      recipe = {
-        effectType: 'shadow',
-        clips: [
-          { name: 'power_up', duration: 1.35 },
-          { name: 'slash_2', duration: 1.60 },
-        ],
-        // Toplam animasyon süresi 2.95 sn; duman animasyonun sonuna doğru (2.20 sn'de) hedefe harekete geçer
-        chargeEnd: 2.20,
-        impactOffset: 2.82,
-        totalDuration: 3.70,
-        arcHeight: 0.32,
-        knockbackDuration: 0.80,
-        defaultImpactClip: 'dodge_back',
-      };
-      break;
-
-    case 'karanlik_buyu':
-    case 'shadow_storm':
-      recipe = {
-        effectType: 'shadow',
-        clips: [
-          { name: 'casting', duration: 1.30 },
-          { name: 'attack_2', duration: 1.55 },
-        ],
-        // Toplam animasyon süresi 2.85 sn; duman animasyonun sonuna doğru (2.12 sn'de) hedefe harekete geçer
-        chargeEnd: 2.12,
-        impactOffset: 2.74,
-        totalDuration: 3.60,
-        arcHeight: 0.32,
-        knockbackDuration: 0.80,
-        defaultImpactClip: 'dodge_back',
-      };
-      break;
-
-    case 'agac_devirme':
-    case 'tree_fall':
-      recipe = {
-        effectType: 'tree_fall',
-        // Karabey önce güç toplar (power_up: 1.15s), ardından güçlü yatay kılıç darbesiyle (slash_2: 1.65s)
-        // yanındaki dev çam ağacının gövdesini keser; kesilen ağaç 1.65s -> 2.38s arasında devrilerek hedeflerin üzerine çarpar!
-        clips: [
-          { name: 'power_up', duration: 1.15 },
-          { name: 'slash_2', duration: 1.65 },
-        ],
-        chargeEnd: 1.65,
-        impactOffset: 2.38,
-        totalDuration: 3.70,
-        arcHeight: 0.95,
-        knockbackDuration: 0.85,
-        defaultImpactClip: 'fall_flat',
-      };
-      break;
-  }
-
-  if (customClips && customClips.length > 0) {
-    if (customClips.length === 1) {
-      recipe.clips = [{ name: customClips[0], duration: 2.2 }];
-    } else if (recipe.effectType === 'tornado') {
-      recipe.clips = [
-        { name: customClips[0], duration: recipe.chargeEnd, loop: true },
-        { name: customClips[1], duration: 1.65, loop: false },
-      ];
-    } else {
-      recipe.clips = [
-        { name: customClips[0], duration: 1.35 },
-        { name: customClips[1], duration: 1.55 },
-      ];
-    }
-    if (recipe.effectType === 'shadow') {
-      const animDur = recipe.clips.reduce((sum, c) => sum + c.duration, 0);
-      recipe.chargeEnd = +(animDur * 0.75).toFixed(2);
-      recipe.impactOffset = +(animDur * 0.96).toFixed(2);
-      recipe.totalDuration = +(animDur + 0.75).toFixed(2);
-    }
-  }
-  return recipe;
 }
 
 export interface MapTreeRecord {
@@ -1820,9 +1646,11 @@ export class AbilitySystem {
         effectCenter.lerp(targetPos, smoothLaunchU * 0.35);
         effectCenter.y += caster.rig.height * 0.86;
       } else if (effectType === 'tree_fall') {
+        // Efekt zamanları kesik anına (TREE_REF_RELEASE) göre; tl bu zaman çizelgesindeki yerel saniye
+        const tl = local - (chargeEnd - TREE_REF_RELEASE);
         const fallDir = v.ability.fallDirXZ ?? dir;
         const slideTarget = v.ability.slideTargetPos ?? targetPos;
-        const rawSlide = local <= 1.75 ? 0 : clamp((local - 1.75) / (3.20 - 1.75), 0, 1);
+        const rawSlide = tl <= 1.75 ? 0 : clamp((tl - 1.75) / (3.20 - 1.75), 0, 1);
         const slideU = 1 - Math.pow(1 - rawSlide, 2.35);
 
         const curBase = new THREE.Vector3().lerpVectors(targetPos, slideTarget, slideU);
@@ -1842,10 +1670,10 @@ export class AbilitySystem {
         // Yüksek açıdan bakış: ağaç kesilirken (0.65s .. 1.35s) yükselir, devrilme ve Karabey'in yanına
         // sürüklenme boyunca (1.35s .. 3.20s) 35°'den izletir, ardından yumuşakça iner.
         // (54° ve 7.4'lük kadraj kamerayı 45 m yükseltip kesintisiz savaşın ritmini bölüyordu.)
-        if (local >= 0.65 && local < 1.35) {
-          const u = clamp((local - 0.65) / 0.70, 0, 1);
+        if (tl >= 0.65 && tl < 1.35) {
+          const u = clamp((tl - 0.65) / 0.70, 0, 1);
           birdEyeWeight = 0.5 - 0.5 * Math.cos(u * Math.PI);
-        } else if (local >= 1.35 && local <= zoomHoldEnd) {
+        } else if (tl >= 1.35 && local <= zoomHoldEnd) {
           birdEyeWeight = 1.0;
         } else if (local > zoomHoldEnd && local < zoomReleaseEnd) {
           const u = clamp((local - zoomHoldEnd) / Math.max(0.01, zoomReleaseEnd - zoomHoldEnd), 0, 1);
@@ -3281,6 +3109,12 @@ export class AbilitySystem {
     impactOffset: number,
     totalDuration: number,
   ) {
+    const shift = chargeEnd - TREE_REF_RELEASE;
+    local -= shift;
+    chargeEnd -= shift;
+    impactOffset -= shift;
+    totalDuration -= shift;
+
     v.fireCoreMesh.visible = false;
     v.fireCoronaMesh.visible = false;
     v.vortexMesh.visible = false;

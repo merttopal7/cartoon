@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { parse as parseYaml, YAMLParseError } from 'yaml';
+import { abilityNames, casterClipNames, resolveAbility, targetClipNames } from './engine/ability-registry';
 
 // ---------------------------------------------------------------------------
 // Senaryo şeması. YAML (veya JSON) önce bu şemaya göre doğrulanır; motorun geri
@@ -88,42 +89,14 @@ const action = z.discriminatedUnion('do', [
     .object({
       ...actionBase,
       do: z.literal('ability'),
-      /**
-       * Özel yetenek adı:
-       * - ates_topu / fireball (Toprak: Hook Punch + 3B Ateş Topu + Düşman Savrulması)
-       * - ruzgar_hortumu / hortum / wind_tornado (Defne: Hurricane Kick + Flying Kick + 3B Rüzgar Hortumu)
-       * - firtina_oku / storm_arrow (Meşe: Draw Arrow + Aim Overdraw + Aim Recoil + 3B Büyülü Ok ve Fırtına Yağmuru)
-       * - karanlik_buyu / shadow_storm (Karabey: Casting + Attack 2 + Karanlık Şok Dalgası)
-       * - agac_devirme / tree_fall (Karabey: Power Up + Slash 2 + 3B Kesen Kılıç Darbesiyle Devrilen Çam Ağacı)
-       */
+      /** Yetenek adı veya takma adı; tanımlar ve geçerli adlar: src/data/abilities.yaml */
       name: z
-        .enum([
-          'ates_topu',
-          'fireball',
-          'alev_tekmesi',
-          'flame_kick',
-          'ruzgar_hortumu',
-          'hortum',
-          'wind_tornado',
-          'kasirga_tufani',
-          'whirlwind_kick',
-          'yagmur_oku',
-          'rain_arrow',
-          'firtina_oku',
-          'storm_arrow',
-          'yagmur',
-          'yagmur_bulutu',
-          'orman_yagmuru',
-          'rain',
-          'golge_kilic',
-          'golge_dalgasi',
-          'shadow_slash',
-          'karanlik_buyu',
-          'shadow_storm',
-          'agac_devirme',
-          'tree_fall',
-        ])
-        .default('ates_topu'),
+        .string()
+        .default('ates_topu')
+        .superRefine((n, ctx) => {
+          if (!resolveAbility(n))
+            ctx.addIssue({ code: 'custom', message: `Bilinmeyen yetenek "${n}". Geçerli adlar: ${abilityNames().join(', ')}` });
+        }),
       /** Hedef düşman karakter kimliği, çoklu hedef listesi veya harita ağacı adı (agac_devirme gibi çevre yeteneklerinde isteğe bağlıdır) */
       target: z.union([z.string(), z.array(z.string()).min(1)]).optional(),
       /** İsteğe bağlı özel 1, 2 veya 3 animasyon zinciri (belirtilmezse yeteneğin kendi animasyonları kullanılır) */
@@ -574,60 +547,6 @@ const ERIKA_BOW_CORE_KEYS = [
   'jog',
 ] as const;
 
-const ABILITY_CASTER_CLIPS: Record<string, string[]> = {
-  ates_topu: ['hook_punch'],
-  fireball: ['hook_punch'],
-  alev_tekmesi: ['macaco_side', 'flying_kick'],
-  flame_kick: ['macaco_side', 'flying_kick'],
-  ruzgar_hortumu: ['hurricane_kick', 'flying_kick'],
-  hortum: ['hurricane_kick', 'flying_kick'],
-  wind_tornado: ['hurricane_kick', 'flying_kick'],
-  kasirga_tufani: ['hurricane_kick', 'kick'],
-  whirlwind_kick: ['hurricane_kick', 'kick'],
-  yagmur_oku: ['draw_arrow', 'aim_overdraw', 'aim_recoil'],
-  rain_arrow: ['draw_arrow', 'aim_overdraw', 'aim_recoil'],
-  firtina_oku: ['draw_arrow', 'aim_overdraw', 'aim_recoil'],
-  storm_arrow: ['draw_arrow', 'aim_overdraw', 'aim_recoil'],
-  yagmur: ['draw_arrow', 'aim_overdraw', 'aim_recoil'],
-  yagmur_bulutu: ['draw_arrow', 'aim_overdraw', 'aim_recoil'],
-  orman_yagmuru: ['draw_arrow', 'aim_overdraw', 'aim_recoil'],
-  rain: ['draw_arrow', 'aim_overdraw', 'aim_recoil'],
-  golge_kilic: ['power_up', 'slash_2'],
-  golge_dalgasi: ['power_up', 'slash_2'],
-  shadow_slash: ['power_up', 'slash_2'],
-  karanlik_buyu: ['casting', 'attack_2'],
-  shadow_storm: ['casting', 'attack_2'],
-  agac_devirme: ['power_up', 'slash_2'],
-  tree_fall: ['power_up', 'slash_2'],
-};
-
-const ABILITY_TARGET_CLIPS: Record<string, string[]> = {
-  ates_topu: ['death', 'fall_flat'],
-  fireball: ['death', 'fall_flat'],
-  alev_tekmesi: ['impact_3', 'fall_flat'],
-  flame_kick: ['impact_3', 'fall_flat'],
-  ruzgar_hortumu: ['impact_2', 'fall_flat'],
-  hortum: ['impact_2', 'fall_flat'],
-  wind_tornado: ['impact_2', 'fall_flat'],
-  kasirga_tufani: ['impact_2', 'fall_flat'],
-  whirlwind_kick: ['impact_2', 'fall_flat'],
-  yagmur_oku: ['impact_3', 'death', 'fall_flat'],
-  rain_arrow: ['impact_3', 'death', 'fall_flat'],
-  firtina_oku: ['impact_3', 'death', 'fall_flat'],
-  storm_arrow: ['impact_3', 'death', 'fall_flat'],
-  yagmur: ['impact_3', 'death', 'fall_flat'],
-  yagmur_bulutu: ['impact_3', 'death', 'fall_flat'],
-  orman_yagmuru: ['impact_3', 'death', 'fall_flat'],
-  rain: ['impact_3', 'death', 'fall_flat'],
-  golge_kilic: ['dodge_back', 'fall_flat'],
-  golge_dalgasi: ['dodge_back', 'fall_flat'],
-  shadow_slash: ['dodge_back', 'fall_flat'],
-  karanlik_buyu: ['dodge_back', 'fall_flat'],
-  shadow_storm: ['dodge_back', 'fall_flat'],
-  agac_devirme: ['fall_flat', 'dodge_back'],
-  tree_fall: ['fall_flat', 'dodge_back'],
-};
-
 /** YAML veya JSON metnini ayrıştırır ve doğrular. JSON geçerli bir YAML olduğundan ikisi de kabul edilir. */
 export function parseScenario(text: string): ParseResult {
   let raw: unknown;
@@ -697,13 +616,11 @@ export function parseScenario(text: string): ParseResult {
                 addAssetClip(whoAsset, a.clip);
               }
               if (a.do === 'ability') {
-                const abName = typeof a.name === 'string' ? a.name : 'ates_topu';
-                const casterClips = Array.isArray(a.clips) && a.clips.length > 0
-                  ? a.clips
-                  : (ABILITY_CASTER_CLIPS[abName] ?? ['hook_punch']);
-                for (const c of casterClips) {
-                  if (typeof c === 'string') addAssetClip(whoAsset, c);
-                }
+                // Yüklenecek klipler yetenek tanımından (src/data/abilities.yaml); bilinmeyen ad şemada hata verir
+                const def = resolveAbility(typeof a.name === 'string' ? a.name : 'ates_topu');
+                const custom = Array.isArray(a.clips) ? a.clips.filter((c: unknown): c is string => typeof c === 'string') : undefined;
+                const casterClips = def ? casterClipNames(def, custom) : (custom ?? []);
+                for (const c of casterClips) addAssetClip(whoAsset, c);
 
                 const targetIds = Array.isArray(a.target)
                   ? a.target
@@ -712,7 +629,7 @@ export function parseScenario(text: string): ParseResult {
                     : [];
                 for (const tid of targetIds) {
                   const targetAsset = typeof tid === 'string' ? charToAsset.get(tid) : undefined;
-                  for (const tc of ABILITY_TARGET_CLIPS[abName] ?? ['death', 'fall_flat']) {
+                  for (const tc of def ? targetClipNames(def) : []) {
                     addAssetClip(targetAsset, tc);
                   }
                   if (typeof a.impact_clip === 'string') {
@@ -847,7 +764,7 @@ function checkReferences(s: Scenario): string[] {
           if (a.do === 'turn' && typeof a.to === 'string' && !ids.has(a.to)) errors.push(`${ap}: dönülecek "${a.to}" bu sahnede yok`);
           if (a.do === 'look_at' && typeof a.target === 'string' && a.target !== 'camera' && !ids.has(a.target))
             errors.push(`${ap}: bakılacak "${a.target}" bu sahnede yok (karakter kimliği veya "camera" olmalı)`);
-          if (a.do === 'ability' && a.name !== 'agac_devirme' && a.name !== 'tree_fall') {
+          if (a.do === 'ability' && resolveAbility(a.name)?.target !== 'map_tree') {
             const tList = a.target ? (Array.isArray(a.target) ? a.target : [a.target]) : [];
             if (tList.length === 0) {
               errors.push(`${ap}: yetenek hedefi belirtilmeli`);
@@ -866,7 +783,7 @@ function checkReferences(s: Scenario): string[] {
       if (a.do === 'turn' && typeof a.to === 'string' && !ids.has(a.to)) errors.push(`${ap}: dönülecek "${a.to}" bu sahnede yok`);
       if (a.do === 'look_at' && typeof a.target === 'string' && a.target !== 'camera' && !ids.has(a.target))
         errors.push(`${ap}: bakılacak "${a.target}" bu sahnede yok (karakter kimliği veya "camera" olmalı)`);
-      if (a.do === 'ability' && a.name !== 'agac_devirme' && a.name !== 'tree_fall') {
+      if (a.do === 'ability' && resolveAbility(a.name)?.target !== 'map_tree') {
         const tList = a.target ? (Array.isArray(a.target) ? a.target : [a.target]) : [];
         if (tList.length === 0) {
           errors.push(`${ap}: yetenek hedefi belirtilmeli`);
