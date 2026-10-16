@@ -167,6 +167,43 @@ try {
         check('ayak sesi basış karesinde (ayağın inişi bitmiş)', Math.abs(vel) < 0.35, `ortalama dikey hız ${vel.toFixed(2)} m/s, ${evs.length} adım`);
       }
 
+      // Hortum hareket eder: uçuşta pan/kazanç değişir, Doppler perdesi kayar; perde kayması isabet esintisini kaydırmaz
+      const tor = cues.find((c) => c.kind === 'tornado');
+      if (tor) {
+        const use = uses.find((a) => a.recipe.effectType === 'tornado');
+        const r = use.recipe;
+        const { hz, gain, pan, rate } = tor.auto;
+        const k0 = Math.round(r.chargeEnd * hz);
+        const k1 = Math.round(r.impactOffset * hz);
+        const span = (arr) => Math.max(...arr.slice(k0, k1 + 1)) - Math.min(...arr.slice(k0, k1 + 1));
+        const rs = rate.slice(k0, k1);
+        const semis = (x) => 12 * Math.log2(x);
+        check(
+          `${id}: hortum sesi hortumla hareket eder (Doppler)`,
+          span(pan) > 0.05 && Math.max(...rs.map((x) => Math.abs(semis(x)))) > 1,
+          `uçuşta pan ${Math.min(...pan.slice(k0, k1)).toFixed(2)}…${Math.max(...pan.slice(k0, k1)).toFixed(2)}, kazanç ${Math.min(...gain.slice(k0, k1)).toFixed(2)}…${Math.max(...gain.slice(k0, k1)).toFixed(2)}, perde ${semis(Math.min(...rs)).toFixed(1)}…${semis(Math.max(...rs)).toFixed(1)} yarım ton`,
+        );
+        // Senkron: isabet esintisinin zarf tepesi Doppler'li ve Doppler'siz seste aynı yerde
+        const plain = S.tornado(41, Math.round(r.chargeEnd * 100) / 100, Math.round(r.impactOffset * 100) / 100, Math.round(r.totalDuration * 100) / 100);
+        const moved = tor.buffer.getChannelData(0);
+        const peakNear = (buf) => {
+          const w = 441;
+          let best = 0;
+          let at = 0;
+          for (let s = Math.round((r.impactOffset - 0.15) * 44100); s < (r.impactOffset + 0.3) * 44100; s += w) {
+            let e = 0;
+            for (let i = s; i < s + w; i++) e += buf[i] * buf[i];
+            if (e > best) {
+              best = e;
+              at = s / 44100;
+            }
+          }
+          return at;
+        };
+        const dt = Math.abs(peakNear(plain) - peakNear(moved));
+        check(`${id}: Doppler isabet senkronunu bozmaz`, dt <= 0.021, `fark ${(dt * 1000).toFixed(0)} ms`);
+      }
+
       // Önizleme (canlı oynatma): oynatırken efektler önceden zamanlanır, atlamada (seek) sıfırlanır
       if (id === 'bolum-2-karabeyin-golgesi') {
         const a = film.audio;

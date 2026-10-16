@@ -194,9 +194,8 @@ export class AudioTimeline {
     const src = ctx.createBufferSource();
     src.buffer = cue.buffer;
     const gain = ctx.createGain();
-    gain.gain.value = cue.gain;
     const pan = ctx.createStereoPanner();
-    pan.pan.value = cue.pan;
+    applyCueParams(cue, gain, pan, when, offset);
     src.connect(gain);
     gain.connect(pan);
     pan.connect(this.getSfxInput());
@@ -610,9 +609,8 @@ export class AudioTimeline {
         const src = offlineCtx.createBufferSource();
         src.buffer = cue.buffer;
         const gain = offlineCtx.createGain();
-        gain.gain.value = cue.gain;
         const pan = offlineCtx.createStereoPanner();
-        pan.pan.value = cue.pan;
+        applyCueParams(cue, gain, pan, cue.start, 0);
         src.connect(gain);
         gain.connect(pan);
         pan.connect(input);
@@ -683,6 +681,25 @@ export class AudioTimeline {
     }
     return { hasCue: false, active: false, level: 0 };
   }
+}
+
+/**
+ * Efektin kazancı ve pan'ı; hareketli kaynakta (auto) eğriler offset'ten itibaren when anına yerleştirilir.
+ */
+function applyCueParams(cue: SfxCue, gain: GainNode, pan: StereoPannerNode, when: number, offset: number) {
+  gain.gain.value = cue.gain;
+  pan.pan.value = cue.pan;
+  const a = cue.auto;
+  if (!a) return;
+  const k0 = Math.floor(offset * a.hz);
+  if (a.gain.length - k0 < 2) return;
+  const g = a.gain.slice(k0).map((v) => v * cue.gain);
+  const p = a.pan.slice(k0);
+  const span = (g.length - 1) / a.hz;
+  gain.gain.value = g[0];
+  pan.pan.value = p[0];
+  gain.gain.setValueCurveAtTime(g, when, span);
+  pan.pan.setValueCurveAtTime(p, when, span);
 }
 
 /**

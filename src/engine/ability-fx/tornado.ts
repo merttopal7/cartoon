@@ -4,6 +4,31 @@ import { clamp } from '../math';
 import { DETAIL_COUNT, SMOKE_COUNT, type AbilityVisual } from './visual';
 
 /**
+ * Hortumun zemindeki merkezi (yerel zaman local): güç toplarken Defne'nin içinde, fırlatılınca hedefe
+ * (hızlı çıkıp yavaşlayarak), isabetten sonra hedefi izleyerek söner. Görüntü ve ses (Doppler) aynı yolu kullanır.
+ */
+export function tornadoCenter(
+  local: number,
+  casterPos: THREE.Vector3,
+  endGround: THREE.Vector3,
+  targetNow: THREE.Vector3,
+  chargeEnd: number,
+  impactOffset: number,
+  totalDuration: number,
+  out: THREE.Vector3,
+): THREE.Vector3 {
+  if (local < chargeEnd) return out.copy(casterPos);
+  if (local < impactOffset) {
+    const u = clamp((local - chargeEnd) / (impactOffset - chargeEnd), 0, 1);
+    return out.lerpVectors(casterPos, endGround, 1 - Math.pow(1 - u, 1.45));
+  }
+  const u = clamp((local - impactOffset) / (totalDuration - impactOffset), 0, 1);
+  out.lerpVectors(endGround, targetNow, Math.min(1, u * 1.35));
+  out.y = endGround.y;
+  return out;
+}
+
+/**
  * 3. DEFNE'NİN GERÇEKÇİ 3B HACİMSEL RÜZGAR HORTUMU YETENEĞİ
  * - Partikül kalabalığı yerine çift katmanlı 3B trompet huni (İç Yoğuşma Çekirdeği + Dış Helisel Rüzgar Kılıfı)
  * - Yalnızca çok az sayıda ince uçuşan yaprak/dal ve taban toz sisi içerir.
@@ -28,7 +53,7 @@ export function updateTornado(
 
   const casterPos = caster.positionAt(lt, new THREE.Vector3());
   const endGround = v.ability.impactPos.clone();
-  const tornadoPos = new THREE.Vector3();
+  const tornadoPos = tornadoCenter(local, casterPos, endGround, target.positionAt(lt, new THREE.Vector3()), chargeEnd, impactOffset, totalDuration, new THREE.Vector3());
 
   let scaleXZ = 1.0;
   let scaleY = 1.0;
@@ -40,7 +65,6 @@ export function updateTornado(
     // Tornado oluşma evresi (2.25 sn): Hurricane Kick.fbx dönerken tornado doğrudan Defne'nin içinde (casterPos) oluşur
     const u = clamp(local / chargeEnd, 0, 1);
     const easedGrow = u * u * (3 - 2 * u);
-    tornadoPos.copy(casterPos);
     scaleXZ = 0.22 + Math.pow(u, 1.10) * 0.82;
     scaleY = 0.14 + Math.pow(u, 1.02) * 0.94;
     alpha = clamp(local / 0.95, 0, 1) * (0.45 + 0.55 * easedGrow);
@@ -48,17 +72,12 @@ export function updateTornado(
   } else if (local < impactOffset) {
     // Sonraki tekme animasyonu (flying_kick / kick) başladığında tornado Defne'nin içinden hedefe doğru fırlatılır
     const u = clamp((local - chargeEnd) / (impactOffset - chargeEnd), 0, 1);
-    const eased = 1 - Math.pow(1 - u, 1.45);
-    tornadoPos.lerpVectors(casterPos, endGround, eased);
     scaleXZ = 1.04 + u * 0.24;
     scaleY = 1.08 + u * 0.18;
     alpha = 1.0;
     outerAlpha = 1.0;
   } else {
     const u = clamp((local - impactOffset) / (totalDuration - impactOffset), 0, 1);
-    const targetNow = target.positionAt(lt, new THREE.Vector3());
-    tornadoPos.lerpVectors(endGround, targetNow, Math.min(1, u * 1.35));
-    tornadoPos.y = endGround.y;
     scaleXZ = 1.28 + u * 0.72;
     scaleY = 1.26 + u * 0.28;
     alpha = Math.max(0, 1 - Math.pow(u, 1.35));

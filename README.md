@@ -97,7 +97,7 @@ Ses efektleri dosyadan okunmaz, koddan sentezlenir ([src/engine/sfx/](src/engine
 - **Ekran (isteğe bağlı, varsayılan kapalı):** çizgi roman balonunda "pop", başlık kartında zil, isim kartında ve kamera geçişlerinde hışırtı
 - **Ortam:** döngülü orman sesi (rüzgâr, yaprak, kuşlar; `night` ön ayarında cırcır böcekleri), konuşmada kısılır
 
-Sesler kameraya uzaklıkla kısılır ve ekrandaki yerine göre sağa/sola kayar; hit-stop'tan etkilenmez, görüntüyle aynı karede duyulur. Önizlemede ve MP4/WAV dışa aktarımında aynıdır.
+Sesler kameraya uzaklıkla kısılır ve ekrandaki yerine göre sağa/sola kayar; hit-stop'tan etkilenmez, görüntüyle aynı karede duyulur. Defne'nin hortumu fırlatılınca sesi onunla hareket eder: uzaklaştıkça kısılır, ekranda kayar ve Doppler ile perdesi değişir (kameraya yaklaşırken incelir, uzaklaşırken kalınlaşır; çizgi film için abartılı, en çok ±5 yarım ton). Önizlemede ve MP4/WAV dışa aktarımında aynıdır.
 
 ```yaml
 film:

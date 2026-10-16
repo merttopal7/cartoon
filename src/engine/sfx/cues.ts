@@ -8,8 +8,21 @@
  */
 import * as THREE from 'three';
 import type { Film } from '../film';
+import { tornadoCenter } from '../ability-fx/tornado';
 import { SR } from './dsp';
 import * as S from './sounds';
+
+/**
+ * Doppler için abartılı "ses hızı" (m/sn): gerçek 343 m/sn'de birkaç m/sn'lik hortum duyulur bir perde kayması
+ * yapmaz; çizgi film dilinde yaklaşırken incelip uzaklaşırken kalınlaşması duyulsun diye küçük tutulur.
+ */
+const DOPPLER_C = 16;
+/** Perde kaymasının sınırları (frekans çarpanı; ~±5 yarım ton). */
+const DOPPLER_MIN = 0.75;
+const DOPPLER_MAX = 1.33;
+/** Hareketli seslerin kazanç/pan eğrisi örnekleme hızı (Hz). */
+const AUTO_HZ = 40;
+
 
 export interface SfxCue {
   id: string;
@@ -21,6 +34,11 @@ export interface SfxCue {
   gain: number;
   /** -1 sol … 1 sağ */
   pan: number;
+  /**
+   * Hareketli kaynak (hortum): sesin başından itibaren hz örnek/sn kazanç çarpanı ve pan eğrileri; varsa sabit pan
+   * yerine kullanılır, kazanç gain ile çarpılır.
+   */
+  auto?: { hz: number; gain: Float32Array; pan: Float32Array; /** Doppler perde çarpanı eğrisi (sese işlenmiş; tanı ve test için) */ rate?: Float32Array };
 }
 
 export interface AmbienceCue {
@@ -108,9 +126,9 @@ export async function buildSfx(
     return { gain, pan };
   };
   let n = 0;
-  const add = (key: string, make: () => Float32Array, start: number, gain: number, pan = 0) => {
+  const add = (key: string, make: () => Float32Array, start: number, gain: number, pan = 0, auto?: SfxCue['auto']) => {
     if (gain <= 0.005 || start >= film.duration) return;
-    pending.push({ cue: { id: `sfx${n++}`, kind: key.split('|')[0], start: Math.max(0, start), gain: gain * cfg.volume, pan }, key, make });
+    pending.push({ cue: { id: `sfx${n++}`, kind: key.split('|')[0], start: Math.max(0, start), gain: gain * cfg.volume, pan, auto }, key, make });
   };
   const at = (t: number, pos: THREE.Vector3, mode: 'near' | 'wide', key: string, make: () => Float32Array, level: number) => {
     const p = place(t, pos, mode);
@@ -204,7 +222,48 @@ export async function buildSfx(
           const c = Math.round(r.chargeEnd * 100) / 100;
           const i = Math.round(r.impactOffset * 100) / 100;
           const total = Math.round(r.totalDuration * 100) / 100;
-          if (first) at(t0, caster.clone().lerp(target, 0.4), 'wide', `tornado|${c}|${i}|${total}`, () => S.tornado(41, c, i, total), 0.6);
+          if (first) {
+            // Hortum Defne'den hedefe giderken ses onunla hareket eder: kameraya uzaklığa göre kısılır, ekrandaki
+            // yerine göre kayar ve kameraya yaklaşma/uzaklaşma hızından Doppler perde kayması alır (yaklaşırken
+            // ince, uzaklaşırken kalın). Perde sentezde kaydırılır; zamanlama değişmez.
+            const n = Math.ceil(total * AUTO_HZ) + 2;
+            const gain = new Float32Array(n);
+            const pan = new Float32Array(n);
+            const rate = new Float32Array(n);
+            const centre = (lw: number) =>
+              tornadoCenter(lw, posOf(a.who, a.start + lw), target, posOf(a.target, a.start + lw), c, i, total, new THREE.Vector3()).setY(target.y + 1.3);
+            for (let k = 0; k < n; k++) {
+              const lw = k / AUTO_HZ;
+              const t = filmT(a.start + Math.min(lw, total));
+              const p = centre(lw);
+              const pl = place(t, p, 'wide');
+              gain[k] = pl.gain;
+              pan[k] = pl.pan;
+              // Kaynağın dinleyiciden uzaklaşma hızı (kameranın kendi hareketi sayılmaz; çekim kesmelerinde sıçramasın)
+              const vel = centre(lw + 0.01).sub(p).divideScalar(0.01);
+              const away = p.clone().sub(listener(t).position).normalize();
+              rate[k] = THREE.MathUtils.clamp(DOPPLER_C / (DOPPLER_C + vel.dot(away)), DOPPLER_MIN, DOPPLER_MAX);
+            }
+            // Fırlatma anındaki hız sıçramasını yumuşat (±0.05 sn)
+            const smoothRate = rate.map((_, k) => {
+              let s = 0;
+              let w = 0;
+              for (let d = -2; d <= 2; d++) {
+                const j = Math.min(n - 1, Math.max(0, k + d));
+                s += rate[j];
+                w++;
+              }
+              return s / w;
+            });
+            add(
+              `tornado|${c}|${i}|${total}|${a.who}@${a.start}`,
+              () => S.tornado(41, c, i, total, smoothRate, AUTO_HZ),
+              t0,
+              0.6,
+              0,
+              { hz: AUTO_HZ, gain, pan, rate: smoothRate },
+            );
+          }
           hitBody();
           break;
         }

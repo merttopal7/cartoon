@@ -247,8 +247,18 @@ export function earthImpact(seed: number): Float32Array {
 /**
  * Hortum: yeteneğin tamamı boyunca uğuldayan, ıslık çalan rüzgâr. Güç toplarken büyür, uçuşta tam güç,
  * isabette sert bir esinti, sonra söner.
+ *
+ * pitch (isteğe bağlı, hz örnek/sn): Doppler perde çarpanı. Ses gürültüden sentezlendiği için perde, filtre
+ * frekansları çarpılarak kaydırılır; zamanlama hiç değişmez (isabet esintisi yerinde kalır).
  */
-export function tornado(seed: number, chargeEnd: number, impact: number, total: number): Float32Array {
+export function tornado(seed: number, chargeEnd: number, impact: number, total: number, pitch?: Float32Array, pitchHz = 40): Float32Array {
+  const pitchAt = (t: number) => {
+    if (!pitch) return 1;
+    const k = t * pitchHz;
+    const k0 = Math.min(pitch.length - 1, Math.floor(k));
+    const k1 = Math.min(pitch.length - 1, k0 + 1);
+    return pitch[k0] + (pitch[k1] - pitch[k0]) * (k - Math.floor(k));
+  };
   const r = rng(seed);
   const n = white(r);
   const dur = total + 0.1;
@@ -268,8 +278,9 @@ export function tornado(seed: number, chargeEnd: number, impact: number, total: 
   const whistle = rmsTex(dur, (t, i) => {
     if (i % 16 === 0) {
       const e = level(t);
-      c1 = 420 + 260 * Math.sin(TAU * 0.9 * t + ph1) + 380 * e;
-      c2 = 1000 + 380 * Math.sin(TAU * 1.37 * t + ph2) + 500 * e;
+      const p = pitchAt(t);
+      c1 = (420 + 260 * Math.sin(TAU * 0.9 * t + ph1) + 380 * e) * p;
+      c2 = (1000 + 380 * Math.sin(TAU * 1.37 * t + ph2) + 500 * e) * p;
       bp1.set(c1, 5);
       bp2.set(c2, 6);
     }
@@ -278,13 +289,24 @@ export function tornado(seed: number, chargeEnd: number, impact: number, total: 
   });
   const b = brown(r);
   const lp = new Biquad('lowpass', 320);
-  const roar = rmsTex(dur, () => lp.process(b()));
+  const roar = rmsTex(dur, (t, i) => {
+    if (pitch && i % 16 === 0) lp.set(320 * pitchAt(t));
+    return lp.process(b());
+  });
   const hp = new Biquad('bandpass', 700, 0.7);
-  const gust = rmsTex(dur, () => hp.process(n()));
+  const gust = rmsTex(dur, (t, i) => {
+    if (pitch && i % 16 === 0) hp.set(700 * pitchAt(t), 0.7);
+    return hp.process(n());
+  });
+  // Fırlatma: hortum Defne'den kopup çıkarken yükselen kalın bir "vuuş"
+  const launch = whoosh(seed + 5, 0.55, 220, 1400, 1.1);
+  const L0 = Math.round((chargeEnd - 0.08) * SR);
   return finish(
     render(dur, (t, i) => {
       const e = level(t);
-      return whistle[i] * e * 0.35 + roar[i] * e * 0.35 + gust[i] * hit(t - impact, 0.03, 0.3) * 0.45;
+      const j = i - L0;
+      const ln = j >= 0 && j < launch.length ? launch[j] * 0.55 : 0;
+      return whistle[i] * e * 0.35 + roar[i] * e * 0.35 + gust[i] * hit(t - impact, 0.03, 0.3) * 0.45 + ln;
     }),
     0.1,
   );
