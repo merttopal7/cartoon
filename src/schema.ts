@@ -166,6 +166,13 @@ const modelAsset = z
     voice: z.string().optional(),
     /** Karakterin elementi; kullandığı yeteneklerin elementiyle uyuşmazsa yüklemede uyarı verilir. */
     element: z.enum(['ates', 'su', 'toprak', 'hava']).optional(),
+    /**
+     * Renk parlaklığı çarpanı (1 = dokunun kendisi). Dokusu çok açık (pastel) bir karakter aynı ışıkta diğerlerinden
+     * "fırlıyorsa" düşürülür; ör. 0.8.
+     */
+    brightness: z.number().min(0.3).max(1.5).optional(),
+    /** Renk doygunluğu çarpanı (1 = dokunun kendisi; 0 = gri). */
+    saturation: z.number().min(0).max(1.5).optional(),
     /** Ayrı dosyadaki animasyonlar: klip adı → dosya, ör. { walk: models/kedi-walk.fbx } (Mixamo "Without Skin") */
     animations: z.record(z.string(), z.string()).optional(),
   })

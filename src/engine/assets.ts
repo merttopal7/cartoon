@@ -366,12 +366,39 @@ function preserveAndOptimizeMap(root: THREE.Object3D) {
 }
 
 /** Toon malzemeye çevirir, ölçekler, ayakları yere oturtur; ölçeklenmiş boyutları döndürür. */
+/**
+ * Varlığın renk parlaklığı ve doygunluğu (pastel dokulu bir karakter aynı ışıkta diğerlerinden fırlamasın).
+ * Parlaklık malzeme rengini çarpar; doygunluk doku rengine shader'da uygulanır.
+ */
+function adjustColors(root: THREE.Object3D, brightness: number, saturation: number) {
+  root.traverse((o) => {
+    const m = (o as THREE.Mesh).material;
+    if (!m) return;
+    for (const mat of Array.isArray(m) ? m : [m]) {
+      const c = (mat as THREE.MeshToonMaterial).color;
+      if (c) c.multiplyScalar(brightness);
+      if (saturation === 1) continue;
+      const s = saturation.toFixed(3);
+      const prev = mat.onBeforeCompile;
+      mat.onBeforeCompile = (shader, renderer) => {
+        prev?.(shader, renderer);
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <map_fragment>',
+          `#include <map_fragment>\n\tdiffuseColor.rgb = mix(vec3(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))), diffuseColor.rgb, ${s});`,
+        );
+      };
+      mat.customProgramCacheKey = () => `sat${s}`;
+    }
+  });
+}
+
 function prepareModel(model: THREE.Object3D, def: ModelAsset, fbx: boolean, outline: number | false) {
   const isMap = def.align === 'none';
   if (isMap) {
     preserveAndOptimizeMap(model);
   } else {
     toonify(model, outline);
+    if (def.brightness !== undefined || def.saturation !== undefined) adjustColors(model, def.brightness ?? 1, def.saturation ?? 1);
   }
 
   model.traverse((o) => {

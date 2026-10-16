@@ -17,6 +17,10 @@ export function markCharacterMaterial(material: THREE.Material) {
   if (material.userData.__charMask || material.transparent) return;
   material.userData.__charMask = true;
   const prev = material.onBeforeCompile;
+  // Önbellek anahtarı iç kancanın anahtarını içermeli: varsayılan anahtar kancanın kod metnidir ve bu sarmalayıcı
+  // her malzemede aynıdır; farklı iç düzenlemeli (ör. doygunluk) iki malzeme aynı shader'ı paylaşırdı.
+  const innerKey = material.customProgramCacheKey();
+  material.customProgramCacheKey = () => `${innerKey}|charmask`;
   material.onBeforeCompile = (shader, renderer) => {
     prev?.(shader, renderer);
     shader.uniforms.uCharMask = characterMask;

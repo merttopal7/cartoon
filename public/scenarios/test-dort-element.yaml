@@ -52,6 +52,8 @@ assets:
   defne:
     src: models/characters/Jackie/character.fbx
     height: 1.68
+    brightness: 0.6    # pastel dokusu aynı ışıkta diğerlerinden fırlıyordu
+    saturation: 0.88
     element: hava
   mese:
     src: models/characters/Erika/character.fbx

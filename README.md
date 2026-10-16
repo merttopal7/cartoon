@@ -130,6 +130,8 @@ scenes:
     environment: { preset: night, grade: night }   # sahne bazında ezilir
 ```
 
+**Karakter renk dengesi:** dokusu çok açık (pastel) bir karakter aynı ışıkta diğerlerinden fırlıyorsa varlığına `brightness` (renk çarpanı, doğrusal ışıkta; 0.6 ≈ göze %20 daha koyu) ve `saturation` yazılır. Defne: `brightness: 0.6, saturation: 0.88`.
+
 Maliyet (önizleme, 759×427): renk tonu ~2 ms, kontur ~1.5 ms; parlama yalnızca yetenek sırasında. Shader'lar yüklemede hazırlanır, ilk karelerde takılma olmaz. Kareleri gözle kontrol etmek için: `node tools/capture_frames.mjs <senaryo> <klasör> <t1,t2> render 1920` (`CROP=x,y,genişlik,yükseklik` oranlarıyla kırpma).
 
 ### Kamera
