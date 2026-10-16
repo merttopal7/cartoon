@@ -29,6 +29,12 @@ const lateral = new THREE.Vector3();
  */
 const LEG_SWING = 0.59;
 
+/**
+ * Kalça (kök) hızı, basan ayaktan ölçülen ilerleme hızının bu oranından azsa klip yerinde (In Place) sayılır.
+ * Kök hızı ilk-son kare kalça farkından gelir; yerinde kliplerde de küçük bir kayma kadar sıfırdan büyüktür.
+ */
+const IN_PLACE_RATIO = 0.5;
+
 /** Döngü dikişi: başı ile sonu arasında bu kadar (rad) fark olan klip dikişsiz sayılmaz (~6°). */
 const LOOP_SEAM_TOLERANCE = 0.1;
 /** Dikişli döngülerde bir turun sonu ile yenisinin başının üst üste bindirilip karıştırıldığı süre (sn). */
@@ -106,6 +112,10 @@ export class ModelRig implements Rig {
   /** Ayak IK'sı için bacaklar (uyluk, baldır, ayak); arazi verilince FootIK kurulur. */
   private readonly legs: Leg[] = [];
   private footIK?: FootIK;
+  /** Kök hareketi olmayan (yerinde) yürüme/koşu kliplerinin basan ayaktan ölçülen doğal hızı (m/sn). */
+  private readonly inPlaceSpeeds = new Map<THREE.AnimationAction, number>();
+  /** Son karede yürüme klibinin oynatma hızı ve dayandığı doğal hız (tanı ve ölçüm araçları için). */
+  lastWalk = { rate: 1, natural: 0, source: '' as 'kök' | 'ayak' | 'yok' | '' };
   /** Model biriminden metreye çarpan (kök hareket hızını metre/sn'ye çevirmek için). */
   private readonly unitScale: number;
   /** Göz kapağı morph'u yoksa: kırpma anında göz mesh'i ten rengine boyanır. */
@@ -360,6 +370,46 @@ export class ModelRig implements Rig {
     return this.findAction(name)?.getClip().duration;
   }
 
+  /**
+   * Yerinde (kök hareketi sıfırlanmış) yürüme/koşu klibinin doğal ilerleme hızı: basma evresinde ayak kalçaya
+   * göre geriye kayar ve bu kayma hızı, klibin gerçekte ilerleyeceği hızdır. Klip başına bir kez ölçülür;
+   * yalnızca klibe bağlıdır. Ölçülemezse 0 (eski sabit hız kuralı kullanılır).
+   */
+  private inPlaceSpeed(action: THREE.AnimationAction): number {
+    let v = this.inPlaceSpeeds.get(action);
+    if (v !== undefined) return v;
+    v = 0;
+    if (this.legs.length === 2) {
+      const d = action.getClip().duration;
+      const N = 120;
+      for (const a of this.actions.values()) a.setEffectiveWeight(0);
+      for (const a of this.seamActions.values()) a.setEffectiveWeight(0);
+      this.rest?.setEffectiveWeight(0);
+      action.setEffectiveWeight(1);
+      const samples: THREE.Vector3[][] = [];
+      for (let i = 0; i <= N; i++) {
+        action.time = (i / N) * d * 0.9999;
+        this.mixer.update(0);
+        this.root.updateMatrixWorld(true);
+        samples.push(this.legs.map((l) => this.inner.worldToLocal(l.foot.getWorldPosition(new THREE.Vector3()))));
+      }
+      action.setEffectiveWeight(0);
+      // Basma evresi: ayak en düşük yüksekliğinin 3 cm yakınında. İleri yön klibe göre +z ya da -z olabilir.
+      const speeds: number[] = [];
+      for (const k of [0, 1]) {
+        const minY = Math.min(...samples.map((s) => s[k].y));
+        const near = minY + 0.03;
+        for (let i = 1; i <= N; i++) {
+          if (samples[i][k].y < near && samples[i - 1][k].y < near) speeds.push(Math.abs(samples[i][k].z - samples[i - 1][k].z) / (d / N));
+        }
+      }
+      speeds.sort((a, b) => a - b);
+      if (speeds.length >= 4) v = speeds[Math.floor(speeds.length / 2)];
+    }
+    this.inPlaceSpeeds.set(action, v);
+    return v;
+  }
+
   setGround(ground: GroundFn) {
     this.footIK = this.legs.length === 2 ? new FootIK(this.legs, this.height, ground) : undefined;
   }
@@ -405,6 +455,11 @@ export class ModelRig implements Rig {
     this.root.position.copy(p.position);
     this.root.rotation.y = p.facing;
 
+    // Yerinde yürüme/koşu klibinin doğal hızı ilk kullanımda ölçülür (kemikleri geçici olarak değiştirir;
+    // ağırlıklar ve poz aşağıda baştan kurulduğu için bu karenin sonucunu etkilemez)
+    const walkAction0 = p.walkWeight > 0 ? this.findAction(p.walkClip || 'walk') : undefined;
+    if (walkAction0) this.inPlaceSpeed(walkAction0);
+
     for (const a of this.actions.values()) a.setEffectiveWeight(0);
     for (const a of this.seamActions.values()) a.setEffectiveWeight(0);
     let used = 0;
@@ -444,13 +499,19 @@ export class ModelRig implements Rig {
     // yürüyorsa klip %82 hızda oynar; ayaklar zeminde kaymaz.
     const walkName = p.walkClip || 'walk';
     const walkAction = this.findAction(walkName);
-    const natural = walkAction ? (ROOT_SPEED.get(walkAction.getClip()) ?? 0) * this.unitScale : 0;
+    const rootSpeed = walkAction ? (ROOT_SPEED.get(walkAction.getClip()) ?? 0) * this.unitScale : 0;
+    const footSpeed = walkAction ? (this.inPlaceSpeeds.get(walkAction) ?? 0) : 0;
+    const inPlace = footSpeed > 0.1 && rootSpeed < footSpeed * IN_PLACE_RATIO ? footSpeed : 0;
+    // Yerinde kliplerde alt sınır daha yüksek: daha yavaşı ağır çekim gibi görünür (biraz kayma kabul)
     const walkRate =
-      natural > 0.1 && p.walkSpeed > 0
-        ? Math.min(1.65, Math.max(0.6, p.walkSpeed / natural))
-        : p.walkSpeed > 3.5
-          ? 1.45
-          : 1;
+      !inPlace && rootSpeed > 0.1 && p.walkSpeed > 0
+        ? Math.min(1.65, Math.max(0.6, p.walkSpeed / rootSpeed))
+        : inPlace > 0.1 && p.walkSpeed > 0
+          ? Math.min(1.6, Math.max(0.75, p.walkSpeed / inPlace))
+          : p.walkSpeed > 3.5
+            ? 1.45
+            : 1;
+    this.lastWalk = { rate: walkRate, natural: inPlace || rootSpeed, source: inPlace ? 'ayak' : rootSpeed > 0.1 ? 'kök' : 'yok' };
     const hasWalk = drive(walkName, p.walkTime * walkRate, p.walkWeight, true, false);
     drive('wave', p.waveTime, p.waveWeight, false);
     const hasJump = drive('jump', p.jumpTime, p.jumpWeight, false);

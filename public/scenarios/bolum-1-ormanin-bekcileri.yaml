@@ -188,9 +188,9 @@ scenes:
             to: 6.8
           relative: true
 
-      # Kamera 6 (68.3s - 85.0s): Dans sonrası yol boyu kameranın başladığı ilk konuma kadar hızlı koşu — yukarıdan kuş uçuşu takip
+      # Kamera 6 (68.3s - 89.8s): Dans sonrası yol boyu kameranın başladığı ilk konuma kadar hızlı koşu — yukarıdan kuş uçuşu takip
       - at: 68.3
-        duration: 16.7
+        duration: 21.5
         transition: stripes
         camera:
           target:
@@ -489,7 +489,7 @@ scenes:
           - [77.5, 12.0]
           - [73.5, 4.5]
           - [69.0, 0.5]
-        duration: 16.2
+        duration: 21.0
         clip: run
         at: 68.2
       - who: defne
@@ -506,7 +506,7 @@ scenes:
           - [76.2, 12.0]
           - [72.2, 4.8]
           - [67.8, 1.0]
-        duration: 16.2
+        duration: 21.0
         clip: run
         at: 68.2
       - who: mese
@@ -523,6 +523,6 @@ scenes:
           - [78.8, 12.0]
           - [74.8, 4.2]
           - [70.2, 0.0]
-        duration: 16.2
+        duration: 21.0
         clip: run
         at: 68.2
