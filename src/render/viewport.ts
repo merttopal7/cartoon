@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import type { Film } from '../engine/film';
+import { isNeutral } from '../engine/look';
+import { PostPipeline, type PostTargets } from './post';
 
 export type ViewportMode = 'preview' | 'render';
 
@@ -22,6 +24,8 @@ export class Viewport {
   private readonly motionMat: THREE.MeshBasicMaterial;
   private readonly motionScene = new THREE.Scene();
   private readonly motionMesh: THREE.Mesh;
+  /** Kontur, parlama ve renk düzenleme (gerekmiyorsa sahne doğrudan çizilir). */
+  private post: PostPipeline | null = null;
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -72,8 +76,14 @@ export class Viewport {
   }
 
   render(film: Film) {
-    // Önizleme ve Render modlarında doğrudan sahne çizimi (Render modunda tam çözünürlük ve PCFSoftShadowMap gölgeleri aktif)
-    this.renderer.render(film.scene, film.camera);
+    // Önizleme ve Render modunda aynı görünüm (Render modunda ayrıca tam çözünürlük ve gölgeler)
+    const look = film.look;
+    if (look.outline > 0 || look.bloom > 0 || !isNeutral(film.currentGrade)) {
+      this.post ??= new PostPipeline(this.renderer);
+      this.post.render(film.scene, film.camera, look, film.currentGrade, film.postTargets());
+    } else {
+      this.renderer.render(film.scene, film.camera);
+    }
 
     if (this.motionCtx) {
       const w = Math.max(1, this.canvas.width);
@@ -105,6 +115,12 @@ export class Viewport {
   }
 
   /** Hareketli grafik ve karartma katmanlarının shader'larını önceden derler (ilk HUD / geçiş karesinde takılmasın). */
+  /** Son işlemin shader'larını (sahne, karakter ve efekt çizimleri, parlama, son geçiş) önceden derler. */
+  async warmupPost(scene: THREE.Scene, camera: THREE.Camera, targets: PostTargets) {
+    this.post ??= new PostPipeline(this.renderer);
+    await this.post.compile(scene, camera, targets);
+  }
+
   async warmupOverlays() {
     await this.renderer.compileAsync(this.motionScene, this.overlayCamera);
     await this.renderer.compileAsync(this.overlayScene, this.overlayCamera);

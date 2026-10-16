@@ -337,7 +337,7 @@ async function applySource() {
     next.setRenderMode(currentRenderMode);
     ui.loadingStatus.textContent = 'Shader\'lar hazırlanıyor…';
     ui.loadingBarFill.style.width = '95%';
-    await next.warmup(viewport.renderer);
+    await next.warmup(viewport.renderer, (s, c, t) => viewport.warmupPost(s, c, t));
     await viewport.warmupOverlays();
     if (token !== buildToken) {
       next.dispose();
@@ -656,7 +656,7 @@ function setRenderMode(mode: 'preview' | 'render', saveToDb = true) {
     const warming = film;
     warmingUp = true;
     void warming
-      .warmup(viewport.renderer)
+      .warmup(viewport.renderer, (s, c, t) => viewport.warmupPost(s, c, t))
       .catch(() => {})
       .finally(() => {
         warmingUp = false;

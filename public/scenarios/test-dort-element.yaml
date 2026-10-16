@@ -31,6 +31,8 @@ imports:
 
 film:
   title: test-dort-element
+  look:
+    grade: battle
   fps: 30
   fade_in: 0.6
   fade_out: 1.5

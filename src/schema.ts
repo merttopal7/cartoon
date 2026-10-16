@@ -174,6 +174,25 @@ const modelAsset = z
 export const TRANSITION_TYPES = ['cut', 'fade', 'iris', 'stripes', 'flash'] as const;
 export type TransitionType = (typeof TRANSITION_TYPES)[number];
 
+/**
+ * Renk düzenleme: ön ayar adı (neutral | soft | battle | golden | night) ya da ön ayar + ayrıntı
+ * (exposure, contrast, saturation, warmth, vignette). Bkz. src/engine/look.ts.
+ */
+const grade = z
+  .union([
+    z.enum(['neutral', 'soft', 'battle', 'golden', 'night']),
+    z
+      .object({
+        preset: z.enum(['neutral', 'soft', 'battle', 'golden', 'night']).optional(),
+        exposure: z.number().min(0.3).max(2).optional(),
+        contrast: z.number().min(0.5).max(1.6).optional(),
+        saturation: z.number().min(0).max(2).optional(),
+        warmth: z.number().min(-0.3).max(0.3).optional(),
+        vignette: z.number().min(0).max(1).optional(),
+      })
+      .strict(),
+  ]);
+
 const overlayBase = {
   /** Sahne içindeki başlangıç zamanı (sn). */
   at: z.number().min(0).default(0),
@@ -252,6 +271,8 @@ const scene = z
     environment: z
       .object({
         preset: z.enum(['day', 'sunset', 'night']).default('day'),
+        /** Bu sahnenin renk tonu (film.look.grade'i ezer). */
+        grade: grade.optional(),
         sky: color.optional(),
         ground: color.optional(),
         /** false: düz zemin çizilmez (harita modeli kendi zeminini getiriyorsa). */
@@ -341,6 +362,21 @@ export const scenarioSchema = z
           })
           .partial()
           .optional(),
+        /**
+         * Çizgi film görünümü (son işlem): mürekkep konturu (yalnızca karakterler), aşırı parlak efektlerde
+         * parlama ve renk düzenleme. Önizlemede ve dışa aktarımda aynı.
+         */
+        look: z
+          .object({
+            /** Kontur kalınlığı (1080p'de piksel; uzakta incelir ve soluklaşır). 0 = kapalı */
+            outline: z.number().min(0).max(5).default(2.2),
+            /** Parlama gücü (yalnızca ateş, şimşek gibi aşırı parlak efektler). 0 = kapalı */
+            bloom: z.number().min(0).max(2).default(0.3),
+            /** Varsayılan renk tonu (sahne environment.grade ile ezer) */
+            grade: grade.default('neutral'),
+          })
+          .strict()
+          .default({}),
         /**
          * Ses efektleri: koddan sentezlenir (telifsiz). Yetenekler, ayak sesleri, düşüşler, ekran yazıları,
          * geçişler ve orman ortam sesi otomatik eklenir.

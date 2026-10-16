@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 
-/** Kontur kalınlıkları (Jackie ile tutarlı temiz kenarlar için ters-kabuk konturu kapalı). */
+/**
+ * Ters-kabuk kontur kalınlıkları: kapalı (kalınlık ekranda sabitti, uzaktaki karakter kontura boğuluyordu).
+ * Kontur artık son işlemde çizilir: src/render/post.ts.
+ */
 export const OUTLINE = { character: false, prop: false } as const;
 const OUTLINE_COLOR: [number, number, number] = [0.09, 0.06, 0.06];
 

@@ -20,6 +20,7 @@ import { ImpactFeel } from './impact';
 import { FocusTrack } from './focus-track';
 import { RoadPath } from './road';
 import { buildSfx } from './sfx/cues';
+import { markCharacterMaterial, DEFAULT_LOOK, GRADES, resolveGrade, type FilmLook, type Grade } from './look';
 
 export interface BuiltShot {
   index: number;
@@ -62,6 +63,8 @@ export class BuiltScene implements SceneContext {
   impact: ImpactFeel | null = null;
   /** Yeteneklerin kamera odağı, zaman içinde yumuşatılmış (peş peşe yeteneklerde kamera pompalamasın). */
   focus: FocusTrack | null = null;
+  /** Sahnenin renk tonu (environment.grade ya da film.look.grade). */
+  grade: Grade = { ...GRADES.neutral };
 
   /** Karakterlerin ve efektlerin değerlendirildiği zaman: isabetlerde kısa süre yavaşlar (hit-stop). */
   actionTime(lt: number): number {
@@ -263,6 +266,10 @@ export class Film {
   currentOverlays: OverlayDef[] = [];
   currentActiveAbilities: ActiveAbilityHUDInfo[] = [];
   readonly transitionCues: TransitionCue[] = [];
+  /** Kontur ve parlama ayarları (son işlem; src/render/post.ts). */
+  look: FilmLook = { ...DEFAULT_LOOK };
+  /** Son değerlendirilen sahnenin renk tonu. */
+  currentGrade: Grade = { ...GRADES.neutral };
   private active: BuiltScene | null = null;
   private renderMode: 'preview' | 'render' = 'render';
 
@@ -343,6 +350,7 @@ export class Film {
     this.currentTime = t;
     this.currentSceneLocalTime = lt;
     this.currentOverlays = sc.overlays;
+    this.currentGrade = sc.grade;
     this.currentActiveAbilities = sc.abilities?.getActiveAbilities(wt, sc.characters) ?? [];
     return { scene: sc, shot, fade: this.fade };
   }
@@ -466,6 +474,16 @@ export class Film {
     };
   }
 
+  /** Son işlemin ayrıca çizdiği kökler: etkin sahnenin karakterleri ve (etkin yetenek varsa) efektleri. */
+  postTargets(): { characters: THREE.Object3D[]; effects: THREE.Object3D | null } {
+    const sc = this.active;
+    if (!sc) return { characters: [], effects: null };
+    return {
+      characters: [...sc.characters.values()].map((c) => c.rig.root),
+      effects: this.currentActiveAbilities.length > 0 && sc.abilities ? sc.abilities.group : null,
+    };
+  }
+
   /** Çekim boyunca kamera yolunu (konum + bakış noktası) örnekler. */
   private sampleShot(sc: BuiltScene, shot: BuiltShot, format: FormatPreset): CameraSample[] {
     const samples: CameraSample[] = [];
@@ -519,7 +537,14 @@ export class Film {
    * kameranın ilk gördüğü her malzeme, göründüğü karede derlenir ve önizleme saniyelerce donar.
    * Render modu değişince (gölge açılıp kapanınca) yeniden çağrılmalıdır.
    */
-  async warmup(renderer: THREE.WebGLRenderer) {
+  /**
+   * Shader'ları ve dokuları oynatmadan önce hazırlar. post: son işlemin sahneyi, karakterleri ve efektleri kendi
+   * tamponlarında derlemesi (shader türevi çizilen hedefe göre değişir; yoksa ilk karelerde takılırdı).
+   */
+  async warmup(
+    renderer: THREE.WebGLRenderer,
+    post?: (scene: THREE.Scene, camera: THREE.Camera, targets: { characters: THREE.Object3D[]; effects: THREE.Object3D | null }) => Promise<void>,
+  ) {
     // Yazı tipi ve tüm dokular inmeden çizilen kareler, yüklemenin ne zaman bittiğine göre değişirdi
     await Promise.all([loadOverlayFonts(), waitForPendingLoads()]);
     const prevBackground = this.scene.background;
@@ -555,6 +580,10 @@ export class Film {
         renderer.render(this.scene, this.camera);
         renderer.setScissorTest(scissorTest);
         for (const o of culled) o.frustumCulled = true;
+        await post?.(this.scene, this.camera, {
+          characters: [...sc.characters.values()].map((c) => c.rig.root),
+          effects: sc.abilities?.group ?? null,
+        });
       } finally {
         for (const r of restores) r?.();
       }
@@ -667,6 +696,12 @@ export async function buildFilm(
         warnings.push(`${def.id}: "${c.id}" modelinde "idle" klibi yok; boşta dururken hareketsiz kalır (ilk klibin ilk karesindeki poz)`);
       rig.root.name = `character_${c.id}`;
       rig.root.userData.isCharacter = true;
+      // Kontur yalnızca karakterlere: karakter derinliği bu ek katmandan çizilir
+      // Kontur: karakter görünen yüzeyde alfa kanalına işaret bırakır (src/render/post.ts)
+      rig.root.traverse((o) => {
+        const m = (o as THREE.Mesh).material;
+        if (m) for (const mat of Array.isArray(m) ? m : [m]) markCharacterMaterial(mat);
+      });
       // Ayaklar eğimli araziye basar (ayak IK'sı); kök yüksekliği ise ortalamalı zeminden
       if (terrain) rig.setGround?.((x, z) => terrain!.heightAt(x, z));
       characters.set(c.id, new Character(c.id, rig, new THREE.Vector3(...c.at), deg(c.facing), groundAt));
@@ -1000,6 +1035,7 @@ export async function buildFilm(
       abilities,
     );
     if (abilities.getScheduledCasts().length) built.focus = new FocusTrack(abilities, characters);
+    built.grade = resolveGrade(def.environment.grade ?? s.film.look.grade);
     const impacts = abilities.impactEvents();
     if (impacts.length) built.impact = new ImpactFeel(impacts, { shake: s.film.impact_shake, hitStop: s.film.hit_stop });
     const trees = abilities.clearanceTrees();
@@ -1012,6 +1048,7 @@ export async function buildFilm(
 
   const options = { fadeIn: s.film.fade_in, fadeOut: s.film.fade_out, handheld: s.film.handheld };
   const film = new Film(s.film.title, s.film.fps, scenes, options);
+  film.look = { outline: s.film.look.outline, bloom: s.film.look.bloom };
   film.audio.setFilmDuration(film.duration);
 
   if (audioCues.length > 0) {

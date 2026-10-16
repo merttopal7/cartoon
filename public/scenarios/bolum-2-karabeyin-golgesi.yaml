@@ -43,6 +43,8 @@ imports:
 
 film:
   title: bolum-2-karabeyin-golgesi
+  look:
+    grade: battle      # savaş: sıcak, kontrastlı, vinyet
   fps: 30
   fade_in: 0.6
   fade_out: 1.5

@@ -18,6 +18,8 @@ imports:
 
 film:
   title: bolum-1-ormanin-bekcileri
+  look:
+    grade: soft        # tanıtım bölümü: yumuşak, hafif sıcak (kontur ve parlama varsayılan)
   fps: 30
   fade_in: 0
   fade_out: 1.5

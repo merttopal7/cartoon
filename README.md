@@ -111,6 +111,27 @@ film:
 
 Dinlemek ve test için: `node tools/test_sfx.mjs <klasör>` her sesi art arda içeren `sfx_galeri.wav` ve bölümlerden miks kesitleri yazar.
 
+### Görünüm: kontur, parlama, renk tonu
+
+Son işlem ([src/render/post.ts](src/render/post.ts)) önizlemede ve dışa aktarımda aynıdır:
+
+- **Mürekkep konturu** yalnızca karakterlerde: siluet ve üst üste binen uzuvlar (kol gövdenin önündeyken). Kalınlık 1080p'de piksel cinsindendir; karakter uzaklaştıkça incelir ve 25–60 m arasında soluklaşır, uzaktaki küçük karakter kontura boğulmaz (eski ters-kabuk konturunun sorunu). Karakteri örten ağaç ya da başka karakter varsa çizgi onların üstüne taşmaz; ateş, şimşek gibi parlak efektlerin içinde çizgi söner. Ağaç ve çimenler kontur almaz.
+- **Parlama (bloom)** yalnızca ışık niteliğindeki efektlerde (alev, şimşek, ışıltı izleri); kaya, hortum gövdesi, gökyüzü parlamaz. Ekranda yetenek yokken maliyeti yoktur.
+- **Renk tonu** film ya da sahne başına: `neutral`, `soft` (tanıtım), `battle` (savaş: sıcak, kontrastlı, vinyet), `golden` (gün batımı), `night`. Ekran yazıları (isim kartı, balon) tonlanmaz.
+
+```yaml
+film:
+  look:
+    outline: 2.2     # kontur kalınlığı (1080p'de piksel; 0 = kapalı)
+    bloom: 0.3       # parlama gücü (0 = kapalı)
+    grade: battle    # ya da { preset: battle, warmth: 0.02, vignette: 0.15, contrast: 1.05, saturation: 1.1, exposure: 1 }
+scenes:
+  - id: gece-sahnesi
+    environment: { preset: night, grade: night }   # sahne bazında ezilir
+```
+
+Maliyet (önizleme, 759×427): renk tonu ~2 ms, kontur ~1.5 ms; parlama yalnızca yetenek sırasında. Shader'lar yüklemede hazırlanır, ilk karelerde takılma olmaz. Kareleri gözle kontrol etmek için: `node tools/capture_frames.mjs <senaryo> <klasör> <t1,t2> render 1920` (`CROP=x,y,genişlik,yükseklik` oranlarıyla kırpma).
+
 ### Kamera
 
 | Alan | Değer | Açıklama |
