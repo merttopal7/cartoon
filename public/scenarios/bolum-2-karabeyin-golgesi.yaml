@@ -1,0 +1,714 @@
+# =============================================================================
+# ORMANIN BEKÇİLERİ — BÖLÜM 2: KARABEY'İN GÖLGESİ VE KESİNTİSİZ SIRALI SAVAŞ
+# -----------------------------------------------------------------------------
+# Akış Planı:
+#   1. Giriş Sahnesi (0.0s - 10.0s): Orman Bekçileri patikada ilerler, Karabey pusudan çıkar.
+#   2. Karşılıklı Konuşma ve Meydan Okuma (10.0s - 31.0s): Savaş öncesi diyaloglar (Karabey, Toprak, Defne, Meşe).
+#   3. Uzun Soluklu Kesintisiz Sıralı Savaş (31.0s - 76.0s): Karakterler hiç beklemeden,
+#      bir yetenek biter bitmez maksimum 0.6 - 0.8 saniye (< 1 sn) arayla sırayla 14 yetenek kullanır!
+#   4. Zafer Kutlaması (76.0s - 88.0s): Capoeira (yalnızca dans kategorisinde), Hip-Hop ve Grup Dansı.
+# =============================================================================
+
+imports:
+  animations:
+    idle: models/characters/main-character/animations/Neutral Idle.fbx
+    walk: models/characters/main-character/animations/Walking.fbx
+    run: models/characters/main-character/animations/Running.fbx
+    jog: models/characters/main-character/animations/Jogging.fbx
+    jump: models/characters/main-character/animations/Jump.fbx
+    jump_joy: models/characters/main-character/animations/Joyful Jump.fbx
+    stretch: models/characters/main-character/animations/Arm Stretching.fbx
+    hook_punch: models/characters/main-character/animations/Hook Punch.fbx
+    hurricane_kick: models/characters/main-character/animations/Hurricane Kick.fbx
+    flying_kick: models/characters/main-character/animations/Flying Kick.fbx
+    chapa_giratoria: models/characters/main-character/animations/Chapa-Giratoria.fbx
+    macaco_side: models/characters/main-character/animations/Macaco Side.fbx
+    kick: models/characters/main-character/animations/Martelo 2.fbx
+    mma_kick: models/characters/main-character/animations/Mma Kick.fbx
+    dodge_back: models/characters/main-character/animations/Standing Dodge Backward.fbx
+    fall_flat: models/characters/main-character/animations/Fall Flat.fbx
+    capoeira: models/characters/main-character/animations/Capoeira.fbx
+    hip_hop: models/characters/main-character/animations/Hip Hop Dancing.fbx
+    breakdance: models/characters/main-character/animations/Breakdance 1990.fbx
+    flair: models/characters/main-character/animations/Flair.fbx
+    dance: models/characters/main-character/animations/Silly Dancing.fbx
+    singing: models/characters/main-character/animations/Singing.fbx
+    taunt: models/characters/main-character/animations/Taunt.fbx
+    point: models/characters/main-character/animations/Kneeling Pointing.fbx
+    surprised: models/characters/main-character/animations/Surprised.fbx
+    defeated: models/characters/main-character/animations/Defeated.fbx
+    fight_idle: models/characters/main-character/animations/Action Idle To Fight Idle.fbx
+
+film:
+  title: bolum-2-karabeyin-golgesi
+  fps: 30
+  fade_in: 0.6
+  fade_out: 1.5
+  handheld: 0.16
+  music:
+    src: /audio/main-theme/jyproject-carousel-dreams-396029.mp3
+    volume: 0.35
+    ducking: 0.25
+    loop: true
+    fade_in: 0.5
+    fade_out: 1.5
+
+assets:
+  toprak:
+    src: models/characters/main-character/kid.fbx
+    height: 1.4
+    voice: xDppd78rqTGY8ICN7M4n
+  defne:
+    src: models/characters/Jackie/character.fbx
+    height: 1.68
+    voice: o9DOmAyPjfFu8AfoFAnM
+  mese:
+    src: models/characters/Erika/character.fbx
+    height: 1.72
+    voice: KAGDtM2gzDrjWlUp2KNe
+  karabey:
+    src: models/characters/sword-and-shield/Paladin WProp J Nordstrom.fbx
+    height: 1.95
+    voice: mF7tIc9VLrznhGooGjaT
+  harita:
+    src: models/maps/dirt-road.glb
+    align: none
+
+scenes:
+  - id: karabey-karsilasma
+    environment:
+      preset: day
+      ground_plane: false
+      fog_near: 120
+      fog_far: 450
+      wind:
+        enabled: false
+    props:
+      - asset: harita
+        at: [0, 0, 0]
+        terrain:
+          - Dirt_Road
+          - Dirt_Road_Bare
+          - Dirt_Road_Trails
+          - Road_Edge_Gravel_Dusty
+          - Cobblestone
+          - Grass_Close
+          - Ground_Dirt
+          - Aerial_Grass
+          - Sloped_Rock
+          - Broken_Rocks
+          - Mud_Pile
+    characters:
+      - id: toprak
+        asset: toprak
+        at: [34.0, 0, 42.5]
+        facing: -90
+      - id: defne
+        asset: defne
+        at: [35.5, 0, 40.8]
+        facing: -90
+      - id: mese
+        asset: mese
+        at: [35.5, 0, 44.2]
+        facing: -90
+      - id: karabey
+        asset: karabey
+        at: [11.5, 0, 42.5]
+        facing: 90
+
+    # =========================================================================
+    # BAĞIMSIZ KAMERA KANALI (cameras)
+    # =========================================================================
+    cameras:
+      # Kamera 1 (0.0s - 10.0s): GİRİŞ SAHNESİ — Orman Bekçileri patikada ilerlerken Karabey pusudan çıkar
+      - at: 0.0
+        duration: 10.0
+        camera:
+          target:
+            - toprak
+            - defne
+            - mese
+            - karabey
+          size:
+            from: 6.2
+            to: 3.3
+          angle:
+            from: 135
+            to: 102
+          elevation:
+            from: 17
+            to: 8.5
+          ease: inOut
+          relative: false
+
+      # Kamera 2 (10.0s - 16.5s): KONUŞMA 1 — Karabey (1.95 m) meydan okur
+      - at: 10.0
+        duration: 6.5
+        transition: cut
+        camera:
+          target: karabey
+          size:
+            from: 2.3
+            to: 1.95
+          angle:
+            from: -14
+            to: 12
+          elevation:
+            from: 5.5
+            to: 4.8
+          ease: inOut
+          relative: true
+
+      # Kamera 3 (16.5s - 31.0s): KONUŞMA 2 — Toprak, Defne ve Meşe sırayla yanıt verir ve savaşa hazırlanır
+      - at: 16.5
+        duration: 14.5
+        transition: cut
+        camera:
+          target:
+            - toprak
+            - defne
+            - mese
+          size:
+            from: 2.5
+            to: 2.15
+          angle:
+            from: 18
+            to: -14
+          elevation:
+            from: 6.0
+            to: 5.4
+          ease: inOut
+          relative: true
+
+      # Kamera 4 (31.0s - 76.0s): TEK KESİNTİSİZ SAVAŞ SAHNESİ (45.0 Saniye)
+      # Savaş boyunca hiçbir kamera kesmesi (cut/flash/stripes) yapılmaz; kamera tüm savaş alanını
+      # ve yetenek kullanan karakterleri kesintisiz, yumuşak (smooth) geçişlerle takip eder.
+      - at: 31.0
+        duration: 45.0
+        transition: cut
+        camera:
+          target:
+            - toprak
+            - defne
+            - mese
+            - karabey
+          size:
+            from: 2.85
+            to: 3.15
+          angle:
+            from: 96
+            to: 84
+          elevation:
+            from: 7.2
+            to: 7.8
+          ease: inOut
+          relative: false
+
+      # Kamera 5 (76.0s - 88.0s): BÜYÜK ZAFER KUTLAMASI — Capoeira, Breakdance, Hip-Hop ve Grup Dansı
+      - at: 76.0
+        duration: 12.0
+        transition: iris
+        camera:
+          target:
+            - toprak
+            - defne
+            - mese
+          size:
+            from: 2.4
+            to: 3.5
+          angle:
+            from: 18
+            to: -12
+          elevation:
+            from: 5.8
+            to: 7.2
+          ease: inOut
+          relative: true
+
+    # =========================================================================
+    # 2B HAREKETLİ GRAFİK VE YAZI KATMANLARI (overlays)
+    # =========================================================================
+    overlays:
+      - type: title_card
+        at: 0.8
+        duration: 6.5
+        badge: "ORMANIN BEKÇİLERİ"
+        title: "BÖLÜM 2: KARABEY'İN GÖLGESİ"
+        subtitle: "Ulu Çınar Yolu'nda Kesintisiz Yetenek Düellosu!"
+        accent: "#991b1b"
+        position: top
+
+      - type: lower_third
+        at: 10.4
+        duration: 5.8
+        name: "KARABEY"
+        role: "Karanlık Muhafız ve Ormanın Düşmanı"
+        tag: "Ormanın Gölgesi Her Yerde! Bu Orman Benim Olacak!"
+        accent: "#991b1b"
+        align: left
+
+      - type: lower_third
+        at: 16.8
+        duration: 4.8
+        name: "TOPRAK"
+        role: "Meraklı Kaşif ve Yol Gösterici"
+        tag: "Ormanın Neşeli Lideri!"
+        accent: "#16a34a"
+        align: left
+
+      - type: lower_third
+        at: 22.0
+        duration: 4.3
+        name: "DEFNE"
+        role: "Ormanın Keskin Gözcüsü"
+        tag: "Hiçbir Sır Gözünden Kaçmaz!"
+        accent: "#db2777"
+        align: right
+
+      - type: lower_third
+        at: 26.6
+        duration: 4.2
+        name: "MEŞE (ERİKA)"
+        role: "Ormanın Büyülü Okçusu ve Bilgesi"
+        tag: "Büyülü Yağmur Oklarıyla Ormanı Korur!"
+        accent: "#0284c7"
+        align: left
+
+      - type: comic_pop
+        at: 31.2
+        duration: 4.5
+        text: "KESİNTİSİZ SAVAŞ BAŞLADI!"
+        subtext: "PEŞ PEŞE HIZLI YETENEK ZİNCİRİ!"
+        accent: "#991b1b"
+        position: top-right
+
+      - type: comic_pop
+        at: 46.3
+        duration: 4.5
+        text: "ALEV VE HORTUM ZİNCİRİ!"
+        subtext: "TOPRAK'IN ARDINDAN ANINDA DEFNE SALDIRIYOR!"
+        accent: "#ea580c"
+        position: top-left
+
+      - type: comic_pop
+        at: 67.6
+        duration: 5.0
+        text: "FİNAL YETENEK KOMBO ZİNCİRİ!"
+        subtext: "BÜYÜLÜ YAĞMUR OKU VE ALEV TEKMESİ!"
+        accent: "#0284c7"
+        position: top-center
+
+      - type: comic_pop
+        at: 76.4
+        duration: 10.5
+        text: "BÜYÜK ZAFER DANSI!"
+        subtext: "CAPOEIRA VE HIP-HOP KUTLAMASI!"
+        accent: "#16a34a"
+        position: top-center
+
+    # =========================================================================
+    # KESİNTİSİZ SENARYO VE KARAKTER AKIŞI (actions)
+    # =========================================================================
+    actions:
+      # -----------------------------------------------------------------------
+      # 1. GİRİŞ SAHNESİ (0.0s - 10.0s): Bekçiler koşarak gelir, Karabey pusudan kalkar
+      # -----------------------------------------------------------------------
+      - who: karabey
+        do: clip
+        name: crouch_idle
+        at: 0.0
+        duration: 6.2
+        loop: true
+        fade: 0.3
+      - who: toprak
+        do: walk_to
+        to: [18.5, 42.5]
+        speed: 1.95
+        clip: run
+        at: 0.3
+      - who: defne
+        do: walk_to
+        to: [19.4, 40.6]
+        speed: 1.95
+        clip: run
+        at: 0.4
+      - who: mese
+        do: walk_to
+        to: [19.4, 44.4]
+        speed: 1.85
+        clip: jog
+        at: 0.5
+      - who: karabey
+        do: clip
+        name: crouch_to_stand
+        at: 6.2
+        duration: 2.0
+        loop: false
+        fade: 0.3
+      - who: karabey
+        do: walk_to
+        to: [14.2, 42.5]
+        speed: 1.5
+        clip: walk_2
+        at: 8.2
+
+      # -----------------------------------------------------------------------
+      # 2. SAVAŞ ÖNCESİ KONUŞMA SAHNESİ (10.0s - 31.0s): Karşılıklı Meydan Okuma
+      # -----------------------------------------------------------------------
+      - who: karabey
+        do: look_at
+        target: toprak
+        at: 10.0
+        duration: 6.5
+      - who: karabey
+        do: clip
+        name: block_idle
+        at: 10.2
+        duration: 6.2
+        loop: true
+        fade: 0.3
+      - who: karabey
+        do: talk
+        at: 10.5
+        duration: 5.6
+        voice: mF7tIc9VLrznhGooGjaT
+        text: "Ben Karabey! Ormanın gölgesi her yerde! Bu orman ve Ulu Çınar benim olacak!"
+
+      - who: toprak
+        do: clip
+        name: surprised
+        at: 10.8
+        duration: 3.0
+        loop: true
+        fade: 0.3
+      - who: defne
+        do: clip
+        name: fight_idle
+        at: 11.0
+        duration: 5.4
+        loop: true
+        fade: 0.3
+      - who: mese
+        do: clip
+        name: equip_bow
+        at: 11.2
+        duration: 1.2
+        loop: false
+        fade: 0.25
+      - who: mese
+        do: clip
+        name: ready_idle
+        at: 12.4
+        duration: 3.8
+        loop: true
+        fade: 0.3
+
+      # Toprak konuşur (16.6s - 21.6s)
+      - who: toprak
+        do: clip
+        name: point
+        at: 16.6
+        duration: 2.4
+        loop: true
+        fade: 0.3
+      - who: toprak
+        do: talk
+        at: 16.8
+        duration: 4.8
+        text: "Dur bakalım Karabey! Biz Ormanın Bekçileriyiz, Ulu Çınar'a asla zarar veremezsin!"
+        audio: audio/bolum-1-ormanin-bekcileri/toprak_shot1_4.mp3
+      - who: toprak
+        do: clip
+        name: taunt
+        at: 19.1
+        duration: 2.6
+        loop: true
+        fade: 0.3
+
+      # Defne konuşur (21.8s - 26.4s)
+      - who: defne
+        do: clip
+        name: taunt
+        at: 21.8
+        duration: 4.5
+        loop: true
+        fade: 0.3
+      - who: defne
+        do: talk
+        at: 22.0
+        duration: 4.3
+        text: "Ben de Defne! Ormanın gözcüsü ve koruyucusuyum. Buralarda hiçbir tehlike gözümden kaçmaz!"
+        audio: audio/bolum-1-ormanin-bekcileri/defne_shot2_4.mp3
+
+      # Meşe (Erika) yayını kontrol ederek konuşur (26.5s - 30.8s)
+      - who: mese
+        do: clip
+        name: inspect_bow
+        at: 26.5
+        duration: 4.2
+        loop: true
+        fade: 0.3
+      - who: mese
+        do: talk
+        at: 26.6
+        duration: 4.2
+        text: "Ben de Meşe! Ormanın kadim sırlarını ve ulu çınarın fısıltılarını en iyi ben bilirim!"
+        audio: audio/bolum-1-ormanin-bekcileri/mese_shot3_4.mp3
+
+      # -----------------------------------------------------------------------
+      # 3. TEK SAHNELİ KESİNTİSİZ SIRALI SAVAŞ (31.0s - 76.0s)
+      # Savaş boyunca hiçbir kesme veya karakter ışınlanması olmaz; her yetenek
+      # biter bitmez maksimum 0.55s - 0.70s (< 1.0 sn) içinde sıradaki yetenek başlar!
+      # -----------------------------------------------------------------------
+
+      # 1. Hamle (31.2s): Karabey Ağaç Devirme — Haritadaki çam ağacını (Realistic_Pine_057) kesip devirir (hasar vermez, ağaç yerde kalır)
+      - who: karabey
+        do: ability
+        name: agac_devirme
+        target: Realistic_Pine_057
+        at: 31.2
+
+      # 2. Hamle (34.6s — 0.58s sonra): Toprak Ateş Topu (vuruş: 36.10s)
+      - who: toprak
+        do: ability
+        name: ates_topu
+        target: karabey
+        at: 34.6
+        knockback: 0.35
+        impact_clip: impact_3
+
+      # 3. Hamle (36.8s — Toprak'tan 0.70s sonra): Defne Rüzgar Hortumu (Hurricane Kick ile içinde oluşur, vuruş: 39.85s)
+      - who: defne
+        do: ability
+        name: ruzgar_hortumu
+        target: karabey
+        at: 36.8
+        knockback: 0.40
+        impact_clip: impact_2
+
+      # 4. Hamle (40.5s — Defne'den 0.65s sonra): Meşe (Erika) Fırtına Oku (sol elden 42.65s'de çıkar, 43.30s'de çarpınca fırtına yağmuru yağar)
+      - who: mese
+        do: ability
+        name: firtina_oku
+        target: karabey
+        at: 40.5
+        knockback: 0.35
+        impact_clip: impact_3
+
+      # 5. Hamle (43.9s — Meşe'den 0.60s sonra): Karabey Karanlık Büyü — Üç hedefe de aynı anda vurur (vuruş: 46.64s)
+      - who: karabey
+        do: ability
+        name: karanlik_buyu
+        target:
+          - toprak
+          - defne
+          - mese
+        at: 43.9
+        knockback: 0.25
+        impact_clip: dodge_back
+
+      # 6. Hamle (47.2s — Karabey'den 0.56s sonra): Toprak Ateş Topu (vuruş: 48.70s)
+      - who: toprak
+        do: ability
+        name: ates_topu
+        target: karabey
+        at: 47.2
+        knockback: 0.40
+        impact_clip: impact_3
+
+      # 7. Hamle (49.8s — Toprak'tan sonra): Defne Rüzgar Hortumu (vuruş: 52.85s)
+      - who: defne
+        do: ability
+        name: ruzgar_hortumu
+        target: karabey
+        at: 49.8
+        knockback: 0.40
+        impact_clip: impact_2
+
+      # 8. Hamle (53.4s — Defne'den 0.55s sonra): Karabey Ağaç Devirme — Haritadaki ikinci çam ağacını (Realistic_Pine_022) kesip devirir (hasar vermez, ağaç yerde kalır)
+      - who: karabey
+        do: ability
+        name: agac_devirme
+        target: Realistic_Pine_022
+        at: 53.4
+
+      # 9. Hamle (56.8s — Karabey'den 0.58s sonra): Meşe (Erika) Fırtına Oku (sol elden 58.95s'de çıkar, 59.60s'de çarpınca fırtına yağmuru yağar)
+      - who: mese
+        do: ability
+        name: firtina_oku
+        target: karabey
+        at: 56.8
+        knockback: 0.35
+        impact_clip: impact_3
+
+      # 10. Hamle (60.2s — Meşe'den 0.60s sonra): Toprak Ateş Topu (vuruş: 61.70s)
+      - who: toprak
+        do: ability
+        name: ates_topu
+        target: karabey
+        at: 60.2
+        knockback: 0.40
+        impact_clip: impact_3
+
+      # 11. Hamle (62.3s — Toprak'tan 0.60s sonra): Defne Rüzgar Hortumu (vuruş: 65.35s)
+      - who: defne
+        do: ability
+        name: ruzgar_hortumu
+        target: karabey
+        at: 62.3
+        knockback: 0.45
+        impact_clip: impact_2
+
+      # 12. Hamle (65.9s — Defne'den 0.55s sonra): Karabey Karanlık Büyü — Üç hedefe de aynı anda vurur (vuruş: 68.64s)
+      - who: karabey
+        do: ability
+        name: karanlik_buyu
+        target:
+          - toprak
+          - defne
+          - mese
+        at: 65.9
+        knockback: 0.25
+        impact_clip: dodge_back
+
+      # 13. Hamle (69.2s — Karabey'den 0.56s sonra): Meşe (Erika) Fırtına Oku (sol elden 71.35s'de çıkar, 72.00s'de çarpınca fırtına yağmuru yağar)
+      - who: mese
+        do: ability
+        name: firtina_oku
+        target: karabey
+        at: 69.2
+        knockback: 0.40
+        impact_clip: impact_3
+
+      # 14. Hamle — BÜYÜK FİNAL (72.5s — Meşe'den 0.50s sonra): Toprak Ateş Topu ile Karabey'i yere serer
+      - who: toprak
+        do: ability
+        name: ates_topu
+        target: karabey
+        at: 72.5
+        knockback: 2.8
+        impact_clip: death
+
+      # Karabey ağır yenilgi sonrası düştüğü yerden kalkar ve ormanın derinliklerine kaçar
+      - who: karabey
+        do: clip
+        name: crouch_to_stand
+        at: 75.4
+        duration: 1.1
+        loop: false
+        fade: 0.25
+      - who: karabey
+        do: walk_to
+        to:
+          - [6.5, 42.5]
+          - [1.5, 42.5]
+        speed: 3.1
+        clip: run_2
+        at: 76.5
+
+      # -----------------------------------------------------------------------
+      # 4. BÜYÜK ZAFER KUTLAMASI (76.0s - 88.0s): Capoeira, Hip-Hop, Breakdance ve Grup Dansı
+      # -----------------------------------------------------------------------
+      - who: toprak
+        do: walk_to
+        to: [14.5, 42.5]
+        speed: 2.1
+        clip: run
+        at: 76.0
+      - who: defne
+        do: walk_to
+        to: [15.2, 40.9]
+        speed: 2.1
+        clip: run
+        at: 76.1
+      - who: mese
+        do: walk_to
+        to: [15.2, 44.1]
+        speed: 2.0
+        clip: jog
+        at: 76.2
+
+      - who: toprak
+        do: turn
+        to: 90
+        at: 77.2
+        duration: 0.4
+      - who: defne
+        do: turn
+        to: 90
+        at: 77.2
+        duration: 0.4
+      - who: mese
+        do: turn
+        to: 90
+        at: 77.2
+        duration: 0.4
+
+      # Zafer Dansı 1: Toprak Capoeira şovu (yalnızca dans kategorisinde), Defne Hip-Hop, Meşe Neşeli Zıplama
+      - who: toprak
+        do: clip
+        name: capoeira
+        at: 77.6
+        duration: 3.6
+        loop: true
+        fade: 0.35
+      - who: defne
+        do: clip
+        name: hip_hop
+        at: 77.6
+        duration: 3.6
+        loop: true
+        fade: 0.35
+      - who: mese
+        do: clip
+        name: jump_joy
+        at: 77.6
+        duration: 3.6
+        loop: true
+        fade: 0.35
+
+      # Zafer Dansı 2: Toprak Breakdance, Defne Flair, Meşe Şarkı Söyleme
+      - who: toprak
+        do: clip
+        name: breakdance
+        at: 81.2
+        duration: 3.4
+        loop: true
+        fade: 0.35
+      - who: defne
+        do: clip
+        name: flair
+        at: 81.2
+        duration: 3.4
+        loop: true
+        fade: 0.35
+      - who: mese
+        do: clip
+        name: singing
+        at: 81.2
+        duration: 3.4
+        loop: true
+        fade: 0.35
+
+      # Zafer Dansı 3: Üç Bekçi Senkronize Grup Dansı
+      - who: toprak
+        do: clip
+        name: dance
+        at: 84.6
+        duration: 3.4
+        loop: true
+        fade: 0.35
+      - who: defne
+        do: clip
+        name: dance
+        at: 84.6
+        duration: 3.4
+        loop: true
+        fade: 0.35
+      - who: mese
+        do: clip
+        name: dance
+        at: 84.6
+        duration: 3.4
+        loop: true
+        fade: 0.35

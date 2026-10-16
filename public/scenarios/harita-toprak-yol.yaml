@@ -1,0 +1,267 @@
+# Harita: Sonbahar Ormanı ve Toprak Yol
+# Kurallar: 
+# 1. Karakter konuşmaya başlamadan önce kamera ona çevrilir (pre-speech lead-in, açı çevrinmesi ve nefes payı).
+# 2. Aşırı yakınlaştırma yasaktır; dengeli büst/orta plan (size: medium) kullanılır.
+# 3. Diyalog değişimlerinde konuşan karaktere kesme ve odak (shot-reverse-shot).
+
+# Ortak animasyon importları (tüm karakterler otomatik olarak devralır):
+imports:
+  animations:
+    idle: models/characters/main-character/animations/Neutral Idle.fbx
+    walk: models/characters/main-character/animations/Walking.fbx
+
+film:
+  title: harita-toprak-yol
+  fps: 30
+  fade_in: 0.8
+  fade_out: 1.5
+  handheld: 0.2
+  music:
+    src: /audio/main-theme/jyproject-carousel-dreams-396029.mp3
+    volume: 0.35
+    ducking: 0.25
+    loop: true
+    fade_in: 1.0
+    fade_out: 1.5
+
+assets:
+  cocuk:
+    src: models/characters/main-character/kid.fbx
+    height: 1.4
+    voice: xDppd78rqTGY8ICN7M4n
+  jackie:
+    src: models/characters/Jackie/character.fbx
+    height: 1.68
+    voice: o9DOmAyPjfFu8AfoFAnM
+  amy:
+    src: models/characters/Erika/character.fbx
+    height: 1.72
+    voice: A2XgcJ6lQVEFeIaIUyrc
+  karabey:
+    src: models/characters/sword-and-shield/Paladin WProp J Nordstrom.fbx
+    height: 1.95
+  harita:
+    src: models/maps/dirt-road.glb
+    align: none
+
+scenes:
+  - id: toprak-yol
+    environment:
+      preset: day
+      ground_plane: true
+      ground_level: -0.4
+      ground: "#5c4f3d"
+      fog_near: 80
+      fog_far: 320
+      wind:
+        enabled: false
+        speed: 1
+        strength: 0
+        leaves: false
+    props:
+      - asset: harita
+        at: [0, 0, 0]
+        terrain:
+          - Dirt_Road
+          - Dirt_Road_Bare
+          - Dirt_Road_Trails
+          - Road_Edge_Gravel_Dusty
+          - Cobblestone
+          - Grass_Close
+          - Ground_Dirt
+          - Aerial_Grass
+          - Sloped_Rock
+          - Broken_Rocks
+          - Mud_Pile
+    characters:
+      - id: jackie
+        asset: jackie
+        at: [15.8, 0, 41.6]
+        facing: 90
+      - id: amy
+        asset: amy
+        at: [15.8, 0, 42.7]
+        facing: 90
+      - id: cocuk
+        asset: cocuk
+        at: [15.8, 0, 43.8]
+        facing: 90
+
+    shots:
+      # 1) Açılış Çekimi: Üç arkadaş orman yolunda yürüyüşe başlar
+      - duration: 3.5
+        camera:
+          target:
+            - jackie
+            - amy
+            - cocuk
+          size: { from: 3.6, to: 2.2 }
+          angle: 25
+          elevation: 8
+          relative: true
+        actions:
+          - who: jackie
+            do: walk_to
+            at: 0.3
+            speed: 1.15
+            to:
+              - [26, 41.1]
+              - [36, 40.5]
+              - [46, 39.8]
+              - [56, 39.5]
+          - who: amy
+            do: walk_to
+            at: 0.2
+            speed: 1.15
+            to:
+              - [26, 42.2]
+              - [36, 41.5]
+              - [46, 40.8]
+              - [56, 40.5]
+          - who: cocuk
+            do: walk_to
+            at: 0.4
+            speed: 1.15
+            to:
+              - [26, 43.3]
+              - [36, 42.5]
+              - [46, 41.8]
+              - [56, 41.5]
+
+      # 2) Jackie Konuşuyor: Kamera konuşmadan önce Jackie'ye çevrilir, ferah büst planında (medium) durur
+      - duration: 4.7
+        camera:
+          target: jackie
+          size: medium
+          angle: { from: 22, to: 6 }
+          elevation: 4
+          relative: true
+        actions:
+          - who: jackie
+            do: look_at
+            target: camera
+            at: 0.1
+            duration: 4.4
+          - who: jackie
+            do: talk
+            at: 0.8
+            duration: 3.13
+            text: Hava bugün gerçekten harika, değil mi arkadaşlar?
+            audio: audio/harita-toprak-yol/jackie_shot1_2.mp3
+
+      # 3) Amy Cevap Veriyor: Kamera önce Amy'ye çevrilir, sonra Amy konuşmaya başlar
+      - duration: 5.2
+        camera:
+          target: amy
+          size: medium
+          angle: { from: -20, to: -4 }
+          elevation: 4
+          relative: true
+        actions:
+          - who: amy
+            do: look_at
+            target: camera
+            at: 0.1
+            duration: 4.9
+          - who: amy
+            do: talk
+            at: 0.8
+            duration: 3.63
+            text: Evet Jackie! Çam ağaçlarının kokusu çok taze.
+            audio: audio/harita-toprak-yol/amy_shot1_4.mp3
+
+      # 4) Amy Soru Soruyor: Kamera Amy'ye yumuşakça odaklanır, ardından Amy soru sorar
+      - duration: 3.4
+        camera:
+          target: amy
+          size: medium
+          angle: { from: -14, to: 8 }
+          elevation: 4
+          relative: true
+        actions:
+          - who: amy
+            do: look_at
+            target: camera
+            at: 0.1
+            duration: 3.1
+          - who: amy
+            do: talk
+            at: 0.7
+            duration: 2.01
+            text: Bu patika nereye çıkıyor dersiniz?
+            audio: audio/harita-toprak-yol/amy_shot2_2.mp3
+
+      # 5) Çocuk Cevap Veriyor: Kamera Çocuk'a döner, Çocuk kameraya bakar ve konuşur
+      - duration: 4.1
+        camera:
+          target: cocuk
+          size: medium
+          angle: { from: 18, to: 0 }
+          elevation: 4
+          relative: true
+        actions:
+          - who: cocuk
+            do: look_at
+            target: camera
+            at: 0.1
+            duration: 3.8
+          - who: cocuk
+            do: talk
+            at: 0.8
+            duration: 2.56
+            text: İleride eski gözetleme kulesi olmalı!
+            audio: audio/harita-toprak-yol/cocuk_shot2_4.mp3
+
+      # 6) Jackie Karşılık Veriyor: Kamera Jackie'ye çevrilir, Jackie tebessümle konuşur
+      - duration: 5.4
+        camera:
+          target: jackie
+          size: medium
+          angle: { from: -18, to: -4 }
+          elevation: 4
+          relative: true
+        actions:
+          - who: jackie
+            do: look_at
+            target: camera
+            at: 0.1
+            duration: 5.0
+          - who: jackie
+            do: talk
+            at: 0.8
+            duration: 3.81
+            text: O zaman adımlarımızı hızlandıralım, güneş batmadan varalım.
+            audio: audio/harita-toprak-yol/jackie_shot3_1.mp3
+
+      # 7) Çocuk Meydan Okuyor: Kamera Çocuk'a yönelir, Çocuk konuşur
+      - duration: 4.2
+        camera:
+          target: cocuk
+          size: medium
+          angle: { from: 20, to: 4 }
+          elevation: 4
+          relative: true
+        actions:
+          - who: cocuk
+            do: look_at
+            target: camera
+            at: 0.1
+            duration: 3.9
+          - who: cocuk
+            do: talk
+            at: 0.8
+            duration: 2.66
+            text: Ben önden gidiyorum, beni yakalayamazsınız!
+            audio: audio/harita-toprak-yol/cocuk_shot3_2.mp3
+
+      # 8) Kapanış Çekimi: Çocuk önden koşar, arkadaşları peşinden devam eder
+      - duration: 4.5
+        camera:
+          target:
+            - jackie
+            - amy
+            - cocuk
+          size: { from: 1.8, to: 5.2 }
+          angle: 175
+          elevation: 10
+          relative: true

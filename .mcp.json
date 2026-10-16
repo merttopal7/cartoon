@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "blender": {
+      "command": "C:\\Users\\DELL\\.local\\bin\\uvx.EXE",
+      "args": [
+        "mcp-for-blender"
+      ]
+    },
+    "rea": {
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "C:\\Users\\DELL\\AppData\\Roaming\\npm\\node_modules\\rea-agents\\scripts\\rea.mjs",
+        "mcp"
+      ]
+    }
+  }
+}

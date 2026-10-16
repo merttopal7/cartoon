@@ -1,0 +1,39 @@
+# Cartoon Engine - Katı Geliştirme Kuralları (Strict Rules)
+
+## 1. EMOJİ KULLANIMI KESİNLİKLE YASAKTIR (STRICT)
+- **Kural:** Projenin hiçbir yerinde (UI arayüz butonları, etiketler, başlıklar, açılır menüler, modal diyaloglar, kod içi metinler, loglar veya durum mesajlarında) **EMOJİ KULLANILAMAZ**.
+- **Standart:** Tüm görsel göstergeler, simgeler ve buton ikonları için **SVG** kullanılacaktır (`src/ui/icons.ts`).
+- HTML butonlarında, kartlarda ve başlıklarda SVG ikonlar `<svg class="icon-svg" ...>` olarak yerleştirilmelidir.
+- `<option>` veya `<optgroup>` gibi salt metin gerektiren HTML elemanlarında ise emojiler tamamen kaldırılmalı, temiz Türkçe metin kullanılmalıdır.
+
+## 2. SENARYO YAZMA VE KAMERA YÖNETMENLİĞİ KURALLARI (STRICT)
+- **Konuşmadan Önce Kameranın Çevrilmesi (Pre-Speech Camera Lead-in):**
+  - Karakter konuşmaya başlamadan önce kamera KESİNLİKLE ona çevrilmiş/dönmüş olmalıdır.
+  - Bir çekim başladığında karakter anında (0.1s - 0.25s) konuşmaya başlamaz; kamera karaktere döner/odaklanır (`angle: { from: ..., to: ... }` çevrinmesi veya kesme ile), izleyici karaktere bakar ve karakter en az **0.6 - 0.8 saniye sonra** (`talk.at: 0.7 - 0.8`) konuşmaya başlar.
+  - Replik bittikten sonra da hemen çekim kesilmez; en az **0.6 - 0.8 saniyelik bir reaksiyon / nefes payı** bırakılır.
+- **Aşırı Yakınlaştırma Yasaktır (Kadraj & Plan Boyu):**
+  - Karakter konuşurken yüzü/kafayı ekrana boğan aşırı yakın plan (`size: close` / 0.55) **KULLANILAMAZ**.
+  - Bunun yerine ferah, doğal ve dengeli büst/gövde planı olan **`size: medium`** (veya `size: 0.9 - 1.05`) kullanılmalıdır. Böylece karakterin başı, omuzları, gövdesi ve mimikleri rahatça görünür.
+- **Ağız ve Ses Senkronizasyonu (700ms Kuralı):**
+  - Ağız hareketi ses kaydı başlamadan yaklaşık **700 ms (0.7 saniye)** önce başlar (karakterin nefes alıp konuşmaya hazırlanması ve ilk hece açılışı).
+  - Ağız hareketi ses kaydı bitmeden yaklaşık **700 ms (0.7 saniye)** önce biter (son hecede ağız kapanır, sesin son sönümünde ağız kapalı kalır).
+- **Konuşan Karaktere Odaklanma (Speaker Focus):**
+  - Bir karakter konuştuğunda kameranın hedefi (`target`) istisnasız konuşan karakter olmalıdır (`target: <speaker_id>`).
+  - Kamera açısı **`relative: true`** ve konuşmacının yüzüne dönük (**`angle: -15` ile `15`** derece arasında) olmalıdır.
+  - Konuşan karakter konuşma süresince kameraya (`target: camera`) veya konuştuğu kişiye (`look_at`) bakmalıdır.
+- **Diyaloglarda Çekim Bölme (Shot-Reverse-Shot):** Birden fazla karakterin konuştuğu sahnelerde her konuşma sırası için ayrı bir çekim (`shot`) tanımlanmalı; kamera konuşma sırası kime geçerse ona kesmelidir (`cut`). Geniş planda konuşma gizlenemez.
+
+## 3. Arayüz, Toolbox ve Tasarım Bütünlüğü
+- **Toolbox Sekme Mimarisi:** Sol panelde modern Toolbox gezinti çubuğu (`.toolbox-nav`) yer alır:
+  - **Senaryo:** Kod editörü, hızlı açılır liste, dosya yükleme ve derleme.
+  - **Senaryolar:** SQLite senaryo kütüphanesi kartları, arama, filtreler ve kod kaydetme.
+  - **Ayarlar:** Ağız ve ses senkron payı ayarları, SQLite veritabanı bilgileri ve sıfırlama.
+  - **Araçlar:** Kamera odaklama, sahne sıfırlama, başa gitme ve senkron test araçları.
+- **Tüm simgeler saf SVG olmalıdır:** Temaya uygun `fill="currentColor"` veya `stroke="currentColor"` renklerini miras almalıdır. EMOJİ KESİNLİKLE YASAKTIR.
+- Kullanıcı arayüzünde modern, tutarlı ve profesyonel tasarım standartları korunmalıdır.
+
+## 4. AYARLAR VE VERİTABANI MİMARİSİ (SQLITE & NO LOCALSTORAGE FOR SETTINGS)
+- **Ağız Senkron ve Sistem Ayarları SQLite'ta Saklanır:**
+  - Dudak/ağız senkron payı ayarları (`sync_lead_in`, `sync_lead_out`, `sync_linked`) `localStorage` üzerinde DEĞİL, doğrudan SQLite veritabanında (`scenarios.db` içerisindeki `settings` tablosu) saklanır.
+  - İstemci ve sunucu `/api/settings` REST uç noktası üzerinden çift yönlü haberleşir.
+  - Arayüzden (hem Transport bar slider'ı hem de Toolbox Ayarlar panelinden) yapılan tüm değişiklikler gerçek zamanlı olarak SQLite'a yazılır ve sayfa yenilendiğinde veritabanından okunur.

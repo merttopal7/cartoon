@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cartoon Engine</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Fredoka:wght@600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app">
+      <aside id="editor">
+        <!-- Toolbox Navigasyon Sekmeleri -->
+        <nav class="toolbox-nav" id="toolbox-nav">
+          <button class="toolbox-tab active" data-tab="scenario" id="tab-scenario" title="Senaryo Editörü (Kod)">
+            <svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <span>Senaryo</span>
+          </button>
+          <button class="toolbox-tab" data-tab="scenarios" id="tab-scenarios" title="Senaryolar Kütüphanesi (SQLite)">
+            <svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            <span>Senaryolar</span>
+          </button>
+          <button class="toolbox-tab" data-tab="music" id="tab-music" title="Müzik Editörü ve Ses Mikseri (SQLite)">
+            <svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            <span>Müzik</span>
+          </button>
+          <button class="toolbox-tab" data-tab="settings" id="tab-settings" title="Sistem ve Senkron Ayarları (SQLite)">
+            <svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>Ayarlar</span>
+          </button>
+          <button class="toolbox-tab" data-tab="tools" id="tab-tools" title="Hızlı Sahne ve Kamera Araçları">
+            <svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            <span>Araçlar</span>
+          </button>
+        </nav>
+
+        <!-- PANEL 1: SENARYO EDİTÖRÜ -->
+        <div class="toolbox-panel active" id="panel-scenario">
+          <header class="bar" id="editor-bar">
+            <button id="btn-save-scenario" class="btn has-icon" title="Mevcut senaryoyu SQLite veritabanına kaydet">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              <span>Kaydet</span>
+            </button>
+            <span class="spacer"></span>
+            <label class="btn" title="YAML veya JSON dosyası aç">
+              Aç<input id="file" type="file" accept=".yaml,.yml,.json" hidden />
+            </label>
+            <button id="apply" class="btn primary" title="Ctrl+Enter ile derle ve sahneye uygula">Uygula</button>
+          </header>
+          <div id="code-editor-mount" class="code-editor-container"></div>
+          <textarea id="source" hidden spellcheck="false" autocomplete="off"></textarea>
+          <div id="editor-status-bar" class="editor-status-bar">
+            <span id="editor-cursor-pos" class="editor-status-item">Satır 1, Sütun 1</span>
+            <span class="spacer"></span>
+            <span class="editor-status-item editor-status-badge">YAML</span>
+            <span class="editor-status-item editor-status-hint">Ctrl+Enter: Uygula &bull; Ctrl+S: Kaydet &bull; Ctrl+F: Bul</span>
+          </div>
+          <ul id="messages"></ul>
+        </div>
+
+        <!-- PANEL 2: SENARYOLAR KÜTÜPHANESİ -->
+        <div class="toolbox-panel" id="panel-scenarios" hidden>
+          <div class="toolbox-header-bar">
+            <div class="toolbox-header-title">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+              <strong>Senaryolar Kütüphanesi</strong>
+              <span class="badge sqlite">SQLite</span>
+            </div>
+            <button id="toolbox-btn-reload-scenarios" class="btn icon" title="Senaryoları Yenile">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </button>
+          </div>
+
+          <div class="toolbox-search-area">
+            <input id="toolbox-search" type="search" placeholder="Senaryo ara (başlık, etiket, içerik)..." />
+            <div class="filter-pills" id="toolbox-filter-pills">
+              <button class="pill active" data-filter="all">Tümü</button>
+              <button class="pill" data-filter="builtin">Bölümler</button>
+              <button class="pill" data-filter="custom">Özel (SQLite)</button>
+            </div>
+          </div>
+
+          <div id="toolbox-scenarios-container" class="toolbox-scenarios-container"></div>
+
+          <div class="toolbox-save-footer">
+            <strong style="display: flex; align-items: center; gap: 6px;">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Editördeki Kodu SQLite'a Kaydet
+            </strong>
+            <div class="save-inputs">
+              <input id="toolbox-save-title" type="text" placeholder="Yeni Senaryo Başlığı" />
+              <input id="toolbox-save-desc" type="text" placeholder="Açıklama (isteğe bağlı)" />
+              <button id="toolbox-btn-save" class="btn primary">Kaydet</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL: MÜZİK EDİTÖRÜ (SQLITE) -->
+        <div class="toolbox-panel" id="panel-music" hidden>
+          <div class="toolbox-header-bar">
+            <div class="toolbox-header-title">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+              <strong>Müzik Editörü & Mikser</strong>
+              <span class="badge sqlite">SQLite</span>
+            </div>
+            <span id="music-status-badge" class="settings-status-badge">Hazır</span>
+          </div>
+
+          <div class="toolbox-scrollable-content">
+            <!-- Müzik Parçası Seçimi -->
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                <div class="settings-section-title">
+                  <strong>Arka Plan Müziği</strong>
+                  <span class="settings-storage-hint">Ana tema ve fon müziği seçimi</span>
+                </div>
+              </div>
+
+              <div class="setting-field">
+                <label for="music-track-select">Müzik Parçası:</label>
+                <select id="music-track-select" class="select-music-track">
+                  <option value="/audio/main-theme/jyproject-carousel-dreams-396029.mp3">Carousel Dreams (Atlıkarınca Düşleri - Ana Tema)</option>
+                  <option value="/audio/main-theme/audiocoffee-kid-131153.mp3">Kid Playful (Neşeli Çocuk Teması)</option>
+                  <option value="/audio/main-theme/litesaturation-funny-music-kid-525452.mp3">Funny Cartoons (Çizgi Film Komedi)</option>
+                  <option value="/audio/main-theme/serenomusic-vlog-funny-613872.mp3">Vlog Fun (Neşeli & Komik Günlük)</option>
+                </select>
+              </div>
+
+              <div class="setting-field check-field">
+                <label class="check">
+                  <input id="music-enabled-toggle" type="checkbox" checked />
+                  <span>Arka Plan Müziği Aktif</span>
+                </label>
+              </div>
+
+              <div class="setting-field check-field">
+                <label class="check">
+                  <input id="music-loop-toggle" type="checkbox" checked />
+                  <span>Film Boyunca Kesintisiz Döngü (Loop)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Müzik Dalga Formu ve Zaman Çizelgesi -->
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                <div class="settings-section-title">
+                  <strong>Müzik Dalga Formu & Canlı Konum</strong>
+                  <span class="settings-storage-hint">Film boyu müzik ve ducking izi</span>
+                </div>
+              </div>
+              <div class="music-panel-waveform-container" id="music-panel-waveform-container" title="Zaman çizelgesinde gitmek istediğiniz noktaya tıklayın">
+                <canvas id="music-panel-waveform-canvas" class="music-panel-waveform-canvas"></canvas>
+                <div id="music-panel-ducking-zones" class="music-panel-ducking-zones"></div>
+                <div id="music-panel-playhead" class="music-panel-playhead"></div>
+              </div>
+              <div class="music-panel-meta">
+                <span id="music-panel-clock" class="mono accent">0:00.00 / 0:00.00</span>
+                <span class="spacer"></span>
+                <span id="music-panel-track-status" class="track-status-pill">Döngü Aktif</span>
+              </div>
+            </div>
+
+            <!-- Ses Seviyesi ve Ducking -->
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                <div class="settings-section-title">
+                  <strong>Seviye & Akıllı Kısılma (Ducking)</strong>
+                  <span class="settings-storage-hint">Diyalog netliği için otomatik miks</span>
+                </div>
+              </div>
+
+              <!-- Müzik Ses Düzeyi -->
+              <div class="setting-field">
+                <div class="setting-field-header">
+                  <label for="music-volume-slider">Fon Müziği Ses Düzeyi:</label>
+                  <span id="music-volume-val" class="mono accent">35%</span>
+                </div>
+                <input id="music-volume-slider" type="range" min="0" max="1" step="0.01" value="0.35" />
+              </div>
+
+              <!-- Konuşma Ducking -->
+              <div class="setting-field">
+                <div class="setting-field-header">
+                  <label for="music-ducking-slider">Konuşma Anında Kısılma (Ducking):</label>
+                  <span id="music-ducking-val" class="mono accent">25%</span>
+                </div>
+                <input id="music-ducking-slider" type="range" min="0" max="1" step="0.05" value="0.25" />
+                <p class="settings-help">
+                  Karakter ses kaydı başladığında müzik konuşmaların anlaşılır kalması için otomatik olarak bu seviyeye çekilir, konuşma bittiğinde normal seviyesine döner.
+                </p>
+              </div>
+
+              <!-- Fade In & Out -->
+              <div class="setting-field">
+                <div class="setting-field-header">
+                  <label for="music-fade-in-slider">Müzik Giriş Kararması (Fade In):</label>
+                  <span id="music-fade-in-val" class="mono accent">1.0s</span>
+                </div>
+                <input id="music-fade-in-slider" type="range" min="0" max="4" step="0.2" value="1.0" />
+              </div>
+
+              <div class="setting-field">
+                <div class="setting-field-header">
+                  <label for="music-fade-out-slider">Müzik Çıkış Kararması (Fade Out):</label>
+                  <span id="music-fade-out-val" class="mono accent">1.5s</span>
+                </div>
+                <input id="music-fade-out-slider" type="range" min="0" max="4" step="0.2" value="1.5" />
+              </div>
+            </div>
+
+            <!-- Ön Dinleme ve Ayrık Çıktı -->
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                <div class="settings-section-title">
+                  <strong>Ayrık Ses Çıktısı & Senaryo Kaydı</strong>
+                  <span class="settings-storage-hint">Bağımsız ses parçası ve YAML senkronu</span>
+                </div>
+              </div>
+              <p class="settings-help">
+                Filmin tüm diyaloglarını ve arkaplan müziğini eksiksiz bir miks olarak bağımsız bir ses dosyası (.wav) şeklinde dışa aktarabilir ya da ayarları doğrudan YAML senaryosuna ve SQLite'a işleyebilirsiniz.
+              </p>
+
+              <div class="setting-actions">
+                <button id="btn-export-audio-standalone" class="btn primary has-icon" title="Filmin tüm ses ve müzik miksini WAV dosyası olarak indir">
+                  <svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                  <span>Film Ses Parçasını İndir (.wav)</span>
+                </button>
+                <button id="btn-music-apply-yaml" class="btn has-icon" title="Seçili müzik ve ses ayarlarını YAML senaryo editörüne uygula">
+                  <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                  <span>Senaryoya Uygula (YAML)</span>
+                </button>
+                <button id="btn-music-save-sqlite" class="btn has-icon" title="Müzik tercihlerini SQLite veritabanına kalıcı kaydet">
+                  <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  <span>SQLite'a Kaydet</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL 3: AYARLAR (SQLITE) -->
+        <div class="toolbox-panel" id="panel-settings" hidden>
+          <div class="toolbox-header-bar">
+            <div class="toolbox-header-title">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <strong>Sistem & Senkron Ayarları</strong>
+              <span class="badge sqlite">SQLite</span>
+            </div>
+            <span id="settings-status-badge" class="settings-status-badge">SQLite Hazır</span>
+          </div>
+
+          <div class="toolbox-scrollable-content">
+            <!-- Lip Sync Section -->
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                <div class="settings-section-title">
+                  <strong>Ağız ve Dudak Senkron Payı</strong>
+                  <span class="settings-storage-hint">Kalıcı depolama: SQLite (`settings` tablosu)</span>
+                </div>
+              </div>
+              <p class="settings-help">
+                Karakter ses kaydı başlamadan önce ağzını açmaya başlar ve ses kaydı bittikten sonra da hareketini belirlenen süre önce tamamlar.
+              </p>
+
+              <!-- Lead In -->
+              <div class="setting-field">
+                <div class="setting-field-header">
+                  <label for="settings-sync-lead-in">Açılış Payı (Öncesi):</label>
+                  <span id="settings-sync-lead-in-val" class="mono accent">700ms</span>
+                </div>
+                <input id="settings-sync-lead-in-slider" type="range" min="0" max="2000" step="50" value="700" />
+                <div class="setting-input-inline">
+                  <span class="text-xs muted">0 ms</span>
+                  <input id="settings-sync-lead-in" type="number" min="0" max="2000" step="50" value="700" />
+                  <span class="text-xs muted">2000 ms</span>
+                </div>
+              </div>
+
+              <!-- Lead Out -->
+              <div class="setting-field">
+                <div class="setting-field-header">
+                  <label for="settings-sync-lead-out">Kapanış Payı (Öncesi):</label>
+                  <span id="settings-sync-lead-out-val" class="mono accent">700ms</span>
+                </div>
+                <input id="settings-sync-lead-out-slider" type="range" min="0" max="2000" step="50" value="700" />
+                <div class="setting-input-inline">
+                  <span class="text-xs muted">0 ms</span>
+                  <input id="settings-sync-lead-out" type="number" min="0" max="2000" step="50" value="700" />
+                  <span class="text-xs muted">2000 ms</span>
+                </div>
+              </div>
+
+              <!-- Link Toggle -->
+              <div class="setting-field check-field">
+                <label class="check">
+                  <input id="settings-sync-link" type="checkbox" checked />
+                  <span>Açılış ve Kapanış Payını Birlikte Değiştir (Eşitle)</span>
+                </label>
+              </div>
+
+              <div class="setting-actions">
+                <button id="btn-settings-reset-sync" class="btn" title="Varsayılan 700ms değerine geri dön">
+                  <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                  <span>Varsayılana Sıfırla (700ms)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Görünüm & Çizim Modu Section (SQLite) -->
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <div class="settings-section-title">
+                  <strong>Görünüm & Çizim Modu</strong>
+                  <span class="settings-storage-hint">Kalıcı depolama: SQLite (`viewport_mode`)</span>
+                </div>
+              </div>
+              <p class="settings-help">
+                <strong>Önizleme Modu:</strong> Ağır gölge haritaları ve kontur geçişleri devre dışı bırakılır; tek geçişli çizimle 60 FPS akıcı oynatma ve optimize karakter/harita sunar.<br>
+                <strong>Render Modu:</strong> 2048px gölgeler, çift geçişli cel-shading konturlar ve tam PBR dokular işlenir. (MP4 indirmeleri daima Render kalitesindedir.)
+              </p>
+              <div class="mode-toggle-group">
+                <button id="settings-btn-mode-preview" class="btn has-icon mode-toggle-btn active" data-mode="preview">
+                  <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  <span>Önizleme Modu (Optimize)</span>
+                </button>
+                <button id="settings-btn-mode-render" class="btn has-icon mode-toggle-btn" data-mode="render">
+                  <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                  <span>Render Modu (Tam Kalite)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Database Info Section -->
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                <div class="settings-section-title">
+                  <strong>SQLite Veritabanı Durumu</strong>
+                  <span class="settings-storage-hint">scenarios.db</span>
+                </div>
+              </div>
+              <div class="db-info-list">
+                <div class="db-info-item">
+                  <span class="muted">Dosya Yolu:</span>
+                  <span class="mono">scenarios.db</span>
+                </div>
+                <div class="db-info-item">
+                  <span class="muted">Motor:</span>
+                  <span class="mono">Node.js SQLite (DatabaseSync)</span>
+                </div>
+                <div class="db-info-item">
+                  <span class="muted">Kayıtlı Tablolar:</span>
+                  <span class="mono">scenarios, settings</span>
+                </div>
+              </div>
+              <div class="setting-actions">
+                <button id="btn-settings-reset-builtins" class="btn" title="Yerleşik senaryoları dosyadan veritabanına yeniden yükle">
+                  <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                  <span>Yerleşik Senaryoları Yeniden Yükle</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL 4: ARAÇLAR (TOOLBOX) -->
+        <div class="toolbox-panel" id="panel-tools" hidden>
+          <div class="toolbox-header-bar">
+            <div class="toolbox-header-title">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+              <strong>Sahne ve Çekim Araçları</strong>
+            </div>
+          </div>
+
+          <div class="toolbox-scrollable-content">
+            <!-- Kamera Araçları -->
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                <div class="settings-section-title">
+                  <strong>Kamera ve Çekim Planı</strong>
+                  <span class="settings-storage-hint">Otomatik ve Manuel Odak</span>
+                </div>
+              </div>
+              <p class="settings-help">
+                Senaryo kuralları gereği konuşan karaktere odaklama ve genel açı geçişleri:
+              </p>
+              <div class="tools-grid">
+                <button id="tool-focus-speaker" class="btn has-icon">
+                  <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+                  <span>Konuşmacıya Odaklan</span>
+                </button>
+                <button id="tool-reset-camera" class="btn has-icon">
+                  <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  <span>Kamerayı Sıfırla</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Senkron Test Araçları -->
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                <div class="settings-section-title">
+                  <strong>Senkron & Canlı Doğrulama</strong>
+                  <span class="settings-storage-hint">700ms Ağız Payı Doğrulama</span>
+                </div>
+              </div>
+              <div class="tools-grid">
+                <button id="tool-jump-start" class="btn has-icon">
+                  <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+                  <span>Başa Git (00:00)</span>
+                </button>
+                <button id="tool-jump-speech" class="btn has-icon">
+                  <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+                  <span>İlk Konuşmaya Git</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Görünüm Modu Araçları -->
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <div class="settings-section-title">
+                  <strong>Performans & Mod Geçişi</strong>
+                  <span class="settings-storage-hint">Önizleme / Render</span>
+                </div>
+              </div>
+              <div class="tools-grid">
+                <button id="tool-toggle-mode" class="btn has-icon" style="grid-column: 1 / -1;">
+                  <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  <span id="tool-toggle-mode-text">Mod Değiştir (Render)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- SQLite Senaryo Kütüphanesi Modalı (Tam Ekran İnceleme İçin) -->
+      <div id="scenario-modal" class="modal-backdrop" hidden>
+        <div class="modal-dialog">
+          <div class="modal-header">
+            <div class="modal-title-group">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
+              <h3>Senaryo Kütüphanesi</h3>
+              <span class="badge sqlite">SQLite</span>
+            </div>
+            <button id="modal-close" class="btn icon close-btn" title="Kapat">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <div class="modal-toolbar">
+            <input id="modal-search" type="search" placeholder="Senaryo ara (başlık, açıklama, karakter, etiket)..." />
+            <div class="filter-pills">
+              <button class="pill active" data-filter="all">Tümü</button>
+              <button class="pill" data-filter="builtin">Bölümler</button>
+              <button class="pill" data-filter="custom">Özel (SQLite)</button>
+            </div>
+          </div>
+
+          <div id="modal-scenario-list" class="scenario-list"></div>
+
+          <div class="modal-footer">
+            <div class="save-box">
+              <strong style="display: flex; align-items: center; gap: 6px;">
+                <svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Mevcut Senaryoyu SQLite'a Kaydet
+              </strong>
+              <div class="save-inputs">
+                <input id="save-title" type="text" placeholder="Senaryo Başlığı (ör: Benim Macera Çekimim)" />
+                <input id="save-desc" type="text" placeholder="Açıklama (isteğe bağlı)" />
+                <button id="btn-modal-save" class="btn primary">Kaydet</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <main>
+        <header class="bar">
+          <div class="mode-switch-group" id="mode-switch-group" title="Çalışma Modu: Önizleme (Optimize) veya Render (Tam Kalite)">
+            <button class="mode-tab-btn active" id="btn-mode-preview" data-mode="preview" title="Önizleme Modu: 60 FPS akış, optimize tek geçişli karakter ve harita">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span>Önizleme</span>
+            </button>
+            <button class="mode-tab-btn" id="btn-mode-render" data-mode="render" title="Render Modu: Tam cel-shading konturlar, 2048px gölgeler ve PBR">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+              <span>Render</span>
+            </button>
+          </div>
+          <select id="format"></select>
+          <label class="check"><input id="safe-toggle" type="checkbox" checked /> Güvenli alan</label>
+          <span class="spacer"></span>
+          <button id="export" class="btn primary" title="Filmi MP4 olarak dışa aktar (video + ses)">MP4 indir</button>
+          <button id="export-audio" class="btn" title="Filmin tüm seslendirmelerini ve arkaplan müziğini miksleyip WAV ses dosyası olarak indir">Sesi İndir (WAV)</button>
+          <button id="export-all" class="btn" title="4K hariç tüm formatları sırayla indir">Tüm formatlar</button>
+        </header>
+
+        <div id="stage">
+          <div id="frame">
+            <canvas id="canvas"></canvas>
+            <div id="safe"></div>
+            <div id="ability-hud" class="ability-hud">
+              <div id="ability-active-banner" class="ability-active-banner" hidden>
+                <svg class="ability-cartoon-star ability-star-tr" viewBox="0 0 32 32" width="26" height="26" aria-hidden="true">
+                  <path d="M16 2.5 L19.8 10.6 L28.7 11.7 L22.1 17.9 L23.8 26.8 L16 22.4 L8.2 26.8 L9.9 17.9 L3.3 11.7 L12.2 10.6 Z" fill="#fde047" stroke="#1f1208" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+                </svg>
+                <svg class="ability-cartoon-star ability-star-bl" viewBox="0 0 32 32" width="20" height="20" aria-hidden="true">
+                  <path d="M16 2.5 L19.8 10.6 L28.7 11.7 L22.1 17.9 L23.8 26.8 L16 22.4 L8.2 26.8 L9.9 17.9 L3.3 11.7 L12.2 10.6 Z" fill="#4ade80" stroke="#1f1208" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+                </svg>
+                <div id="ability-active-icon-box" class="ability-icon-square ability-icon-square-lg"></div>
+                <div class="ability-active-meta">
+                  <div class="ability-active-header">
+                    <span id="ability-active-caster" class="ability-active-caster">MEŞE</span>
+                    <span id="ability-active-phase" class="ability-active-phase">GÜÇ TOPLANIYOR!</span>
+                  </div>
+                  <div id="ability-active-title" class="ability-active-title">FIRTINA OKU</div>
+                  <div class="ability-active-progress-track">
+                    <div id="ability-active-progress-fill" class="ability-active-progress-fill"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="loading-overlay" hidden>
+              <div class="loading-box">
+                <svg class="icon-svg loading-spinner" viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <circle cx="12" cy="12" r="9" stroke-opacity="0.25"></circle>
+                  <path d="M12 3a9 9 0 0 1 9 9" stroke="var(--accent)"></path>
+                </svg>
+                <div id="loading-status" class="loading-status">Senaryo hazırlanıyor…</div>
+                <div class="loading-bar-track">
+                  <div id="loading-bar-fill" class="loading-bar-fill"></div>
+                </div>
+              </div>
+            </div>
+            <div id="export-overlay" hidden>
+              <div class="box">
+                <div id="export-label">Dışa aktarılıyor…</div>
+                <progress id="export-progress" max="1" value="0"></progress>
+                <button id="export-cancel" class="btn">İptal</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ÇOK KANALLI MÜZİK VE ANİMASYON ZAMAN ÇİZELGESİ (TIMELINE) -->
+        <div id="timeline-container" class="timeline-container">
+          <div class="timeline-header">
+            <div class="timeline-title-group">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="10" x2="8" y2="20"/><line x1="14" y1="10" x2="14" y2="20"/></svg>
+              <strong>Zaman Çizelgesi</strong>
+              <span class="timeline-subtext">Çekimler · Karakter Diyalogları · Fon Müziği</span>
+            </div>
+            <div class="timeline-legend">
+              <span class="legend-item"><span class="legend-dot legend-shot"></span>Çekim</span>
+              <span class="legend-item"><span class="legend-dot legend-dialogue"></span>Diyalog</span>
+              <span class="legend-item"><span class="legend-dot legend-music"></span>Müzik</span>
+              <span class="legend-item"><span class="legend-dot legend-ducking"></span>Ducking</span>
+            </div>
+            <button id="btn-toggle-timeline" class="btn icon btn-sm" title="Zaman Çizelgesini Daralt / Genişlet">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+          </div>
+
+          <div class="timeline-body" id="timeline-body">
+            <!-- Sol Kanal Etiketleri -->
+            <div class="timeline-labels-col">
+              <div class="track-header-cell ruler-cell">Zaman</div>
+              <div class="track-header-cell">Çekimler</div>
+              <div class="track-header-cell">Diyalog</div>
+              <div class="track-header-cell music-label-cell">
+                <span>Müzik</span>
+                <span id="timeline-music-track-name" class="track-name-badge">Carousel</span>
+              </div>
+            </div>
+
+            <!-- Sağ Kanallar ve Cetvel Alanı -->
+            <div class="timeline-tracks-viewport" id="timeline-tracks-viewport">
+              <!-- Zaman Cetveli -->
+              <div class="timeline-ruler-track" id="timeline-ruler-track"></div>
+
+              <!-- Çekimler İzi -->
+              <div class="timeline-track-lane" id="lane-shots"></div>
+
+              <!-- Diyaloglar İzi -->
+              <div class="timeline-track-lane" id="lane-dialogues"></div>
+
+              <!-- Fon Müziği İzi -->
+              <div class="timeline-track-lane lane-music" id="lane-music">
+                <canvas id="timeline-music-waveform" class="timeline-music-waveform"></canvas>
+                <div id="timeline-music-ducking-zones" class="timeline-music-ducking-zones"></div>
+              </div>
+
+              <!-- Oynatma İğnesi (Playhead Needle) -->
+              <div class="timeline-playhead-needle" id="timeline-playhead-needle">
+                <div class="needle-head"></div>
+                <div class="needle-line"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <footer class="bar" id="transport">
+          <button id="btn-transport-timeline" class="btn icon" title="Zaman Çizelgesini Göster / Gizle">
+            <svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="10" x2="8" y2="20"/><line x1="14" y1="10" x2="14" y2="20"/></svg>
+          </button>
+          <button id="play" class="btn icon" title="Oynat / Duraklat (Boşluk)">
+            <svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" />
+          <span id="clock" class="mono">0:00.00 / 0:00.00</span>
+          <div class="volume-group" title="Ses Seviyesi">
+            <button id="mute-btn" class="btn icon" title="Sesi Kapat / Aç (M)">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            </button>
+            <input id="volume-slider" type="range" min="0" max="1" step="0.01" value="1" title="Ses Seviyesi (Yukarı / Aşağı Ok Tuşları)" />
+            <span id="volume-label" class="mono muted">100%</span>
+          </div>
+          <div class="sync-group" id="sync-group" title="Ağız ve Ses Senkron Payı (SQLite)">
+            <button id="sync-popover-btn" class="btn icon" title="Ağız Senkron Ayrıntılarını Aç">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            </button>
+            <span class="sync-label">Ağız:</span>
+            <input id="sync-slider" type="range" min="0" max="1500" step="50" value="700" title="Ses başlamadan kaç ms önce açılsın ve bitmeden kaç ms önce kapansın (SQLite)" />
+            <span id="sync-val" class="mono muted">700ms</span>
+            <div id="sync-popover" class="sync-popover" hidden>
+              <div class="sync-popover-header">
+                <strong>Ağız Senkron Ayarı (SQLite)</strong>
+                <button id="sync-popover-close" class="btn icon close-sm" title="Kapat">
+                  <svg class="icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <div class="sync-popover-row">
+                <label for="sync-lead-in">Açılış Payı:</label>
+                <input id="sync-lead-in" type="number" min="0" max="2000" step="50" value="700" />
+                <span class="mono">ms</span>
+              </div>
+              <div class="sync-popover-row">
+                <label for="sync-lead-out">Kapanış Payı:</label>
+                <input id="sync-lead-out" type="number" min="0" max="2000" step="50" value="700" />
+                <span class="mono">ms</span>
+              </div>
+              <div class="sync-popover-row sync-link-row">
+                <label class="check">
+                  <input id="sync-link-checkbox" type="checkbox" checked /> Birlikte Değiştir (Eşitle)
+                </label>
+              </div>
+            </div>
+          </div>
+          <span id="where" class="mono muted"></span>
+        </footer>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

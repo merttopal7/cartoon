@@ -1,0 +1,528 @@
+# Ormanın Bekçileri - Bölüm 1: İlk Devriye
+# Açılış Bölümü: Uzatılmış Kuş Uçuşu Orman Gezintisi, Karakter Tanıtımları, Özgün Hareketler ve Senkronize Zafer Dansı
+# Kamera açıları (cameras) ve senaryo akışı (actions) birbirinden tamamen bağımsızdır; geçişlerde animasyonlar kesilmez.
+
+imports:
+  animations:
+    idle: models/characters/main-character/animations/Neutral Idle.fbx
+    walk: models/characters/main-character/animations/Walking.fbx
+    run: models/characters/main-character/animations/Running.fbx
+    jog: models/characters/main-character/animations/Jogging.fbx
+    jump_joy: models/characters/main-character/animations/Joyful Jump.fbx
+    pushup: models/characters/main-character/animations/Jump Push Up.fbx
+    kick: models/characters/main-character/animations/Martelo 2.fbx
+    taunt: models/characters/main-character/animations/Taunt.fbx
+    point: models/characters/main-character/animations/Kneeling Pointing.fbx
+    stretch: models/characters/main-character/animations/Arm Stretching.fbx
+    dance: models/characters/main-character/animations/Silly Dancing.fbx
+
+film:
+  title: bolum-1-ormanin-bekcileri
+  fps: 30
+  fade_in: 0
+  fade_out: 1.5
+  handheld: 0.12
+  music:
+    src: /audio/main-theme/jyproject-carousel-dreams-396029.mp3
+    volume: 0.35
+    ducking: 0.25
+    loop: true
+    fade_in: 0.2
+    fade_out: 1.5
+
+assets:
+  toprak:
+    src: models/characters/main-character/kid.fbx
+    height: 1.4
+    voice: xDppd78rqTGY8ICN7M4n
+  defne:
+    src: models/characters/Jackie/character.fbx
+    height: 1.68
+    voice: o9DOmAyPjfFu8AfoFAnM
+  mese:
+    src: models/characters/Erika/character.fbx
+    height: 1.72
+    voice: KAGDtM2gzDrjWlUp2KNe
+  karabey:
+    src: models/characters/sword-and-shield/Paladin WProp J Nordstrom.fbx
+    height: 1.95
+  harita:
+    src: models/maps/dirt-road.glb
+    align: none
+
+scenes:
+  - id: acilis-patika
+    environment:
+      preset: day
+      ground_plane: false
+      fog_near: 120
+      fog_far: 450
+      wind:
+        enabled: false
+    props:
+      - asset: harita
+        at: [0, 0, 0]
+        terrain:
+          - Dirt_Road
+          - Dirt_Road_Bare
+          - Dirt_Road_Trails
+          - Road_Edge_Gravel_Dusty
+          - Cobblestone
+          - Grass_Close
+          - Ground_Dirt
+          - Aerial_Grass
+          - Sloped_Rock
+          - Broken_Rocks
+          - Mud_Pile
+    characters:
+      - id: toprak
+        asset: toprak
+        at: [49.0, 0, 42.3]
+        facing: -90
+      - id: defne
+        asset: defne
+        at: [42.5, 0, 27.0]
+        facing: -60
+      - id: mese
+        asset: mese
+        at: [43.5, 0, 57.0]
+        facing: -120
+
+    # =========================================================================
+    # BAĞIMSIZ KAMERA KANALI (cameras)
+    # Kamera geçişleri karakter animasyonlarını bölmez veya baştan başlatmaz.
+    # =========================================================================
+    cameras:
+      # Kamera 1 (0.0s - 18.5s): Uzatılmış kuş uçuşu hızlı orman tanıtımı ve karakterlerin arkasına iniş
+      - at: 0.0
+        duration: 18.5
+        camera:
+          target:
+            - [79, 10.5, -16]
+            - [78, 12.0, 2]
+            - [76, 13.5, 20]
+            - [71, 15.0, 36]
+            - [58, 16.0, 42.5]
+            - [42, 16.8, 43.2]
+            - [26, 17.0, 43.0]
+            - [14.0, 17.2, 42.6]
+          size:
+            from: 26
+            to: 3.8
+          angle:
+            from: 116
+            to: 90
+          elevation:
+            from: 45
+            to: 11
+          ease: inOut
+          relative: false
+
+      # Kamera 2 (18.5s - 34.0s): Toprak şınav ve kendini tanıtma kadrajı
+      - at: 18.5
+        duration: 15.5
+        camera:
+          target: toprak
+          size:
+            from: 3.5
+            to: 1.8
+          angle:
+            from: 22
+            to: 16
+          elevation:
+            from: 7.5
+            to: 5.5
+          relative: true
+
+      # Kamera 3 (34.0s - 46.0s): Gözcü Defne döner tekme ve kendini tanıtma kadrajı
+      - at: 34.0
+        duration: 12.0
+        transition: stripes
+        camera:
+          target: defne
+          size:
+            from: 2.5
+            to: 1.6
+          angle:
+            from: 18
+            to: 12
+          elevation:
+            from: 6.5
+            to: 4.5
+          relative: true
+
+      # Kamera 4 (46.0s - 56.5s): Bilge Meşe neşeli zıplama ve kendini tanıtma kadrajı
+      - at: 46.0
+        duration: 10.5
+        transition: cut
+        camera:
+          target: mese
+          size:
+            from: 2.4
+            to: 1.5
+          angle:
+            from: -16
+            to: -10
+          elevation:
+            from: 6.0
+            to: 4.2
+          relative: true
+
+      # Kamera 5 (56.5s - 68.3s): Üç bekçi bir arada ve senkronize zafer dansı kadrajı
+      - at: 56.5
+        duration: 11.8
+        transition: iris
+        camera:
+          target:
+            - toprak
+            - defne
+            - mese
+          size:
+            from: 2.2
+            to: 3.6
+          angle:
+            from: 16
+            to: 8
+          elevation:
+            from: 5.5
+            to: 6.8
+          relative: true
+
+      # Kamera 6 (68.3s - 85.0s): Dans sonrası yol boyu kameranın başladığı ilk konuma kadar hızlı koşu — yukarıdan kuş uçuşu takip
+      - at: 68.3
+        duration: 16.7
+        transition: stripes
+        camera:
+          target:
+            - toprak
+            - defne
+            - mese
+          size:
+            from: 5.8
+            to: 7.5
+          angle:
+            from: 180
+            to: 180
+          elevation:
+            from: 22
+            to: 26
+          ease: inOut
+          relative: true
+
+    # =========================================================================
+    # REMOTION TARZI 2B HAREKETLİ GRAFİK VE YAZI KATMANLARI (overlays)
+    # Yay fiziği (spring) ve enterpolasyon (interpolate) ile kare-hassasiyetli çizilir.
+    # =========================================================================
+    overlays:
+      # 1) Kuş uçuşu sırasında sallanan ahşap orman tabelası başlığı
+      - type: title_card
+        at: 1.5
+        duration: 7.5
+        badge: "ORMANIN BEKÇİLERİ"
+        title: "BÖLÜM 1: İLK DEVRİYE"
+        subtitle: "Ulu Çınar Yolu'nda Macera Başlıyor!"
+        accent: "#22c55e"
+        position: top
+
+      # 2) Toprak şınav çekerken bulut efekt balonu ve konuşurken çizgi film isim kartı
+      - type: comic_pop
+        at: 21.2
+        duration: 4.4
+        text: "HOP! BİR, İKİ, ÜÇ!"
+        subtext: "SABAH SPORU ZAMANI!"
+        accent: "#16a34a"
+        position: top-right
+
+      - type: lower_third
+        at: 26.5
+        duration: 6.9
+        name: "TOPRAK"
+        role: "Meraklı Kaşif ve Yol Gösterici"
+        tag: "Ormanın Neşeli Lideri!"
+        accent: "#16a34a"
+        align: left
+
+      # 3) Defne döner tekme atarken bulut efekt balonu ve konuşurken çizgi film isim kartı
+      - type: comic_pop
+        at: 36.2
+        duration: 2.2
+        text: "HOPPAA! SÜPER TEKME!"
+        subtext: "RÜZGAR GİBİ HIZLI!"
+        accent: "#db2777"
+        position: top-left
+
+      - type: lower_third
+        at: 38.7
+        duration: 6.6
+        name: "DEFNE"
+        role: "Ormanın Keskin Gözcüsü"
+        tag: "Hiçbir Sır Gözünden Kaçmaz!"
+        accent: "#db2777"
+        align: right
+
+      # 4) Meşe zıplarken bulut efekt balonu ve konuşurken çizgi film isim kartı
+      - type: comic_pop
+        at: 48.4
+        duration: 2.0
+        text: "YAŞASIN! NEŞELİ ZIPLAYIŞ!"
+        subtext: "ORMANIN BİLGE DOSTU"
+        accent: "#d97706"
+        position: top-right
+
+      - type: lower_third
+        at: 50.5
+        duration: 5.5
+        name: "MEŞE"
+        role: "Kadim Sırların Bilgesi"
+        tag: "Ulu Çınarın En Yakın Dostu!"
+        accent: "#d97706"
+        align: left
+
+      # 5) Üç karakter senkronize dans ederken müzik notalı zafer balonu
+      - type: comic_pop
+        at: 61.0
+        duration: 6.8
+        text: "HEP BİRLİKTE DANS!"
+        subtext: "YAŞASIN ORMANIN BEKÇİLERİ!"
+        accent: "#ea580c"
+        position: top-center
+
+      # 6) Dans sonrası yol boyu hızlı koşu başlangıcı bulut balonu
+      - type: comic_pop
+        at: 68.8
+        duration: 4.5
+        text: "TAM GAZ İLERİ!"
+        subtext: "İLK DEVRİYE BAŞLIYOR!"
+        accent: "#22c55e"
+        position: top-right
+
+    # =========================================================================
+    # KESİNTİSİZ SENARYO VE KARAKTER AKIŞI (actions)
+    # Tüm zamanlamalar (at) sahne başlangıcına (0.0s) göredir ve kesintisiz akar.
+    # =========================================================================
+    actions:
+      # 1) Üç karakter farklı bölgelerden buluşma noktasına tek parça kesintisiz koşar (Kamera 1->2 geçişinde durmaz!)
+      - who: toprak
+        do: walk_to
+        to:
+          - [26.0, 42.5]
+          - [11.0, 42.6]
+        speed: 1.9
+        clip: run
+        at: 0.2
+      - who: defne
+        do: walk_to
+        to:
+          - [26.5, 39.5]
+          - [13.5, 39.5]
+        speed: 1.65
+        clip: run
+        at: 0.5
+      - who: mese
+        do: walk_to
+        to:
+          - [27.0, 45.5]
+          - [14.0, 45.2]
+        speed: 1.65
+        clip: jog
+        at: 0.7
+
+      # 2) Toprak varış noktasında şınav çeker, ardından ayağa kalkıp el sallar ve kendini tanıtır
+      - who: toprak
+        do: clip
+        name: pushup
+        at: 21.0
+        duration: 4.8
+        loop: true
+        fade: 0.3
+      - who: toprak
+        do: look_at
+        target: camera
+        at: 26.0
+        duration: 7.8
+      - who: toprak
+        do: wave
+        hand: right
+        at: 26.2
+        duration: 1.8
+      - who: toprak
+        do: talk
+        at: 26.8
+        text: "Merhaba! Ben Toprak. Ormanın meraklı kaşifi ve Bekçiler ekibinin yol göstericisiyim!"
+        audio: audio/bolum-1-ormanin-bekcileri/toprak_shot1_4.mp3
+        duration: 6.56
+
+      # 3) Defne öne koşar (Kamera 3 geçişinden hemen önce başlar, geçişte duraksamaz), döner tekme atar ve kendini tanıtır
+      - who: defne
+        do: walk_to
+        to: [10.3, 41.0]
+        speed: 1.6
+        clip: run
+        at: 33.6
+      - who: defne
+        do: clip
+        name: kick
+        at: 36.2
+        duration: 2.2
+        loop: true
+        fade: 0.3
+      - who: defne
+        do: clip
+        name: taunt
+        at: 38.4
+        duration: 2.0
+        loop: true
+        fade: 0.3
+      - who: defne
+        do: look_at
+        target: camera
+        at: 38.4
+        duration: 7.4
+      - who: defne
+        do: talk
+        at: 38.8
+        text: "Ben de Defne! Ormanın gözcüsü ve koruyucusuyum. Buralarda hiçbir tehlike gözümden kaçmaz!"
+        audio: audio/bolum-1-ormanin-bekcileri/defne_shot2_4.mp3
+        duration: 6.48
+
+      # 4) Meşe neşeyle öne koşar (Kamera 4 geçişinden hemen önce başlar), sevinçle zıplar ve kendini tanıtır
+      - who: mese
+        do: walk_to
+        to: [10.0, 43.8]
+        speed: 1.6
+        clip: jog
+        at: 45.6
+      - who: mese
+        do: clip
+        name: jump_joy
+        at: 48.4
+        duration: 2.0
+        loop: true
+        fade: 0.3
+      - who: mese
+        do: look_at
+        target: camera
+        at: 50.4
+        duration: 6.0
+      - who: mese
+        do: talk
+        at: 50.7
+        text: "Ben de Meşe! Ormanın kadim sırlarını ve ulu çınarın fısıltılarını en iyi ben bilirim!"
+        audio: audio/bolum-1-ormanin-bekcileri/mese_shot3_4.mp3
+        duration: 5.30
+
+      # 5) Birlik çağrısı ve üç karakterin senkronize zafer dansı
+      - who: toprak
+        do: clip
+        name: stretch
+        at: 56.6
+        duration: 1.8
+        loop: true
+        fade: 0.3
+      - who: defne
+        do: look_at
+        target: toprak
+        at: 56.6
+        duration: 2.6
+      - who: mese
+        do: look_at
+        target: toprak
+        at: 56.6
+        duration: 2.6
+      - who: toprak
+        do: talk
+        at: 57.0
+        text: "Birlikte, Ormanın Bekçileriyiz! Haydi maceraya!"
+        audio: audio/bolum-1-ormanin-bekcileri/toprak_shot4_4.mp3
+        duration: 3.68
+
+      - who: toprak
+        do: look_at
+        target: camera
+        at: 60.8
+        duration: 7.3
+      - who: defne
+        do: look_at
+        target: camera
+        at: 60.8
+        duration: 7.3
+      - who: mese
+        do: look_at
+        target: camera
+        at: 60.8
+        duration: 7.3
+
+      - who: toprak
+        do: clip
+        name: dance
+        at: 60.8
+        duration: 7.3
+        loop: true
+        fade: 0.4
+      - who: defne
+        do: clip
+        name: dance
+        at: 60.8
+        duration: 7.3
+        loop: true
+        fade: 0.4
+      - who: mese
+        do: clip
+        name: dance
+        at: 60.8
+        duration: 7.3
+        loop: true
+        fade: 0.4
+
+      # 6) Dans biter bitmez üç karakter yol boyunca kameranın başladığı ilk konuma kadar hızla koşar
+      - who: toprak
+        do: walk_to
+        to:
+          - [26.0, 42.5]
+          - [42.0, 42.5]
+          - [56.0, 42.5]
+          - [68.0, 42.3]
+          - [76.5, 41.2]
+          - [81.0, 35.8]
+          - [81.5, 28.0]
+          - [80.2, 20.0]
+          - [77.5, 12.0]
+          - [73.5, 4.5]
+          - [69.0, 0.5]
+        duration: 16.2
+        clip: run
+        at: 68.2
+      - who: defne
+        do: walk_to
+        to:
+          - [26.0, 41.1]
+          - [42.0, 41.1]
+          - [56.0, 41.1]
+          - [67.5, 41.0]
+          - [75.3, 40.0]
+          - [79.6, 35.2]
+          - [80.1, 28.0]
+          - [78.8, 20.0]
+          - [76.2, 12.0]
+          - [72.2, 4.8]
+          - [67.8, 1.0]
+        duration: 16.2
+        clip: run
+        at: 68.2
+      - who: mese
+        do: walk_to
+        to:
+          - [26.0, 43.9]
+          - [42.0, 43.9]
+          - [56.0, 43.9]
+          - [68.5, 43.7]
+          - [77.7, 42.4]
+          - [82.4, 36.4]
+          - [82.9, 28.0]
+          - [81.6, 20.0]
+          - [78.8, 12.0]
+          - [74.8, 4.2]
+          - [70.2, 0.0]
+        duration: 16.2
+        clip: run
+        at: 68.2
