@@ -113,6 +113,7 @@ Her hareket `who` (karakter) ve `at` (çekim başından itibaren saniye) alır.
 | `do` | Alanlar | Not |
 |---|---|---|
 | `walk_to` | `to: [x, z]` veya nokta listesi `[[x, z], …]`, `duration` veya `speed` | Liste verilirse yol boyunca durmadan, sabit hızla yürür; köşeler en çok 2 m yarıçapla yuvarlatılır. Yola dönüş açıyla orantılı sürer (en çok 0.7 sn). Aynı klipte, öncekinin bitişinden en çok 0.35 sn sonra başlayan `walk_to` öncekine eklenir: her biri kendi süresini korur, aradaki durup kalkma kalkar. Bir yürüyüşü yarıda kesen yeni hareket (yürüyüş, savrulma), karakteri kesildiği yerden alır; kesilmeden önceki hareket değişmez |
+| `walk_to` + `road` | `road: true`, `lane`, `to: [x, z]` | Yol boyunca yürür: karakter bulunduğu yerden yola girer, yolun orta çizgisini (ya da `lane` ile yürüme yönüne göre sağdaki (+) / soldaki (−) şeridi) izler ve `to` noktasında yoldan çıkar. Harita varlığında `road: roads/dirt-road.json` olmalı. Ör. `{ who: toprak, do: walk_to, road: true, lane: -1.5, to: [56, 41], speed: 2 }` |
 | `turn` | `to: derece` veya karakter kimliği | |
 | `look_at` | `target: karakter` · `camera` · `[x, y, z]` | Yalnızca baş döner |
 | `wave` | `hand: right/left`, `duration` | |
@@ -225,6 +226,7 @@ npm run convert -- assets-src/maps/dirt-road/dirt-road-raw.glb public/models/map
 - Harita kendi koordinatlarında kullanılır: `{ asset: harita, at: [0, 0, 0] }`, `align: none`. Yükseklikler ~100–200 m.
 - Zemin olarak yalnızca şu parçalar sayılmalı (uzak arazi, kayalar ve bitkiler hariç):
   `terrain: [Aerial_Grass, Dirt_Road, Dirt_Road_Bare, Ground_Dirt, Grass_Close]`
+- Yol verisi motor için `public/roads/dirt-road.json` olarak da kopyalandı; harita varlığına `road: roads/dirt-road.json` eklenirse `walk_to` eylemleri `road: true` ile yol boyunca yürür (koordinat yazmaya gerek kalmaz).
 - Yolun orta çizgisi yol mesh'inden hesaplandı: [assets-src/maps/dirt-road/road.json](assets-src/maps/dirt-road/road.json) (`[x, z, genişlik, yükseklik]`, 122 nokta, ~435 m). Hesaplayan betik: `tools/blender/road_centerline.py`.
   Güneydeki çıkmaz `(-30, 80)` → düz kesit `(16, 43)…(56, 41)` → doğuda firkete `(87, 16)` → `(1, -14)` → kuzeybatı `(-116, -47)`.
 - Çam ağaçları (`Realistic_Pine_*`, 171 adet) üç LOD seviyesiyle gelir: LOD0 ~24k üçgen (< 35 m), LOD1 ~10k (35–80 m), LOD2 ~4k (> 80 m). Seviyeler `tools/blender/pine_lods.py` ile üretilir (`build_realistic_forest_map.py` bunu çağırır) ve her ağaçta `<ad>_LOD1`, `<ad>_LOD2` alt nesneleri olarak dışa aktarılır. Motor bunları `src/engine/lod.ts` ile `THREE.LOD`'a çevirir; uzaklıklar orada ayarlanır.

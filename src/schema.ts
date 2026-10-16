@@ -56,6 +56,13 @@ const action = z.discriminatedUnion('do', [
       speed: z.number().positive().default(1.2),
       /** Yürüyüş yerine kullanılacak döngü klibi (ör. kosu, jogging). Hız, ayaklar kaymasın diye klibe göre ayarlanır. */
       clip: z.string().optional(),
+      /**
+       * Yol boyunca yürü: true = sahnedeki haritanın yolu (varlıkta `road` tanımlı), ya da yolu olan varlığın adı.
+       * Karakter bulunduğu yerden yola girer, orta çizgiyi izler ve `to` noktasında yoldan çıkar.
+       */
+      road: z.union([z.boolean(), z.string()]).optional(),
+      /** Yolda şerit: yürüme yönüne göre sağa (+) / sola (−) metre; yol genişliğinin içinde tutulur. */
+      lane: z.number().default(0),
     })
     .strict(),
   z.object({ ...actionBase, do: z.literal('turn'), to: z.union([z.number(), z.string()]), duration: z.number().positive().default(0.5) }).strict(),
@@ -129,6 +136,11 @@ const modelAsset = z
     clips: z.record(z.string(), z.string()).optional(),
     /** feet: en alt nokta y=0'a oturtulur (varsayılan). none: modelin kendi orijini korunur (haritalar için). */
     align: z.enum(['feet', 'none']).default('feet'),
+    /**
+     * Haritanın yol orta çizgisi (JSON: { points: [[x, z, genişlik, yükseklik], …] }, haritanın kendi koordinatlarında).
+     * Varsa `walk_to` eylemleri `road: true` ile yol boyunca yürüyebilir.
+     */
+    road: z.string().optional(),
     /**
      * Göz kapağı kemikleriyle göz kırpma (morph'u olmayan, kapakları kemikli karakterler için).
      * bones: kemik adı deseni, axis/open: kapağı açan yerel eksen ve açı (radyan). 0 = kapalı.

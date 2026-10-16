@@ -18,6 +18,7 @@ import { setupLods } from './lod';
 import { CLEARANCE_SAMPLE_STEP, CameraClearance, type CameraSample } from './camera-clearance';
 import { ImpactFeel } from './impact';
 import { FocusTrack } from './focus-track';
+import { RoadPath } from './road';
 
 export interface BuiltShot {
   index: number;
@@ -559,8 +560,18 @@ export async function buildFilm(
     group.add(env.group);
 
     let terrain: Heightfield | null = null;
+    /** Yolu olan haritalar (varlık adı → yol); walk_to `road: true` ilkini kullanır. */
+    const roads = new Map<string, RoadPath>();
     for (const p of def.props) {
-      const obj = await lib.prop(s.assets[p.asset]);
+      const assetDef = s.assets[p.asset];
+      if ('road' in assetDef && assetDef.road && !roads.has(p.asset)) {
+        try {
+          roads.set(p.asset, await RoadPath.load(assetDef.road, p.at, p.rotation, p.scale));
+        } catch (e) {
+          warnings.push(`${def.id}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+      const obj = await lib.prop(assetDef);
       obj.position.set(...p.at);
       obj.rotation.y = deg(p.rotation);
       obj.scale.multiplyScalar(p.scale);
@@ -788,7 +799,21 @@ export async function buildFilm(
     timelineEvents.sort((a, b) => a.time - b.time);
     for (const ev of timelineEvents) {
       if (ev.kind === 'action') {
-        characters.get(ev.action.who)?.schedule(ev.action, ev.start, warnFn);
+        let action = ev.action;
+        // Yol boyunca yürüyüş: karakterin o anki yerinden hedefe, yolun orta çizgisi (ve şeridi) üzerinden
+        if (action.do === 'walk_to' && action.road) {
+          const road = typeof action.road === 'string' ? roads.get(action.road) : roads.values().next().value;
+          const ch = characters.get(action.who);
+          if (!road) {
+            warnFn(`"${action.who}": yol bulunamadı (${typeof action.road === 'string' ? `"${action.road}" varlığında road yok` : 'sahnedeki haritalarda road tanımlı değil'}); düz yürünecek`);
+          } else if (ch) {
+            const targets = typeof action.to[0] === 'number' ? [action.to as number[]] : (action.to as number[][]);
+            const last = targets[targets.length - 1];
+            const goal = new THREE.Vector3(last[0], 0, last.length === 3 ? last[2] : last[1]);
+            action = { ...action, to: road.route(ch.positionAt(ev.start, new THREE.Vector3()), goal, action.lane) };
+          }
+        }
+        characters.get(action.who)?.schedule(action, ev.start, warnFn);
         continue;
       }
 

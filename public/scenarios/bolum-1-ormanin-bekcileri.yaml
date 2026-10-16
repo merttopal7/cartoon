@@ -49,6 +49,7 @@ assets:
   harita:
     src: models/maps/dirt-road.glb
     align: none
+    road: roads/dirt-road.json   # yol orta çizgisi: walk_to { road: true } ile yol boyunca yürünür
 
 scenes:
   - id: acilis-patika
