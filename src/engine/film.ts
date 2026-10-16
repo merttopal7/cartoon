@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Action, CameraDef, CameraTarget, OverlayDef, Scenario, TransitionType } from '../schema';
 import type { FormatPreset } from '../formats';
-import type { AssetLibrary } from './assets';
+import { waitForPendingLoads, type AssetLibrary } from './assets';
 import { applyCamera, resolveCamera, type Subject } from './camera';
 import { Character, type SceneContext } from './character';
 import { buildEnvironment } from './environment';
@@ -11,7 +11,7 @@ import { disposeTree } from './toon';
 import { setupVegetationWind, type WindSystem } from './wind';
 import { AudioTimeline, type AudioCue } from './audio';
 import { buildSceneRenderDetails } from './details';
-import { renderMotionGraphicsLayer, type TransitionCue } from './motion-graphics';
+import { loadOverlayFonts, renderMotionGraphicsLayer, type TransitionCue } from './motion-graphics';
 import { AbilitySystem, type AbilityRecipe, type ActiveAbilityHUDInfo } from './abilities';
 import { buildRecipe, resolveAbility } from './ability-registry';
 import { setupLods } from './lod';
@@ -472,6 +472,8 @@ export class Film {
    * Render modu değişince (gölge açılıp kapanınca) yeniden çağrılmalıdır.
    */
   async warmup(renderer: THREE.WebGLRenderer) {
+    // Yazı tipi ve tüm dokular inmeden çizilen kareler, yüklemenin ne zaman bittiğine göre değişirdi
+    await Promise.all([loadOverlayFonts(), waitForPendingLoads()]);
     const prevBackground = this.scene.background;
     const prevFog = this.scene.fog;
     const prevVisible = this.scenes.map((s) => s.group.visible);

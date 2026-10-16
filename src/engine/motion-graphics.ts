@@ -132,6 +132,17 @@ export interface TransitionCue {
 const CARTOON_INK = '#2b1608';
 const CARTOON_FONT = '"Baloo 2", "Fredoka", "Comic Sans MS", "Trebuchet MS", cursive, sans-serif';
 
+/**
+ * Katmanların yazı tipini (Google Fonts, index.html) yüklenene kadar bekler. Beklenmezse ilk karelerdeki
+ * başlıklar, yazı tipinin ne zaman indiğine göre yedek yazı tipiyle çizilebiliyordu: aynı senaryo farklı
+ * çalıştırmalarda farklı kare veriyordu (dışa aktarımda da). Çevrimdışıyken en çok `timeoutMs` bekler.
+ */
+export async function loadOverlayFonts(timeoutMs = 5000): Promise<void> {
+  if (typeof document === 'undefined' || !document.fonts) return;
+  const loads = ['700', '800'].map((w) => document.fonts.load(`${w} 32px "Baloo 2"`).catch(() => []));
+  await Promise.race([Promise.all(loads), new Promise((res) => setTimeout(res, timeoutMs))]);
+}
+
 function roundRectPath(
   ctx: CanvasRenderingContext2D,
   x: number,

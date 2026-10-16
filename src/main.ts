@@ -2,6 +2,7 @@ import './style.css';
 import * as THREE from 'three';
 import { AssetLibrary } from './engine/assets';
 import { buildFilm, type Film } from './engine/film';
+import { loadOverlayFonts } from './engine/motion-graphics';
 import { exportMp4, webCodecsSupported } from './export/mp4';
 import { FORMATS, type FormatPreset } from './formats';
 import { Viewport } from './render/viewport';
@@ -1382,6 +1383,8 @@ async function runExport(formats: FormatPreset[]) {
   const current = film;
   const previousFormat = format;
   exporting = true;
+  // Başlık yazı tipi inmeden kare çizilirse ilk karelerdeki yazılar yedek yazı tipiyle çıkar
+  await loadOverlayFonts();
   setPlaying(false);
   abort = new AbortController();
   ui.overlay.hidden = false;

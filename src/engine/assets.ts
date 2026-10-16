@@ -21,6 +21,42 @@ interface LoadedModel {
   isFbx: boolean;
 }
 
+/**
+ * three.js'in ortak yükleme yöneticisindeki (FBX/GLB ve içlerindeki dokular) devam eden yüklemeler.
+ * FBX dokuları model döndükten sonra arka planda iner; beklenmezse ilk kareler dokusuz ya da kapalı göz
+ * malzemesi kurulmadan çizilir ve aynı senaryo farklı çalıştırmalarda farklı kare verir.
+ */
+let pendingLoads = 0;
+let loadWaiters: (() => void)[] = [];
+{
+  const mgr = THREE.DefaultLoadingManager;
+  const itemStart = mgr.itemStart.bind(mgr);
+  const itemEnd = mgr.itemEnd.bind(mgr);
+  mgr.itemStart = (url: string) => {
+    pendingLoads++;
+    itemStart(url);
+  };
+  // Hata veren yüklemeler de itemEnd çağırır; kırık bir doku yolu beklemeyi takmaz
+  mgr.itemEnd = (url: string) => {
+    pendingLoads = Math.max(0, pendingLoads - 1);
+    itemEnd(url);
+    if (pendingLoads === 0) {
+      const waiters = loadWaiters;
+      loadWaiters = [];
+      waiters.forEach((w) => w());
+    }
+  };
+}
+
+/** Devam eden tüm model ve doku yüklemeleri bitene kadar (en çok `timeoutMs`) bekler. */
+export function waitForPendingLoads(timeoutMs = 10000): Promise<void> {
+  if (pendingLoads === 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    loadWaiters.push(resolve);
+    setTimeout(resolve, timeoutMs);
+  });
+}
+
 const isFbx = (src: string) => /\.fbx$/i.test(src.split('?')[0]);
 
 /** Model dosyalarını (GLB/GLTF/FBX) bir kez yükler, her kullanımda klonlar. */
