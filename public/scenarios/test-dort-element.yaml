@@ -1,0 +1,225 @@
+# =============================================================================
+# ORMANIN BEKÇİLERİ — TEST BÖLÜMÜ: DÖRT ELEMENT
+# -----------------------------------------------------------------------------
+# Elementler: Karabey ATEŞ · Meşe SU · Toprak TOPRAK · Defne HAVA
+# Seslendirmesiz: diyaloglar ekranda (lower_third), ağız hareketi talk ile.
+#
+# Akış (≈55 sn):
+#   1. Açılış (0–6 sn): dört karakter yolda, başlık kartı.
+#   2. Tanışma (6–18.8 sn): her karakter sırayla kendini ve elementini tanıtır (konuşana kesme).
+#   3. Element gösterisi (18.8–48.6 sn, her element yandan ayrı çekim):
+#        Karabey Alev Büyüsü → Toprak Yer Dikenleri → Defne Rüzgar Hortumu → Meşe Sağanak Oku
+#        → Karabey üç hedefli Alev Büyüsü → üç bekçinin eş zamanlı kombosu.
+#   4. Kapanış (48.6–55 sn): Karabey yerden kalkar, bekçiler sevinir.
+# =============================================================================
+
+imports:
+  animations:
+    idle: models/characters/main-character/animations/Neutral Idle.fbx
+    walk: models/characters/main-character/animations/Walking.fbx
+    run: models/characters/main-character/animations/Running.fbx
+    jump_joy: models/characters/main-character/animations/Joyful Jump.fbx
+    stretch: models/characters/main-character/animations/Arm Stretching.fbx
+    point: models/characters/main-character/animations/Kneeling Pointing.fbx
+    hurricane_kick: models/characters/main-character/animations/Hurricane Kick.fbx
+    flying_kick: models/characters/main-character/animations/Flying Kick.fbx
+    dodge_back: models/characters/main-character/animations/Standing Dodge Backward.fbx
+    fall_flat: models/characters/main-character/animations/Fall Flat.fbx
+    taunt: models/characters/main-character/animations/Taunt.fbx
+    hip_hop: models/characters/main-character/animations/Hip Hop Dancing.fbx
+    fight_idle: models/characters/main-character/animations/Action Idle To Fight Idle.fbx
+
+film:
+  title: test-dort-element
+  fps: 30
+  fade_in: 0.6
+  fade_out: 1.5
+  handheld: 0.16
+  music:
+    src: /audio/main-theme/jyproject-carousel-dreams-396029.mp3
+    volume: 0.35
+    loop: true
+    fade_in: 0.5
+    fade_out: 1.5
+
+assets:
+  toprak:
+    src: models/characters/main-character/kid.fbx
+    height: 1.4
+    element: toprak
+  defne:
+    src: models/characters/Jackie/character.fbx
+    height: 1.68
+    element: hava
+  mese:
+    src: models/characters/Erika/character.fbx
+    height: 1.72
+    element: su
+  karabey:
+    src: models/characters/sword-and-shield/Paladin WProp J Nordstrom.fbx
+    height: 1.95
+    element: ates
+  harita:
+    src: models/maps/dirt-road.glb
+    align: none
+    road: roads/dirt-road.json
+
+scenes:
+  - id: dort-element
+    environment:
+      preset: day
+      ground_plane: false
+      fog_near: 120
+      fog_far: 450
+      wind:
+        enabled: false
+    props:
+      - asset: harita
+        at: [0, 0, 0]
+        terrain: [Dirt_Road, Dirt_Road_Bare, Dirt_Road_Trails, Road_Edge_Gravel_Dusty, Cobblestone, Grass_Close, Ground_Dirt, Aerial_Grass]
+    # Bölüm 2'nin savaş yeri: yolun düz kesiti, bekçiler doğuda, Karabey batıda
+    characters:
+      - { id: toprak, asset: toprak, at: [18.5, 0, 42.5], facing: -90 }
+      - { id: defne, asset: defne, at: [19.4, 0, 40.6], facing: -90 }
+      - { id: mese, asset: mese, at: [19.4, 0, 44.4], facing: -90 }
+      - { id: karabey, asset: karabey, at: [14.2, 0, 42.5], facing: 90 }
+
+    cameras:
+      # 1. Açılış (0–6 sn): dört karakter yolda
+      - at: 0.0
+        duration: 6.0
+        camera:
+          target: [toprak, defne, mese, karabey]
+          size: { from: 4.6, to: 3.4 }
+          angle: { from: 120, to: 100 }
+          elevation: { from: 13, to: 8 }
+          ease: inOut
+
+      # 2. Tanışma: her konuşmaya ayrı çekim, kamera konuşanın yüzüne dönük, orta plan
+      - at: 6.0
+        duration: 3.2
+        transition: cut
+        camera: { target: karabey, size: medium, angle: { from: -10, to: 8 }, elevation: 5, relative: true, ease: inOut }
+      - at: 9.2
+        duration: 3.2
+        transition: cut
+        camera: { target: toprak, size: medium, angle: { from: 10, to: -6 }, elevation: 6, relative: true, ease: inOut }
+      - at: 12.4
+        duration: 3.2
+        transition: cut
+        camera: { target: defne, size: medium, angle: { from: -8, to: 8 }, elevation: 5.5, relative: true, ease: inOut }
+      - at: 15.6
+        duration: 3.2
+        transition: cut
+        camera: { target: mese, size: medium, angle: { from: 8, to: -8 }, elevation: 5.5, relative: true, ease: inOut }
+
+      # 3. Element gösterisi (18.8–48.6 sn): her element yandan çekilir ki saldırı çizgisi ekranda yatay uzansın;
+      #    yol kenarındaki ağaçlar kamera açıklığıyla kendiliğinden gizlenir.
+      #    Yetenek odağı (yakınlaşma, kuş bakışı) otomatik.
+      - at: 18.8
+        duration: 4.8
+        transition: cut
+        camera: { target: [karabey, toprak], size: { from: 2.7, to: 2.4 }, angle: { from: 24, to: 10 }, elevation: 9, ease: inOut }
+      - at: 23.6
+        duration: 4.0
+        transition: cut
+        camera: { target: [toprak, karabey], size: { from: 2.6, to: 2.3 }, angle: { from: -6, to: 6 }, elevation: 10, ease: inOut }
+      - at: 27.6
+        duration: 5.0
+        transition: cut
+        # Defne yolun güneyinde: güneyden ve biraz yukarıdan çekilir (kuzeyden Meşe önüne geçiyordu, alçaktan yol kenarı çalıları)
+        camera: { target: [defne, karabey], size: { from: 2.3, to: 2.15 }, angle: { from: 194, to: 172 }, elevation: { from: 17, to: 14 }, ease: inOut }
+      - at: 32.6
+        duration: 5.3
+        transition: cut
+        camera: { target: [mese, karabey], size: { from: 2.6, to: 2.4 }, angle: { from: -4, to: 10 }, elevation: 9, ease: inOut }
+      - at: 37.9
+        duration: 4.7
+        transition: cut
+        camera: { target: [toprak, defne, mese, karabey], size: { from: 3.0, to: 2.8 }, angle: { from: 8, to: 20 }, elevation: 11, ease: inOut }
+      - at: 42.6
+        duration: 6.0
+        transition: cut
+        camera: { target: [toprak, defne, mese, karabey], size: { from: 3.1, to: 3.4 }, angle: { from: 28, to: 6 }, elevation: { from: 10, to: 13 }, ease: inOut }
+
+      # 4. Kapanış (48.6–55 sn): bekçiler sevinir
+      - at: 48.6
+        duration: 6.4
+        transition: iris
+        camera:
+          target: [toprak, defne, mese]
+          size: { from: 2.4, to: 3.2 }
+          angle: { from: 14, to: -10 }
+          elevation: { from: 6, to: 7.5 }
+          relative: true
+          ease: inOut
+
+    overlays:
+      - type: title_card
+        at: 0.6
+        duration: 5.0
+        badge: "ORMANIN BEKÇİLERİ"
+        title: "TEST BÖLÜMÜ: DÖRT ELEMENT"
+        subtitle: "Ateş · Su · Toprak · Hava"
+        accent: "#7c2d12"
+        position: top
+
+      # Tanışma: konuşan, elementi ve söylediği
+      - { type: lower_third, at: 6.5, duration: 2.5, name: "KARABEY", role: "Ateş Elementi", tag: "Ateşin gücü benimle, bekçiler!", accent: "#c2410c", align: left }
+      - { type: lower_third, at: 9.7, duration: 2.5, name: "TOPRAK", role: "Toprak Elementi", tag: "Toprak bizi her zaman korur!", accent: "#78350f", align: left }
+      - { type: lower_third, at: 12.9, duration: 2.5, name: "DEFNE", role: "Hava Elementi", tag: "Rüzgar benim kanadım!", accent: "#0d9488", align: right }
+      - { type: lower_third, at: 16.1, duration: 2.5, name: "MEŞE", role: "Su Elementi", tag: "Su her zaman yolunu bulur!", accent: "#1d4ed8", align: left }
+
+      # Gösteri: her elementin adı yetenek başında
+      - { type: comic_pop, at: 19.4, duration: 3.0, text: "ATEŞ!", subtext: "KARABEY · ALEV BÜYÜSÜ", accent: "#c2410c", position: top-left }
+      - { type: comic_pop, at: 23.9, duration: 3.0, text: "TOPRAK!", subtext: "TOPRAK · YER DİKENLERİ", accent: "#78350f", position: top-right }
+      - { type: comic_pop, at: 27.9, duration: 3.0, text: "HAVA!", subtext: "DEFNE · RÜZGAR HORTUMU", accent: "#0d9488", position: top-right }
+      - { type: comic_pop, at: 32.9, duration: 3.0, text: "SU!", subtext: "MEŞE · SAĞANAK OKU", accent: "#1d4ed8", position: top-right }
+      - { type: comic_pop, at: 38.2, duration: 3.0, text: "ATEŞ FIRTINASI!", subtext: "KARABEY ÜÇ BEKÇİYE BİRDEN", accent: "#c2410c", position: top-left }
+      - { type: comic_pop, at: 42.8, duration: 3.5, text: "ÜÇ ELEMENT BİRDEN!", subtext: "SU · TOPRAK · HAVA", accent: "#16a34a", position: top-center }
+      - { type: comic_pop, at: 49.4, duration: 5.0, text: "DÖRT ELEMENT TAMAM!", subtext: "ORMANIN BEKÇİLERİ", accent: "#16a34a", position: top-center }
+
+    actions:
+      # -----------------------------------------------------------------------
+      # 2. Tanışma: konuşan kameraya bakar; konuşma çekimin 0.7 sn'sinde başlar, bitişe ≥0.6 sn pay kalır
+      # -----------------------------------------------------------------------
+      - { who: karabey, do: clip, name: taunt, at: 6.0, duration: 3.2, loop: true, fade: 0.3 }
+      - { who: karabey, do: look_at, target: camera, at: 6.0, duration: 3.2 }
+      - { who: karabey, do: talk, at: 6.7, duration: 1.9, text: "Ateşin gücü benimle, bekçiler!" }
+
+      - { who: toprak, do: look_at, target: camera, at: 9.2, duration: 3.2 }
+      - { who: toprak, do: talk, at: 9.9, duration: 1.9, text: "Toprak bizi her zaman korur!" }
+
+      - { who: defne, do: clip, name: fight_idle, at: 12.4, duration: 3.2, loop: true, fade: 0.3 }
+      - { who: defne, do: look_at, target: camera, at: 12.4, duration: 3.2 }
+      - { who: defne, do: talk, at: 13.1, duration: 1.9, text: "Rüzgar benim kanadım!" }
+
+      - { who: mese, do: look_at, target: camera, at: 15.6, duration: 3.2 }
+      - { who: mese, do: talk, at: 16.3, duration: 1.9, text: "Su her zaman yolunu bulur!" }
+
+      # -----------------------------------------------------------------------
+      # 3. Element gösterisi: her yetenek bir öncekinden ~0.6 sn sonra başlar
+      # -----------------------------------------------------------------------
+      # ATEŞ — Karabey → Toprak (isabet 22.14 sn)
+      - { who: karabey, do: ability, name: alev_buyusu, target: toprak, at: 19.4, knockback: 0.35, impact_clip: dodge_back }
+      # TOPRAK — Toprak → Karabey (dikenler 25.25 sn'de çıkar, isabet 26.0 sn)
+      - { who: toprak, do: ability, name: yer_dikeni, target: karabey, at: 23.9, knockback: 0.4, impact_clip: impact_3 }
+      # HAVA — Defne → Karabey (isabet 30.95 sn)
+      - { who: defne, do: ability, name: ruzgar_hortumu, target: karabey, at: 27.9, knockback: 0.4, impact_clip: impact_2 }
+      # SU — Meşe → Karabey (ok 35.07 sn'de çıkar, isabet 35.7 sn)
+      - { who: mese, do: ability, name: firtina_oku, target: karabey, at: 32.9, knockback: 0.35, impact_clip: impact_3 }
+      # ATEŞ FIRTINASI — Karabey → üç bekçi aynı anda (isabet 40.94 sn)
+      - { who: karabey, do: ability, name: alev_buyusu, target: [toprak, defne, mese], at: 38.2, knockback: 0.25, impact_clip: dodge_back }
+      # ÜÇ ELEMENT BİRDEN — eş zamanlı kombo; son isabet (hortum, 46.05 sn) Karabey'i yere serer
+      - { who: mese, do: ability, name: firtina_oku, target: karabey, at: 42.8, knockback: 0.3, impact_clip: impact_3 }
+      - { who: toprak, do: ability, name: yer_dikeni, target: karabey, at: 42.9, knockback: 0.3, impact_clip: impact_3 }
+      - { who: defne, do: ability, name: ruzgar_hortumu, target: karabey, at: 43.0, knockback: 2.4, impact_clip: death }
+
+      # -----------------------------------------------------------------------
+      # 4. Kapanış: Karabey kalkar ve geri çekilir, bekçiler sevinir
+      # -----------------------------------------------------------------------
+      - { who: karabey, do: clip, name: crouch_to_stand, at: 49.0, duration: 1.1, loop: false, fade: 0.25 }
+      - { who: karabey, do: walk_to, road: true, to: [4.0, 42.6], speed: 2.6, clip: run_2, at: 50.4 }
+      - { who: toprak, do: clip, name: jump_joy, at: 49.6, duration: 3.6, loop: true, fade: 0.35 }
+      - { who: defne, do: clip, name: hip_hop, at: 49.6, duration: 3.6, loop: true, fade: 0.35 }
+      - { who: mese, do: clip, name: jump_joy, at: 49.8, duration: 3.4, loop: true, fade: 0.35 }

@@ -1,6 +1,8 @@
 # =============================================================================
 # ORMANIN BEKÇİLERİ — BÖLÜM 2: KARABEY'İN GÖLGESİ VE KESİNTİSİZ SIRALI SAVAŞ
 # -----------------------------------------------------------------------------
+# Elementler: Karabey ATEŞ · Meşe SU · Toprak TOPRAK · Defne HAVA
+#   (Toprak'ın yeteneği Yer Dikenleri, Karabey'in Alev Büyüsü; seslendirmeler değişmedi.)
 # Akış Planı:
 #   1. Giriş Sahnesi (0.0s - 10.0s): Orman Bekçileri patikada ilerler, Karabey pusudan çıkar.
 #   2. Karşılıklı Konuşma ve Meydan Okuma (10.0s - 31.0s): Savaş öncesi diyaloglar (Karabey, Toprak, Defne, Meşe).
@@ -58,18 +60,22 @@ assets:
     src: models/characters/main-character/kid.fbx
     height: 1.4
     voice: xDppd78rqTGY8ICN7M4n
+    element: toprak
   defne:
     src: models/characters/Jackie/character.fbx
     height: 1.68
     voice: o9DOmAyPjfFu8AfoFAnM
+    element: hava
   mese:
     src: models/characters/Erika/character.fbx
     height: 1.72
     voice: KAGDtM2gzDrjWlUp2KNe
+    element: su
   karabey:
     src: models/characters/sword-and-shield/Paladin WProp J Nordstrom.fbx
     height: 1.95
     voice: mF7tIc9VLrznhGooGjaT
+    element: ates
   harita:
     src: models/maps/dirt-road.glb
     align: none
@@ -235,7 +241,7 @@ scenes:
         duration: 6.5
         badge: "ORMANIN BEKÇİLERİ"
         title: "BÖLÜM 2: KARABEY'İN GÖLGESİ"
-        subtitle: "Ulu Çınar Yolu'nda Kesintisiz Yetenek Düellosu!"
+        subtitle: "Ulu Çınar Yolu'nda Dört Elementin Düellosu!"
         accent: "#991b1b"
         position: top
 
@@ -243,7 +249,7 @@ scenes:
         at: 10.4
         duration: 5.8
         name: "KARABEY"
-        role: "Karanlık Muhafız ve Ormanın Düşmanı"
+        role: "Ateş Elementi · Ormanın Düşmanı"
         tag: "Ormanın Gölgesi Her Yerde! Bu Orman Benim Olacak!"
         accent: "#991b1b"
         align: left
@@ -252,7 +258,7 @@ scenes:
         at: 16.8
         duration: 4.8
         name: "TOPRAK"
-        role: "Meraklı Kaşif ve Yol Gösterici"
+        role: "Toprak Elementi · Meraklı Kaşif"
         tag: "Ormanın Neşeli Lideri!"
         accent: "#16a34a"
         align: left
@@ -261,7 +267,7 @@ scenes:
         at: 22.0
         duration: 4.3
         name: "DEFNE"
-        role: "Ormanın Keskin Gözcüsü"
+        role: "Hava Elementi · Ormanın Gözcüsü"
         tag: "Hiçbir Sır Gözünden Kaçmaz!"
         accent: "#db2777"
         align: right
@@ -270,8 +276,8 @@ scenes:
         at: 26.6
         duration: 4.2
         name: "MEŞE (ERİKA)"
-        role: "Ormanın Büyülü Okçusu ve Bilgesi"
-        tag: "Büyülü Yağmur Oklarıyla Ormanı Korur!"
+        role: "Su Elementi · Ormanın Okçusu ve Bilgesi"
+        tag: "Su Oklarıyla Ormanı Korur!"
         accent: "#0284c7"
         align: left
 
@@ -286,16 +292,16 @@ scenes:
       - type: comic_pop
         at: 46.3
         duration: 4.5
-        text: "ALEV VE HORTUM ZİNCİRİ!"
-        subtext: "TOPRAK'IN ARDINDAN ANINDA DEFNE SALDIRIYOR!"
+        text: "TOPRAK VE HAVA ZİNCİRİ!"
+        subtext: "YER DİKENLERİNİN ARDINDAN ANINDA HORTUM!"
         accent: "#ea580c"
         position: top-left
 
       - type: comic_pop
         at: 67.6
         duration: 5.0
-        text: "FİNAL YETENEK KOMBO ZİNCİRİ!"
-        subtext: "BÜYÜLÜ YAĞMUR OKU VE ALEV TEKMESİ!"
+        text: "FİNAL ELEMENT KOMBOSU!"
+        subtext: "SAĞANAK OKU VE YER DİKENLERİ!"
         accent: "#0284c7"
         position: top-center
 
@@ -469,10 +475,10 @@ scenes:
         target: Realistic_Pine_057
         at: 31.2
 
-      # 2. Hamle (34.6s — 0.58s sonra): Toprak Ateş Topu (vuruş: 36.10s)
+      # 2. Hamle (34.6s — 0.58s sonra): Toprak Yer Dikenleri (vuruş: 36.70s)
       - who: toprak
         do: ability
-        name: ates_topu
+        name: yer_dikeni
         target: karabey
         at: 34.6
         knockback: 0.35
@@ -487,7 +493,7 @@ scenes:
         knockback: 0.40
         impact_clip: impact_2
 
-      # 4. Hamle (40.5s — Defne'den 0.65s sonra): Meşe (Erika) Fırtına Oku (sol elden 42.65s'de çıkar, 43.30s'de çarpınca fırtına yağmuru yağar)
+      # 4. Hamle (40.5s — Defne'den 0.65s sonra): Meşe (Erika) Sağanak Oku (sol elden 42.65s'de çıkar, 43.30s'de çarpınca sağanak yağar)
       - who: mese
         do: ability
         name: firtina_oku
@@ -496,10 +502,10 @@ scenes:
         knockback: 0.35
         impact_clip: impact_3
 
-      # 5. Hamle (43.9s — Meşe'den 0.60s sonra): Karabey Karanlık Büyü — Üç hedefe de aynı anda vurur (vuruş: 46.64s)
+      # 5. Hamle (43.9s — Meşe'den 0.60s sonra): Karabey Alev Büyüsü — Üç hedefe de aynı anda ateş topu (vuruş: 46.64s)
       - who: karabey
         do: ability
-        name: karanlik_buyu
+        name: alev_buyusu
         target:
           - toprak
           - defne
@@ -508,10 +514,10 @@ scenes:
         knockback: 0.25
         impact_clip: dodge_back
 
-      # 6. Hamle (47.2s — Karabey'den 0.56s sonra): Toprak Ateş Topu (vuruş: 48.70s)
+      # 6. Hamle (47.2s — Karabey'den 0.56s sonra): Toprak Yer Dikenleri (vuruş: 49.30s)
       - who: toprak
         do: ability
-        name: ates_topu
+        name: yer_dikeni
         target: karabey
         at: 47.2
         knockback: 0.40
@@ -533,7 +539,7 @@ scenes:
         target: Realistic_Pine_022
         at: 53.4
 
-      # 9. Hamle (56.8s — Karabey'den 0.58s sonra): Meşe (Erika) Fırtına Oku (sol elden 58.95s'de çıkar, 59.60s'de çarpınca fırtına yağmuru yağar)
+      # 9. Hamle (56.8s — Karabey'den 0.58s sonra): Meşe (Erika) Sağanak Oku (sol elden 58.95s'de çıkar, 59.60s'de çarpınca sağanak yağar)
       - who: mese
         do: ability
         name: firtina_oku
@@ -542,10 +548,10 @@ scenes:
         knockback: 0.35
         impact_clip: impact_3
 
-      # 10. Hamle (60.2s — Meşe'den 0.60s sonra): Toprak Ateş Topu (vuruş: 61.70s)
+      # 10. Hamle (60.2s — Meşe'den 0.60s sonra): Toprak Yer Dikenleri (vuruş: 62.30s)
       - who: toprak
         do: ability
-        name: ates_topu
+        name: yer_dikeni
         target: karabey
         at: 60.2
         knockback: 0.40
@@ -560,10 +566,10 @@ scenes:
         knockback: 0.45
         impact_clip: impact_2
 
-      # 12. Hamle (65.9s — Defne'den 0.55s sonra): Karabey Karanlık Büyü — Üç hedefe de aynı anda vurur (vuruş: 68.64s)
+      # 12. Hamle (65.9s — Defne'den 0.55s sonra): Karabey Alev Büyüsü — Üç hedefe de aynı anda ateş topu (vuruş: 68.64s)
       - who: karabey
         do: ability
-        name: karanlik_buyu
+        name: alev_buyusu
         target:
           - toprak
           - defne
@@ -572,7 +578,7 @@ scenes:
         knockback: 0.25
         impact_clip: dodge_back
 
-      # 13. Hamle (69.2s — Karabey'den 0.56s sonra): Meşe (Erika) Fırtına Oku (sol elden 71.35s'de çıkar, 72.00s'de çarpınca fırtına yağmuru yağar)
+      # 13. Hamle (69.2s — Karabey'den 0.56s sonra): Meşe (Erika) Sağanak Oku (sol elden 71.35s'de çıkar, 72.00s'de çarpınca sağanak yağar)
       - who: mese
         do: ability
         name: firtina_oku
@@ -581,10 +587,10 @@ scenes:
         knockback: 0.40
         impact_clip: impact_3
 
-      # 14. Hamle — BÜYÜK FİNAL (72.5s — Meşe'den 0.50s sonra): Toprak Ateş Topu ile Karabey'i yere serer
+      # 14. Hamle — BÜYÜK FİNAL (72.5s — Meşe'den 0.50s sonra): Toprak Yer Dikenleri ile Karabey'i yere serer (vuruş: 74.60s)
       - who: toprak
         do: ability
-        name: ates_topu
+        name: yer_dikeni
         target: karabey
         at: 72.5
         knockback: 2.8

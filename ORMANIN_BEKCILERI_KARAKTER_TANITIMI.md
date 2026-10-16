@@ -13,12 +13,14 @@
 
 ## 1. Karakter Kadrosu ve Teknik Kimlik Tablosu
 
-| Karakter Kimliği (`id`) | Adı | Unvanı / Rolü (`role`) | Sloganı (`tag`) | Boy (`height`) | Tema Rengi (`accent`) | 3B Model Kaynağı (`src`) | ElevenLabs Ses Kimliği (`voice`) |
-| :--- | :--- | :--- | :--- | :---: | :---: | :--- | :--- |
-| `toprak` | **Toprak** | Meraklı Kaşif ve Yol Gösterici | *Ormanın Neşeli Lideri!* | `1.40 m` | `#16a34a` (Orman Yeşili) | `models/characters/main-character/kid.fbx` | `xDppd78rqTGY8ICN7M4n` |
-| `defne` | **Defne** | Ormanın Keskin Gözcüsü | *Hiçbir Sır Gözünden Kaçmaz!* | `1.68 m` | `#db2777` (Canlı Pembe / Fuşya) | `models/characters/Jackie/character.fbx` | `o9DOmAyPjfFu8AfoFAnM` |
-| `mese` | **Meşe** | Kadim Sırların Bilgesi ve Okçu | *Ulu Çınarın En Yakın Dostu!* | `1.72 m` | `#d97706` (Kehribar / Altın Sarısı) | `models/characters/Erika/character.fbx` | `KAGDtM2gzDrjWlUp2KNe` |
-| `karabey` | **Karabey** | Karanlık Muhafız ve Ormanın Düşmanı | *Ormanın Gölgesi Her Yerde! Bu Orman Benim Olacak!* | `1.95 m` | `#991b1b` (Koyu Kızıl / Karanlık) | `models/characters/sword-and-shield/Paladin WProp J Nordstrom.fbx` | `mF7tIc9VLrznhGooGjaT` |
+| Karakter Kimliği (`id`) | Adı | Element (`element`) | Unvanı / Rolü (`role`) | Sloganı (`tag`) | Boy (`height`) | Tema Rengi (`accent`) | 3B Model Kaynağı (`src`) | ElevenLabs Ses Kimliği (`voice`) |
+| :--- | :--- | :---: | :--- | :--- | :---: | :---: | :--- | :--- |
+| `toprak` | **Toprak** | **Toprak** (`toprak`) | Toprak Elementi · Meraklı Kaşif | *Ormanın Neşeli Lideri!* | `1.40 m` | `#16a34a` (Orman Yeşili) | `models/characters/main-character/kid.fbx` | `xDppd78rqTGY8ICN7M4n` |
+| `defne` | **Defne** | **Hava** (`hava`) | Hava Elementi · Ormanın Gözcüsü | *Hiçbir Sır Gözünden Kaçmaz!* | `1.68 m` | `#db2777` (Canlı Pembe / Fuşya) | `models/characters/Jackie/character.fbx` | `o9DOmAyPjfFu8AfoFAnM` |
+| `mese` | **Meşe** | **Su** (`su`) | Su Elementi · Ormanın Okçusu ve Bilgesi | *Su Oklarıyla Ormanı Korur!* | `1.72 m` | `#d97706` (Kehribar / Altın Sarısı) | `models/characters/Erika/character.fbx` | `KAGDtM2gzDrjWlUp2KNe` |
+| `karabey` | **Karabey** | **Ateş** (`ates`) | Ateş Elementi · Ormanın Düşmanı | *Ormanın Gölgesi Her Yerde! Bu Orman Benim Olacak!* | `1.95 m` | `#991b1b` (Koyu Kızıl / Karanlık) | `models/characters/sword-and-shield/Paladin WProp J Nordstrom.fbx` | `mF7tIc9VLrznhGooGjaT` |
+
+> **Element kuralı:** Her karakter yalnızca kendi elementinin yeteneklerini kullanır. Senaryoda karakter varlığına `element: toprak` gibi yazılır; başka elementten bir yetenek kullanırsa motor yüklemede uyarı verir. Yeteneklerin elementi ve zamanlaması [`src/data/abilities.yaml`](src/data/abilities.yaml) dosyasındadır (tek kaynak).
 
 ---
 
@@ -28,16 +30,16 @@
 - **Boy:** `1.40 m`
 - **Görünüm:** Şapkalı, sırt çantalı, yeşil doğa kıyafetli genç kaşif.
 - **Kişilik:** Enerjik, cesur, sabah sporunu aksatmayan ve ekibi bir araya getiren doğal liderdir. Yeni patikaları keşfetmeyi, taktik vermeyi (`point`) ve akrobatik hareketlerle (`pushup`, `capoeira`, `flair`, `breakdance`) moral yükseltmeyi sever.
-- **Özel Yetenekleri (`do: ability`):**
-  - **`ates_topu` (`fireball`):** `Hook Punch.fbx` (`hook_punch`) animasyonuyla sağ yumruğunda alev enerjisi toplar, 3B parçacıklı (particle) dev bir **Ateş Topu** fırlatır ve vurduğu düşmanı metrelerce geriye savurur (`knockback`).
-  - **`alev_tekmesi` (`flame_kick` — 2 Animasyonlu Kombo):** `macaco_side` + `flying_kick` animasyonlarını ardışık birleştirerek alevli uçan tekme dalgası fırlatır.
+- **Elementi:** Toprak.
+- **Özel Yeteneği (`do: ability`):**
+  - **`yer_dikeni` (`toprak_dikeni` / `kaya_dikeni` / `earth_spikes`) — Yer Dikenleri:** Kollarını gererek güç toplar (`stretch`, `1.0s`), çevresinde yerden taşçıklar yükselir; diz çöküp yere dokunduğu anda (`point`, `1.35s`) ondan hedefe doğru sırayla yerden kaya dikenler fışkırır ve dalga gibi ilerler. **İsabette (`2.10s`)** hedefin altında üç büyük diken, toz bulutu ve taş parçaları çıkar; hedef savrulur.
 - **Standart İsim Kartı (`lower_third`):**
   ```yaml
   - type: lower_third
     at: 26.5
     duration: 6.5
     name: "TOPRAK"
-    role: "Meraklı Kaşif ve Yol Gösterici"
+    role: "Toprak Elementi · Meraklı Kaşif"
     tag: "Ormanın Neşeli Lideri!"
     accent: "#16a34a"
     align: left
@@ -47,16 +49,16 @@
 - **Boy:** `1.68 m`
 - **Görünüm:** Atletik yapılı, pembe saçlı ve spor kıyafetli çevik gözcü.
 - **Kişilik:** Hızlı refleksleri, keskin gözlemi ve korkusuz duruşuyla ekibin koruyucu kalkanıdır. Tehlike anında en önde yer alır; hip-hop dansıyla (`hip_hop`) kutlamalara renk katar.
-- **Özel Yetenekleri (`do: ability`):**
-  - **`ruzgar_hortumu` (`hortum` / `wind_tornado` — 2 Animasyonlu Kombo):** Tornado Defne'nin **tam içinde** oluşana kadar (`2.25s` boyunca) `hurricane_kick` (`Hurricane Kick.fbx`) animasyonu çalışır; ardından hedefe gönderirken sonraki tekme animasyonu (`flying_kick`) devreye girer ve çift katmanlı 3B **Rüzgar Hortumu (Tornado)** Defne'nin içinden düşmana fırlatılarak düşmanı havaya kaldırıp geriye savurur!
-  - **`kasirga_tufani` (`whirlwind_kick` — 2 Animasyonlu Kombo):** Tornado Defne'nin içinde oluşana kadar (`2.20s` boyunca) `hurricane_kick` (`Hurricane Kick.fbx`) çalışır, ardından hedefe gönderirken sonraki döner tekme animasyonu (`kick` / `Martelo 2.fbx`) ile rüzgar fırtınasını hedefe gönderir.
+- **Elementi:** Hava.
+- **Özel Yeteneği (`do: ability`):**
+  - **`ruzgar_hortumu` (`hortum` / `wind_tornado` / `kasirga_tufani` / `whirlwind_kick`) — Rüzgar Hortumu:** Tornado Defne'nin **tam içinde** oluşana kadar (`2.25s`) `hurricane_kick` döner; hedefe gönderirken `flying_kick` ile çift katmanlı 3B hortum Defne'nin içinden düşmana fırlar (**isabet `3.05s`**), düşmanı havaya kaldırıp savurur. (`kasirga_tufani` artık aynı yeteneğin takma adıdır.)
 - **Standart İsim Kartı (`lower_third`):**
   ```yaml
   - type: lower_third
     at: 40.4
     duration: 3.6
     name: "DEFNE"
-    role: "Ormanın Keskin Gözcüsü"
+    role: "Hava Elementi · Ormanın Gözcüsü"
     tag: "Hiçbir Sır Gözünden Kaçmaz!"
     accent: "#db2777"
     align: right
@@ -66,15 +68,16 @@
 - **Boy:** `1.72 m`
 - **Görünüm:** Sol elinde 3B yay (`Erika_Archer_Bow_Mesh` / `Bow_MAT`) taşıyan, okçu kıyafetli (`Erika_Archer_Clothes_Mesh`) ve Pro Longbow animasyon paketine sahip çevik orman okçusu (`models/characters/Erika/character.fbx`).
 - **Kişilik:** Ormanın kadim geçmişini, ağaçların dilini ve Ulu Çınar'ın fısıltılarını dinleyebilen bilge okçudur. Neşeli zıplayışları (`jump_joy`), şarkı söylemesi (`singing`) ve okçu duruşlarıyla ekibin kalbidir.
+- **Elementi:** Su.
 - **Özel Yeteneği (`do: ability`):**
-  - **`yagmur` (`yagmur_bulutu` / `orman_yagmuru` / `rain` — 2 Animasyonlu Kombo):** `stretch` (kolları göğe açma) + `jump_joy` (sevinç sıçrayışı) animasyonlarının birleşimiyle düşmanın tam tepesinde **3B Fırtına Bulutu, Şimşek Çakması ve Sağanak Yağmur** yağdırır; düşmanı sırılsıklam edip geriye savurur!
+  - **`firtina_oku` (`yagmur_oku` / `su_oku` / `rain_arrow` / `yagmur` …) — Sağanak Oku:** Yayına ok yerleştirir (`draw_arrow`), sol elindeki yayda su enerjisi toplar (`aim_overdraw`); kirişi bıraktığı anda (`aim_recoil`, **`2.17s`**) büyülü su oku sol elinden çıkar. **İsabette (`2.80s`)** hedefin tepesinde fırtına bulutu, şimşek ve sağanak yağmur başlar, hedef savrulur.
 - **Standart İsim Kartı (`lower_third`):**
   ```yaml
   - type: lower_third
     at: 54.0
     duration: 5.5
     name: "MEŞE"
-    role: "Kadim Sırların Bilgesi"
+    role: "Su Elementi · Ormanın Okçusu ve Bilgesi"
     tag: "Ulu Çınarın En Yakın Dostu!"
     accent: "#d97706"
     align: left
@@ -84,16 +87,18 @@
 - **Boy:** `1.95 m` (`1.90 m - 2.00 m` aralığında, serideki tüm karakterlerden belirgin biçimde uzun ve heybetli)
 - **Görünüm:** Tam takım ağır şövalye zırhı, miğferi, sol elinde kalkanı ve sağ elinde kılıcıyla donanmış karanlık muhafız.
 - **Kişilik:** Ormanın kadim dengesini bozmak ve Ulu Çınar'ın gücünü ele geçirmek isteyen baş düşmandır.
+- **Elementi:** Ateş.
 - **Özel Yetenekleri (`do: ability`):**
-  - **`golge_kilic` (`golge_dalgasi` / `shadow_slash` — 2 Animasyonlu Kombo):** `power_up` + `slash_2` animasyonlarının birleşimiyle **siyaha çok yakın koyu bir duman bulutu** oluşturur; patlamaz, Karabey'in içinden değil **kafasının biraz üstünden** (`Y + rig.height + 0.18m`) yoğunlaşarak başlar, **animasyon süresinin sonuna doğru (`2.20s` anında) hedefe fırlatılır** ve doğrudan **düşmanın içine giderek** gövdesinin içine emilir!
-  - **`karanlik_buyu` (`shadow_storm` — 2 Animasyonlu Kombo):** `casting` + `attack_2` animasyonlarının birleşimiyle Karabey'in kafasının biraz üstünden başlayıp animasyonun sonuna doğru düşmanın içine giden simsiyah gölge dumanı gönderir.
+  - **`alev_buyusu` (`ates_buyusu` / `ates_firtinasi` / `fire_spell`) — Alev Büyüsü:** Büyü toplar (`casting`), elinde büyüyen ateş topunu kılıç saldırısıyla (`attack_2`, **`2.12s`**) fırlatır; **isabet `2.74s`**. `target` bir liste verilirse (ör. `[toprak, defne, mese]`) her hedefe aynı anda ayrı bir ateş topu gider (Ateş Fırtınası).
+  - **`agac_devirme` (`tree_fall`) — Ağaç Devirme:** Güç toplar (`power_up`), kızgın yatay kılıç darbesiyle (`slash_2`, kesik `1.65s`) haritadaki çamı (`target: Realistic_Pine_057` gibi) keser; ağaç devrilip **`2.38s`'de** yere çarpar ve yerde kalır. Hedef karakter gerektirmez.
+  - *Eski gölge yetenekleri (`golge_kilic`, `karanlik_buyu`) motor tarafından hâlâ tanınır ama elementsizdir (`golge`); Ormanın Bekçileri'nde kullanılmaz, Karabey kullanırsa uyarı verilir.*
 - **Standart İsim Kartı (`lower_third`):**
   ```yaml
   - type: lower_third
     at: 10.5
     duration: 9.0
     name: "KARABEY"
-    role: "Karanlık Muhafız ve Ormanın Düşmanı"
+    role: "Ateş Elementi · Ormanın Düşmanı"
     tag: "Ormanın Gölgesi Her Yerde! Bu Orman Benim Olacak!"
     accent: "#991b1b"
     align: left
@@ -108,15 +113,15 @@
 > 2. **Eş Zamanlı (Aynı Anda Birden Fazla) Yetenek Kullanımı:** Dövüş sahnelerinde 2 veya 3 karakter **aynı anda (`at` zamanları çakışacak veya çok yakın olacak şekilde) `do: ability` kullanabilir**. Motor tüm eş zamanlı yetenekleri aynı anda işler, kamera tüm aktif yetenekleri ve hedefleri tek bir dinamik kadrajda birleştirir, savrulmalar (`knockback`) ise vuruş anına (`impactTime`) göre sırayla uygulanır.
 > 3. **Otomatik Yetenek Kamerası Yaklaşımı:** Tekli yetenek kullanımının başında kamera otomatik olarak **yeteneği kullanan karaktere yaklaşır (ancak yetenek efekti kadrajda tam görünür kalacak mesafede tutulur)**, eş zamanlı yeteneklerde ise tüm aktif yetenekleri kapsayan geniş aksiyon açısına geçer.
 
-| Yetenek Kodu (`name`) | Karakter (`who`) | Animasyon Birleşimi (1 veya 2 Klip) | Gerçekçi 3B Hacimsel Shader Ağı ve Minimal Fiziksel Detay | Varsayılan Savrulma (`knockback` / `impact_clip`) |
-| :--- | :---: | :--- | :--- | :--- |
-| `ates_topu` (`fireball`) | `toprak` | `hook_punch` (Tekli — `2.17s`) | 3B FBM plazma/magma çekirdeği + uçuş yönünde uzayan 3B hacimsel alev koronası + minimal seken kor kıvılcımları ve ince is dumanı | `4.0 m` / `death` veya `impact_3` |
-| `alev_tekmesi` (`flame_kick`) | `toprak` | `macaco_side` + `flying_kick` (**2 Animasyonlu — `2.85s`**) | Yan akrobatik sıçrayış + uçan tekmeyle fırlayan 3B hacimsel alev çekirdeği, korona ve ince duman izi | `4.0 m` / `impact_3` |
-| `ruzgar_hortumu` (`hortum`) | `defne` | `hurricane_kick` + `flying_kick` (**2 Animasyonlu — `3.90s`**) | Tornado Defne'nin **tam içinde** oluşana kadar (`2.25s`) `Hurricane Kick.fbx` döner; hedefe gönderirken `flying_kick` ile çift katmanlı 3B trompet huni fırlatılır | `3.2 m` (Yüksek kavisli `1.55 m`) / `impact_2` |
-| `kasirga_tufani` (`whirlwind_kick`) | `defne` | `hurricane_kick` + `kick` (**2 Animasyonlu — `3.85s`**) | Tornado Defne'nin **tam içinde** oluşana kadar (`2.20s`) `Hurricane Kick.fbx` döner; hedefe gönderirken sonraki tekme (`kick`) ile kasırga hunisi fırlatılır | `3.2 m` / `impact_2` |
-| `yagmur_oku` (`firtina_oku`) | `mese` | `draw_arrow` + `aim_recoil` (**2 Yay Animasyonlu — `2.00s`**) | Erika yayını gererken (`draw_arrow`: `1.05s`) yay üzerinde 3B Büyülü Yağmur Oku oluşur; kirişi bıraktığında (`aim_recoil`: `0.95s`) ok hızla hedefe uçar ve **hedefe çarptığı anda (`1.75s`)** tepede 3B fırtına bulutu, şimşek çatalı ve sağanak yağmur başlar | `3.0 m` / `death` veya `impact_3` |
-| `golge_kilic` (`shadow_slash`) | `karabey` | `power_up` + `slash_2` (**2 Animasyonlu — `2.95s`**) | **Patlamaz:** Karabey'in kafasının biraz üstünden başlayıp yoğunlaşan 3B siyah duman, animasyonun sonuna doğru (`2.20s`) hedefe fırlayıp doğrudan düşmanın içine gider | `1.8 m` / `dodge_back` |
-| `karanlik_buyu` (`shadow_storm`) | `karabey` | `casting` + `attack_2` (**2 Animasyonlu — `2.85s`**) | **Patlamaz:** Karabey'in kafasının biraz üstünden başlayarak animasyonun sonuna doğru (`2.12s`) doğrudan düşmanın içine akan 3B siyah gölge dumanı | `1.8 m` / `dodge_back` |
+| Yetenek Kodu (`name`) | Element | Karakter (`who`) | Klipler | Zamanlama (yetenek başından) | Görsel Efekt | Varsayılan Tepki (`impact_clip`) |
+| :--- | :---: | :---: | :--- | :--- | :--- | :--- |
+| `alev_buyusu` | Ateş | `karabey` | `casting` (`1.30s`) + `attack_2` | fırlatma `2.12s`, isabet `2.74s`, bitiş `4.04s` | 3B magma çekirdeği + alev koronası, kıvılcım ve is; çoklu hedefte her hedefe bir top | `impact_3` |
+| `agac_devirme` | Ateş | `karabey` | `power_up` (`1.15s`) + `slash_2` (`1.65s`) | kesik `1.65s`, ağacın yere çarpması `2.38s` | Kızgın kılıç kesiği, haritadaki çam devrilir, yerde kalır | (hedef yok) |
+| `yer_dikeni` | Toprak | `toprak` | `stretch` (`1.0s`) + `point` (`1.85s`) | dikenler `1.35s`, isabet `2.10s`, bitiş `3.25s` | Yerden sırayla fışkıran kaya dikenler, hedefte üç büyük diken, toz ve taş parçaları | `impact_3` |
+| `ruzgar_hortumu` | Hava | `defne` | `hurricane_kick` (`2.25s`, döngü) + `flying_kick` (`1.65s`) | fırlatma `2.25s`, isabet `3.05s`, bitiş `4.35s` | Defne'nin içinde oluşan çift katmanlı 3B hortum | `impact_2` |
+| `firtina_oku` | Su | `mese` | `draw_arrow` + `aim_overdraw` (`1.0s`) + `aim_recoil` | ok `2.17s`, isabet `2.80s`, bitiş `4.70s` | Su kristali temrenli ok, hedefte fırtına bulutu, şimşek, sağanak | `impact_3` |
+
+Tüm takma adlar, savrulma yayları ve klip süreleri [`src/data/abilities.yaml`](src/data/abilities.yaml) dosyasındadır; buradaki tablo özettir. `knockback` (savrulma mesafesi) senaryoda verilir, varsayılan `4.0 m`. Örnek kullanım için [`public/scenarios/test-dort-element.yaml`](public/scenarios/test-dort-element.yaml) (seslendirmesiz test bölümü) ve [`public/scenarios/bolum-2-karabeyin-golgesi.yaml`](public/scenarios/bolum-2-karabeyin-golgesi.yaml).
 
 ---
 
@@ -162,7 +167,7 @@ Motorumuz ([`src/schema.ts`](file:///c:/Users/DELL/Desktop/VSRODevelopment/EYLUL
 #### C) Dövüş, Savunma ve Aksiyon
 | Klip Kodu (`name`) | Kategori | Açıklama / Kullanım Amacı | Kaynak Dosya (`public/models/...`) |
 | :--- | :--- | :--- | :--- |
-| `hook_punch` | Saldırı / Yetenek | Güçlü sağ kroşe yumruk (`ates_topu` özel yeteneğinin temel animasyonu) | `characters/main-character/animations/Hook Punch.fbx` |
+| `hook_punch` | Saldırı / Yetenek | Güçlü sağ kroşe yumruk (genel `ates_topu` yeteneğinin animasyonu) | `characters/main-character/animations/Hook Punch.fbx` |
 | `hurricane_kick` | Saldırı / Yetenek | Kasırga dönüşlü tekme (`ruzgar_hortumu` ve `kasirga_tufani` yeteneklerinde tornado oluşana kadar döner) | `characters/main-character/animations/Hurricane Kick.fbx` |
 | `flying_kick` | Saldırı | Havada ileri süzülerek uçan tekme darbesi (Tornado hedefe gönderilirken kullanılır) | `characters/main-character/animations/Flying Kick.fbx` |
 | `chapa_giratoria` | Saldırı | 360 derece dönerek sert taban tekmesi (Chapa Giratoria) | `characters/main-character/animations/Chapa-Giratoria.fbx` |
@@ -332,13 +337,13 @@ assets:
    ```
 
 6. **Özel Yetenek Kullanımı (`do: ability`) — Tekli ve Çoklu Hedef Desteği:**
-   - Animasyonlar, 3B hacimsel shader yetenek ağları (`ates_topu`, `alev_tekmesi`, `ruzgar_hortumu`, `kasirga_tufani`, `yagmur`, `golge_kilic`, `karanlik_buyu`), dinamik ışık ve hedeflerin geriye savrulması (`knockback`) tek bir komutla otomatik çalışır.
+   - Animasyonlar, 3B hacimsel shader yetenek ağları (`alev_buyusu`, `agac_devirme`, `yer_dikeni`, `ruzgar_hortumu`, `firtina_oku`), dinamik ışık ve hedeflerin geriye savrulması (`knockback`) tek bir komutla otomatik çalışır.
    - `target` alanı tek bir karakter kimliği (`target: karabey`) veya aynı anda birden fazla hedefe vuran bir liste (`target: [toprak, defne, mese]`) alabilir:
    ```yaml
-   # Çoklu hedef örneği: Karabey'in siyah duman yeteneği üç hedefe de aynı anda vurur
+   # Çoklu hedef örneği: Karabey'in Alev Büyüsü üç hedefe de aynı anda birer ateş topu gönderir
    - who: karabey
      do: ability
-     name: golge_kilic
+     name: alev_buyusu
      target:
        - toprak
        - defne
@@ -394,7 +399,7 @@ Senaryo ekibinin karakterleri ağaçlara çarptırmadan, doğrudan temizlenmiş 
 
 ## 6. Örnek Senaryo: Bölüm 2 — Karabey'in Gölgesi (`bolum-2-karabeyin-golgesi.yaml`)
 
-Yeni eklenen **Karabey (`1.95 m`, Ses ID: `mF7tIc9VLrznhGooGjaT`)** karakterini, üç hedefe aynı anda vuran siyah duman yeteneklerini (`golge_kilic`, `karanlik_buyu`) ve tek sahneli kesintisiz sıralı savaşı (`ruzgar_hortumu`, `kasirga_tufani`, `ates_topu`, `alev_tekmesi`, `yagmur`) bir arada kullanan 88 saniyelik örnek senaryomuz [`public/scenarios/bolum-2-karabeyin-golgesi.yaml`](file:///c:/Users/DELL/Desktop/VSRODevelopment/EYLUL2026/cartoon/public/scenarios/bolum-2-karabeyin-golgesi.yaml) dosyasına kaydedilmiştir.
+Ateş elementli **Karabey (`1.95 m`, Ses ID: `mF7tIc9VLrznhGooGjaT`)** karakterini, üç hedefe aynı anda vuran Alev Büyüsü'nü (`alev_buyusu`), harita ağacını deviren `agac_devirme`'yi ve dört elementin tek sahneli kesintisiz sıralı savaşını (`yer_dikeni`, `ruzgar_hortumu`, `firtina_oku`) bir arada kullanan 88 saniyelik örnek senaryomuz [`public/scenarios/bolum-2-karabeyin-golgesi.yaml`](file:///c:/Users/DELL/Desktop/VSRODevelopment/EYLUL2026/cartoon/public/scenarios/bolum-2-karabeyin-golgesi.yaml) dosyasına kaydedilmiştir.
 
 ### Bölüm 2 Akış Şeması (88 Saniye — Giriş, Konuşma ve Tek Sahneli Kesintisiz Savaş)
 
