@@ -353,8 +353,8 @@ export const scenarioSchema = z
             /** Ortam sesi (rüzgâr, kuşlar; gece cırcır böcekleri) seviyesi; 0 = kapalı */
             ambience: z.number().min(0).max(1).default(0.3),
             footsteps: z.boolean().default(true),
-            /** Ekran yazıları (balon, başlık, isim kartı) ve kamera geçişi sesleri */
-            ui: z.boolean().default(true),
+            /** Ekran yazıları (balon, başlık, isim kartı) ve kamera geçişi sesleri (varsayılan kapalı) */
+            ui: z.boolean().default(false),
           })
           .strict()
           .default({}),

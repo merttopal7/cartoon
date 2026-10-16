@@ -41,7 +41,10 @@ export interface SfxConfig {
   ui: boolean;
 }
 
-export const DEFAULT_SFX: SfxConfig = { enabled: true, volume: 1, ambience: 0.3, footsteps: true, ui: true };
+export const DEFAULT_SFX: SfxConfig = { enabled: true, volume: 1, ambience: 0.3, footsteps: true, ui: false };
+
+/** Ağaç sesinin, devrilmenin başladığı andan (chargeEnd) ne kadar önce başladığı: kılıç dalgasının fırlayışı. */
+export const TREE_SOUND_LEAD = 0.53;
 
 /** Konumlandırma için kullanılan kadraj (16:9); dikey formatlarda pan biraz farklı olsa da sorun değil. */
 const LISTEN_FORMAT = { id: 'sfx', label: 'sfx', width: 1920, height: 1080 };
@@ -207,12 +210,14 @@ export async function buildSfx(
         }
         case 'rain': {
           if (first) {
-            at(t0, caster, 'wide', `waterC|${cd}`, () => S.waterCharge(51, cd), 0.38);
-            at(tRelease, caster, 'wide', `arrow|${seed % 3}`, () => S.arrowRelease(52 + (seed % 3)), 0.55);
+            at(t0, caster, 'wide', `waterC|${cd}`, () => S.waterCharge(51, cd), 0.4);
+            // Bırakış + isabete kadar uçan okun ıslığı
+            const flight = Math.round((r.impactOffset - r.chargeEnd) * 100) / 100;
+            at(tRelease, caster.clone().lerp(target, 0.3), 'wide', `arrow|${seed % 2}|${flight}`, () => S.arrowRelease(52 + (seed % 2), flight), 0.55);
           }
-          at(tImpact, target, 'wide', `waterI|${seed % 3}`, () => S.waterImpact(53 + (seed % 3)), 0.75 * many);
+          // Su patlaması, şimşek ve gök gürültüsü, sağanak: hepsi tek ses (linger boyunca)
           const linger = Math.round((r.totalDuration - r.impactOffset) * 100) / 100;
-          at(tImpact + 0.05, target, 'wide', `rain|${linger}`, () => S.rainShower(56, linger), 0.42 * many);
+          at(tImpact, target, 'wide', `storm|${seed % 2}|${linger}`, () => S.stormImpact(53 + (seed % 2), linger), 0.85 * many);
           hitBody();
           break;
         }
@@ -225,14 +230,10 @@ export async function buildSfx(
           hitBody();
           break;
         case 'tree_fall': {
-          // tree-fall.ts: kılıç izi chargeEnd − 0.53'te uçar, gövdeye chargeEnd − 0.33'te değer; ağaç chargeEnd'de
-          // devrilmeye başlar, impactOffset'te yere çarpar
-          const tree = target;
-          at(filmT(a.start + r.chargeEnd - 0.53), caster, 'wide', `slash|${seed % 3}`, () => S.whoosh(71 + (seed % 3), 0.4, 500, 3500, 1.5), 0.45);
-          at(filmT(a.start + r.chargeEnd - 0.33), tree, 'wide', `chop|${seed % 3}`, () => S.treeChop(72 + (seed % 3)), 0.7);
-          const fall = Math.round((r.impactOffset - r.chargeEnd + 0.33) * 100) / 100;
-          at(filmT(a.start + r.chargeEnd - 0.3), tree, 'wide', `creak|${fall}`, () => S.treeCreak(74, fall), 0.5);
-          at(tImpact, tree, 'wide', `crash|${seed % 2}`, () => S.treeCrash(75 + (seed % 2)), 0.95);
+          // tree-fall.ts: kılıç dalgası chargeEnd − 0.53'te fırlar; ses bu andan başlayıp vuruşu, kırılmayı,
+          // devrilmeyi, çarpmayı (impactOffset) ve sürüklenmeyi tek parça taşır
+          const fall = Math.round((r.impactOffset - r.chargeEnd) * 100) / 100;
+          at(filmT(a.start + r.chargeEnd - TREE_SOUND_LEAD), target, 'wide', `tree|${seed % 2}|${fall}`, () => S.treeFell(71 + (seed % 2), fall), 0.95);
           break;
         }
       }

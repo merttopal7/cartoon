@@ -92,9 +92,9 @@ Yetenekler [src/data/abilities.yaml](src/data/abilities.yaml) dosyasında tanım
 
 Ses efektleri dosyadan okunmaz, koddan sentezlenir ([src/engine/sfx/](src/engine/sfx/)); telif hakkı sorunu yoktur. Senaryoya bir şey yazmadan otomatik eklenirler:
 
-- **Yetenekler:** her elementin güç toplama, fırlatma ve isabet sesi (ateş uğultusu ve patlama, yerden fışkıran kaya dikenleri, hortum rüzgârı, ok ve su sıçraması/sağanak), ağaç kesme-gıcırtı-devrilme, isabette darbe
+- **Yetenekler:** her elementin güç toplama, fırlatma ve isabet sesi (ateş uğultusu ve patlama, yerden fışkıran kaya dikenleri, hortum rüzgârı; Sağanak Okunda dönen su, kiriş ve okun ıslığı, isabette şimşek, gök gürültüsü ve sağanak), ağaç devirmede vuruş, yanan kesik, kırılma, devrilme, çarpma ve sürüklenme; isabette darbe
 - **Hareket:** ayak sesleri (yürüme/koşu klibinde ayağın yere bastığı karede), savrulma ve zıplama sonrası yere düşüş
-- **Ekran:** çizgi roman balonunda "pop", başlık kartında zil, isim kartında ve kamera geçişlerinde hışırtı
+- **Ekran (isteğe bağlı, varsayılan kapalı):** çizgi roman balonunda "pop", başlık kartında zil, isim kartında ve kamera geçişlerinde hışırtı
 - **Ortam:** döngülü orman sesi (rüzgâr, yaprak, kuşlar; `night` ön ayarında cırcır böcekleri), konuşmada kısılır
 
 Sesler kameraya uzaklıkla kısılır ve ekrandaki yerine göre sağa/sola kayar; hit-stop'tan etkilenmez, görüntüyle aynı karede duyulur. Önizlemede ve MP4/WAV dışa aktarımında aynıdır.
@@ -105,7 +105,7 @@ film:
     volume: 1        # efekt seviyesi (0–1.5)
     ambience: 0.3    # orman ortamı (0 = kapalı)
     footsteps: true
-    ui: true         # yazı ve geçiş sesleri
+    ui: false        # yazı ve geçiş sesleri (varsayılan kapalı)
     # enabled: false  → tüm efektler kapalı
 ```
 

@@ -48,8 +48,8 @@ try {
       ['ateş: toplama', () => S.fireCharge(5, 2.1)], ['ateş: fırlatma', () => S.fireLaunch(6)], ['ateş: isabet', () => S.fireImpact(7)],
       ['toprak: toplama', () => S.earthCharge(8, 1.35)], ['toprak: diken', () => S.earthSpike(9, 0.5)], ['toprak: isabet', () => S.earthImpact(10)],
       ['hava: hortum', () => S.tornado(11, 2.25, 3.05, 4.35)],
-      ['su: toplama', () => S.waterCharge(12, 2.0)], ['su: ok', () => S.arrowRelease(13)], ['su: isabet', () => S.waterImpact(14)], ['su: sağanak', () => S.rainShower(15, 1.9)],
-      ['ağaç: kesik', () => S.treeChop(16)], ['ağaç: gıcırtı', () => S.treeCreak(17, 1.06)], ['ağaç: devrilme', () => S.treeCrash(18)],
+      ['su: toplama', () => S.waterCharge(12, 2.15)], ['su: ok ve uçuş', () => S.arrowRelease(13, 0.63)], ['su: isabet, şimşek, sağanak', () => S.stormImpact(14, 1.9)],
+      ['ağaç devirme', () => S.treeFell(16, 0.73)],
       ['pop', () => S.pop(19)], ['zil', () => S.chime(20)], ['geçiş', () => S.whoosh(21, 0.6, 250, 2500, 1.2)],
     ];
     const parts = [];
@@ -65,7 +65,7 @@ try {
       parts.push(buf);
     }
     check('galeri sesleri sağlıklı (NaN yok, tepe ≤ 1)', worst.bad === 0 && worst.peak <= 1.0001, worst.name ?? '');
-    check('21 sesin sentezi toplam 2 sn altında', totalMs < 2000, `${totalMs.toFixed(0)} ms`);
+    check('galeri sentezi toplam 2 sn altında', totalMs < 2000, `${totalMs.toFixed(0)} ms`);
     const t0 = performance.now();
     const amb = S.ambience(7, 'day');
     const ambMs = performance.now() - t0;
@@ -92,6 +92,21 @@ try {
         R[off + i] = amb[1][i] * 0.6;
       }
       wavs['sfx_galeri.wav'] = await toB64(audioBufferToWav(g));
+      // Sağanak Oku ve Ağaç Devirme, yetenekteki gerçek anlarıyla (toplama → bırakış 2.15 → isabet 2.78; ağaç)
+      const seq = [
+        [0, S.waterCharge(51, 2.15), 0.4], [2.15, S.arrowRelease(52, 0.63), 0.55], [2.78, S.stormImpact(53, 1.9), 0.85],
+        [6.0, S.treeFell(71, 0.73), 0.95],
+      ];
+      const len = Math.round(10.5 * 44100);
+      const q = new AudioBuffer({ length: len, sampleRate: 44100, numberOfChannels: 2 });
+      for (const [at, buf, gain] of seq) {
+        const off = Math.round(at * 44100);
+        for (const c of [0, 1]) {
+          const ch = q.getChannelData(c);
+          for (let i = 0; i < buf.length && off + i < len; i++) ch[off + i] += buf[i] * gain;
+        }
+      }
+      wavs['sagnak_oku_ve_agac.wav'] = await toB64(audioBufferToWav(q));
     }
 
     // 2) Senaryolar
@@ -105,17 +120,22 @@ try {
       const count = {};
       for (const c of cues) count[c.kind] = (count[c.kind] ?? 0) + 1;
       check(`${id}: efektler üretildi`, cues.length > 0, `${cues.length} efekt, derleme ${(buildMs / 1000).toFixed(1)} sn · ` + Object.entries(count).map(([k, v]) => `${k}:${v}`).join(' '));
+      const uiKinds = ['pop', 'swish', 'chime', 'trans'].filter((k) => count[k]);
+      check(`${id}: ekran (HUD) sesleri varsayılan kapalı`, uiKinds.length === 0, uiKinds.join(','));
 
       // İsabet sesleri görüntüdeki isabet anıyla aynı (hit-stop zamanı → gerçek zaman)
       const sc = film.scenes[0];
       const uses = sc.abilities?.allUses() ?? [];
-      const impactKinds = { fire: 'fireI', earth: 'earthI', rain: 'waterI', shadow: 'shadowI', tree_fall: 'crash' };
+      // Ağaç sesi tek parça: kılıç dalgasıyla başlar, çarpma sesin içinde (TREE_SOUND_LEAD + düşüş) sonra
+      const { TREE_SOUND_LEAD } = await import('/src/engine/sfx/cues.ts');
+      const impactKinds = { fire: 'fireI', earth: 'earthI', rain: 'storm', shadow: 'shadowI', tree_fall: 'tree' };
       let miss = [];
       for (const a of uses) {
         const kind = impactKinds[a.recipe.effectType];
         if (!kind) continue;
         const t = sc.start + a.start + a.recipe.impactOffset;
-        if (!cues.some((c) => c.kind === kind && Math.abs(c.start - t) < 0.002)) miss.push(`${a.name}@${t.toFixed(2)}`);
+        const lead = kind === 'tree' ? TREE_SOUND_LEAD + Math.round((a.recipe.impactOffset - a.recipe.chargeEnd) * 100) / 100 : 0;
+        if (!cues.some((c) => c.kind === kind && Math.abs(c.start + lead - t) < 0.006)) miss.push(`${a.name}@${t.toFixed(2)}`);
       }
       check(`${id}: isabet sesleri isabet anında`, miss.length === 0, miss.join(', '));
 

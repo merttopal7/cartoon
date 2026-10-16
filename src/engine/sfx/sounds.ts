@@ -29,26 +29,6 @@ function grains(r: () => number, dur: number, rate: (t: number) => number, tau: 
   });
 }
 
-/** Su kabarcıkları: frekansı hızla yükselen, sönen sinüsler (kabarcık sesinin klasik modeli). */
-function bubbles(r: () => number, dur: number, rate: (t: number) => number, fLo: number, fHi: number, amp = 1): Float32Array {
-  const out = new Float32Array(samples(dur));
-  const step = 0.005;
-  for (let t0 = 0; t0 < dur; t0 += step) {
-    if (r() >= rate(t0) * step) continue;
-    const at = t0 + r() * step;
-    const f0 = lerp(fLo, fHi, r() * r());
-    const tau = lerp(0.008, 0.028, r()) * (900 / f0) ** 0.5;
-    const a = amp * lerp(0.3, 1, r());
-    const len = Math.min(samples(tau * 5), out.length - Math.round(at * SR));
-    const off = Math.round(at * SR);
-    for (let j = 0; j < len; j++) {
-      const dt = j / SR;
-      out[off + j] += a * Math.sin(TAU * f0 * (dt + (0.35 * dt * dt) / tau)) * Math.exp(-dt / tau);
-    }
-  }
-  return out;
-}
-
 const white = (r: () => number) => () => r() * 2 - 1;
 const finish = (buf: Float32Array, fadeOut = 0.02) => edgeFade(normalize(buf), 0.002, fadeOut);
 
@@ -311,86 +291,154 @@ export function tornado(seed: number, chargeEnd: number, impact: number, total: 
 }
 
 // ---------------------------------------------------------------------------------------------------
-// SU
+// SU (Meşe'nin Sağanak Oku)
+// rain.ts: toplarken bilekteki mavi oku saran dönen su parçacıkları; bırakınca ok dönerek uçar; isabette ok
+// buluta yükselir, fırtına bulutu büyür, şimşek çakar ve hedefin üstüne sağanak yağar (son 0.55 sn söner).
 // ---------------------------------------------------------------------------------------------------
 
-/** Su toplama: yay gerilirken çevrede kabarcıklar ve parıldayan su tınısı. */
+/**
+ * Sıvı çalkantısı: merkez frekansı rastgele hedefler arasında yumuşakça gezinen bant geçiren gürültü.
+ * Akan/dönen su dokusu verir; sinüs kabarcıkların elektronik "bip" tınısı yoktur.
+ */
+function babble(r: () => number, dur: number, lo: number, hi: number, rate: number, q = 2.5): Float32Array {
+  const n = white(r);
+  const bp = new Biquad('bandpass', lo, q);
+  const glide = new OnePole(rate * 1.5);
+  let target = lo * (hi / lo) ** r();
+  for (let k = 0; k < 4000; k++) glide.process(target);
+  let next = 0;
+  return rmsTex(dur, (t, i) => {
+    if (t >= next) {
+      target = lo * (hi / lo) ** r();
+      next = t + (0.5 + r()) / rate;
+    }
+    const f = glide.process(target);
+    if (i % 8 === 0) bp.set(f, q);
+    return bp.process(n());
+  });
+}
+
+/** Damlalar: üç bantta seyrek, çok kısa gürültü taneleri (yağmur, sıçrayan su). */
+function droplets(r: () => number, dur: number, rate: (t: number) => number, bands = [1300, 2500, 4300]): Float32Array {
+  const parts = bands.map((f) => grains(r, dur, (t) => rate(t) / bands.length, lerp(0.0011, 0.0022, r()), new Biquad('bandpass', f, 1.3)));
+  return render(dur, (_, i) => parts.reduce((s, p) => s + p[i], 0));
+}
+
+/** Su toplama: oku saran, dönen ve çalkalanan su; uca doğru ince su parıltıları. */
 export function waterCharge(seed: number, dur: number): Float32Array {
   const r = rng(seed);
   const n = white(r);
-  const bub = bubbles(r, dur, (t) => lerp(6, 40, t / dur), 500, 2000);
-  let peak = 0;
-  for (let i = 0; i < bub.length; i++) peak = Math.max(peak, Math.abs(bub[i]));
-  const bp = new Biquad('bandpass', 1200, 0.7);
-  const flow = rmsTex(dur, () => bp.process(n()));
-  const notes = [880, 1318.5, 1760];
+  const swirl = babble(r, dur, 500, 2400, 14);
+  const ph = r() * TAU;
+  const bp = new Biquad('bandpass', 1000, 1.2);
+  const whirl = rmsTex(dur, (t, i) => {
+    if (i % 8 === 0) bp.set(900 + 600 * Math.sin(TAU * 0.9 * t + ph), 1.2);
+    return bp.process(n());
+  });
+  const sparkle = grains(r, dur, (t) => lerp(4, 30, t / dur), 0.0015, new Biquad('bandpass', 6500, 2));
   return finish(
     render(dur, (t, i) => {
       const u = smooth(t / dur);
-      let shimmer = 0;
-      notes.forEach((f, k) => (shimmer += Math.sin(TAU * f * t) * (0.6 + 0.4 * Math.sin(TAU * (5 + k) * t)) / (k + 1)));
-      return (bub[i] / (peak || 1)) * 0.6 + flow[i] * u * 0.12 + shimmer * u * 0.12;
+      const sw = 0.75 + 0.25 * Math.sin(TAU * 0.9 * t + ph);
+      return (swirl[i] * 0.3 + whirl[i] * 0.22 * sw) * (0.15 + 0.85 * u) + sparkle[i] * 0.25 * u;
     }),
-    0.06,
+    0.08,
   );
 }
 
-/** Ok bırakılışı: yay kirişinin titreşimi (Karplus-Strong) + ince ıslıklı vuuş. */
-export function arrowRelease(seed: number): Float32Array {
+/**
+ * Ok bırakılışı ve uçuş: kiriş çatlaması (kısa, sönümlü), sonra isabete kadar dönen okun ıslığı ve su
+ * serpintisi. Ok sn'de ~2.9 tur döndüğü için ıslık o hızda dalgalanır.
+ */
+export function arrowRelease(seed: number, flight = 0.63): Float32Array {
   const r = rng(seed);
-  const dur = 0.6;
-  const f = lerp(95, 125, r());
+  const n = white(r);
+  const dur = flight + 0.25;
+  const bp = new Biquad('bandpass', 1600, 1.2);
+  const snap = rmsTex(dur, () => bp.process(n()));
+  // Kısa kiriş titreşimi (Karplus-Strong, hızlı sönüm: "boing" değil "tak")
+  const f = lerp(170, 210, r());
   const N = Math.round(SR / f);
   const line = new Float32Array(N);
   for (let i = 0; i < N; i++) line[i] = r() * 2 - 1;
   let p = 0;
-  const string = render(dur, (t) => {
-    const a = line[p];
-    const b2 = line[(p + 1) % N];
-    line[p] = 0.5 * (a + b2) * 0.985;
-    p = (p + 1) % N;
-    return a * hit(t, 0.001, 0.12);
+  const string = normalize(
+    render(dur, (t) => {
+      const a = line[p];
+      line[p] = 0.5 * (a + line[(p + 1) % N]) * 0.93;
+      p = (p + 1) % N;
+      return a * hit(t, 0.0005, 0.05);
+    }),
+  );
+  const bp2 = new Biquad('bandpass', 2500, 2.5);
+  const air = rmsTex(dur, (t, i) => {
+    if (i % 8 === 0) bp2.set(lerp(3200, 1800, clamp01(t / flight)), 2.5);
+    return bp2.process(n());
   });
-  const w = whoosh(seed + 3, 0.38, 1500, 6000, 1.6);
-  return finish(mixInto(normalize(string, 0.8), w, 0.015, 0.6), 0.05);
-}
-
-/** Su isabeti: sıçrama, kabarcık patlaması, "plop". */
-export function waterImpact(seed: number): Float32Array {
-  const r = rng(seed);
-  const n = white(r);
-  const dur = 1.5;
-  const hp = new Biquad('highpass', 700);
-  const lp = new Biquad('lowpass', 7000);
-  const splash = rmsTex(dur, () => lp.process(hp.process(n())));
-  const bub = bubbles(r, dur, (t) => 260 * Math.exp(-t / 0.18) + 4, 400, 2200);
-  let peak = 0;
-  for (let i = 0; i < bub.length; i++) peak = Math.max(peak, Math.abs(bub[i]));
+  const spray = grains(r, dur, (t) => (t < flight ? 220 : 0), 0.0012, new Biquad('highpass', 3500));
   let ph = 0;
-  const grain = new OnePole(60);
   return finish(
     render(dur, (t, i) => {
-      ph += (TAU * (90 + 130 * Math.exp(-t / 0.03))) / SR;
-      const ripple = 0.6 + 0.8 * Math.abs(grain.process(r() * 2 - 1)) * 6;
-      return splash[i] * hit(t, 0.003, 0.16) * ripple * 0.45 + (bub[i] / (peak || 1)) * 0.5 + Math.sin(ph) * hit(t, 0.002, 0.08) * 0.6;
+      ph += (TAU * lerp(190, 120, clamp01(t / 0.04))) / SR;
+      const fly = smooth(t / 0.05) * (1 - smooth((t - flight) / 0.12));
+      const flutter = 0.65 + 0.35 * Math.sin(TAU * 2.9 * t);
+      return (
+        snap[i] * hit(t, 0.0005, 0.007) * 0.6 +
+        Math.sin(ph) * hit(t, 0.001, 0.025) * 0.5 +
+        string[i] * 0.25 +
+        air[i] * fly * flutter * 0.28 +
+        spray[i] * fly * 0.3
+      );
     }),
-    0.15,
+    0.05,
   );
 }
 
-/** İsabetten sonra hedefin üstüne yağan sağanak: yağmur hışırtısı, damla tıkırtıları, su birikintisi. */
-export function rainShower(seed: number, dur: number): Float32Array {
+/**
+ * Sağanak Oku isabeti (tek ses, linger boyunca): su patlaması ve sıçrayan damlalar, buluta yükselen ok,
+ * şimşek çatırtısı ve yuvarlanan gök gürültüsü, ardından yoğun sağanak (görüntüyle birlikte son 0.55 sn söner).
+ */
+export function stormImpact(seed: number, linger: number): Float32Array {
   const r = rng(seed);
   const n = white(r);
-  const hp = new Biquad('highpass', 1500);
+  const dur = linger + 0.4;
+  // 1) Su patlaması: parlak başlayıp hızla kararan gürültü + yoğun damla saçılması
   const lp = new Biquad('lowpass', 8000);
-  const hiss = rmsTex(dur, () => lp.process(hp.process(n())));
-  const drops = grains(r, dur, () => 90, 0.0015, new Biquad('bandpass', 4000, 1.5));
-  const bub = bubbles(r, dur, () => 10, 600, 1800, 0.5);
+  const burst = rmsTex(dur, (t) => {
+    lp.set(900 + 7000 * Math.exp(-t / 0.06));
+    return lp.process(n());
+  });
+  const splash = droplets(r, dur, (t) => 1500 * Math.exp(-t / 0.07));
+  // 2) Buluta yükselen ok (0 – 0.22 sn)
+  const bpR = new Biquad('bandpass', 600, 1.5);
+  const rise = rmsTex(dur, (t, i) => {
+    if (i % 8 === 0) bpR.set(600 * (2500 / 600) ** clamp01(t / 0.22), 1.5);
+    return bpR.process(n());
+  });
+  // 3) Şimşek: kuru çatırtı, sonra düzensiz yuvarlanan alçak gürleme (iki dalga)
+  const crack = grains(r, dur, (t) => (t > 0.01 && t < 0.13 ? 2500 : 0), 0.0008, new Biquad('highpass', 400));
+  const b = brown(r);
+  const lpT = new Biquad('lowpass', 220);
+  const rumble = rmsTex(dur, () => lpT.process(b()));
+  const roll = new OnePole(4);
+  // 4) Sağanak: geniş bantlı hışırtı + yoğun damlalar
+  const hp = new Biquad('highpass', 900);
+  const lp2 = new Biquad('lowpass', 7000);
+  const hiss = rmsTex(dur, () => lp2.process(hp.process(n())));
+  const rain = droplets(r, dur, () => 420);
   return finish(
     render(dur, (t, i) => {
-      const e = smooth(t / 0.15) * (1 - smooth((t - dur * 0.6) / (dur * 0.4)));
-      return (hiss[i] * 0.2 + drops[i] * 0.6 + bub[i] * 0.3) * e;
+      const rainEnv = smooth((t - 0.1) / 0.35) * (1 - smooth((t - (linger - 0.55)) / 0.55));
+      const rolling = Math.min(1.6, 0.5 + 4 * Math.abs(roll.process(r() * 2 - 1)));
+      const thunder = rumble[i] * (hit(t - 0.02, 0.06, 0.55) + 0.5 * hit(t - 0.45, 0.1, 0.5)) * rolling;
+      return (
+        burst[i] * hit(t, 0.002, 0.09) * 0.9 +
+        splash[i] * 1.2 +
+        rise[i] * Math.sin(Math.PI * clamp01(t / 0.24)) * 0.15 +
+        crack[i] * 1.3 +
+        thunder * 0.6 +
+        (hiss[i] * 0.07 + rain[i] * 0.3) * rainEnv
+      );
     }),
     0.1,
   );
@@ -432,92 +480,105 @@ export function shadowImpact(seed: number): Float32Array {
 }
 
 // ---------------------------------------------------------------------------------------------------
-// AĞAÇ
+// AĞAÇ (Karabey'in Ağaç Devirme yeteneği)
 // ---------------------------------------------------------------------------------------------------
 
-/** Ahşabın rezonansları: darbeyle uyarılan dar bantlar (tok "tak"). */
+/** Ahşap gövde rezonansları: düşük Q (çabuk söner, ksilofon gibi çınlamaz). */
 function woodBank(r: () => number, freqs: number[], q: number) {
-  const bank = freqs.map((f) => new Biquad('bandpass', f * lerp(0.95, 1.05, r()), q));
+  const bank = freqs.map((f) => new Biquad('bandpass', f * lerp(0.92, 1.08, r()), q));
   return (x: number) => bank.reduce((s, b, k) => s + b.process(x) / (k + 1), 0);
 }
 
-/** Kılıcın gövdeye vuruşu: keskin çatırtı + ahşap tokluğu + kıymık. */
-export function treeChop(seed: number): Float32Array {
-  const r = rng(seed);
-  const n = white(r);
-  const dur = 0.5;
-  const wood = woodBank(r, [300, 520, 870, 1400], 18);
-  const bp = new Biquad('bandpass', 1800, 2);
-  const crack = rmsTex(dur, () => bp.process(n()));
-  const splinter = grains(r, dur, (t) => 70 * Math.exp(-t / 0.1), 0.002, new Biquad('highpass', 2500));
-  const body = render(dur, (t) => wood(t < 0.002 ? r() * 2 - 1 : 0));
-  normalize(body);
-  return finish(
-    render(dur, (t, i) => crack[i] * hit(t, 0.001, 0.018) * 0.5 + body[i] * 0.9 + splinter[i] * 0.4),
-    0.05,
-  );
+/** Çatırtı dizisi: verilen anlarda kısa gürültü darbeleri, ahşap rezonansından geçer (kırılan lif, kopan dal). */
+function crackTrain(r: () => number, dur: number, events: { t: number; a: number }[], body: (x: number) => number): Float32Array {
+  const ex = new Float32Array(samples(dur));
+  for (const e of events) {
+    const off = Math.round(e.t * SR);
+    const len = samples(lerp(0.002, 0.005, r()));
+    for (let j = 0; j < len && off + j < ex.length; j++) ex[off + j] += (r() * 2 - 1) * e.a * Math.exp(-j / (len * 0.35));
+  }
+  return normalize(render(dur, (_, i) => body(ex[i])));
 }
 
-/** Devrilen gövdenin gıcırtısı (yapış-kay titreşimi) ve gittikçe artan yaprak hışırtısı. */
-export function treeCreak(seed: number, dur: number): Float32Array {
+/**
+ * Ağaç devirme, tek ses (tree-fall.ts anları; 0 = kılıç dalgasının fırladığı an):
+ *   0.00  kılıç dalgası: keskin hışırtı
+ *   0.26  dalga gövdeye çarpar: tok ahşap vuruşu; kesik akkor olur → ateş cızırtısı
+ *   0.26–0.53  gövde titrer: sıklaşan çatırtılar; 0.53'te kırılma
+ *   0.53–çarpma  ağaç hızlanarak devrilir: dalların havayı yarması, yaprak hışırtısı
+ *   çarpma  ağır gümleme, kırılan dallar, 0.33 sn sonra sekme; yapraklar yatışır
+ *   çarpma–2.08  ağaç yerde sürüklenerek durur: sürtünme
+ */
+export function treeFell(seed: number, fall: number): Float32Array {
   const r = rng(seed);
   const n = white(r);
-  const wood = woodBank(r, [380, 640, 1100], 12);
-  const hp = new Biquad('highpass', 3000);
-  const leaves = rmsTex(dur, () => hp.process(n()));
-  const wob = new OnePole(3);
-  let acc = 0;
-  const creak = render(dur, (t) => {
-    const rate = lerp(25, 90, clamp01(0.5 + 6 * wob.process(r() * 2 - 1)));
-    acc += rate / SR;
-    let x = 0;
-    if (acc >= 1) {
-      acc -= 1;
-      x = 0.6 + 0.4 * r();
-    }
-    return wood(x);
+  const HIT = 0.26;
+  const BREAK = 0.53;
+  const IMPACT = BREAK + fall;
+  const SLIDE_START = 0.63;
+  const SLIDE_END = 2.08;
+  const dur = IMPACT + 1.7;
+
+  // Vuruş: geniş bantlı darbe ahşap gövdeden geçer + kısa alçak tokluk
+  const knockBody = woodBank(r, [170, 330, 600, 1050], 4);
+  const knock = crackTrain(r, dur, [{ t: HIT, a: 1 }, { t: HIT + 0.004, a: 0.6 }], knockBody);
+  // Yanan kesik: ateş çıtırtısı + ince cızırtı
+  const sizzle = grains(r, dur, (t) => (t > HIT && t < BREAK + 0.7 ? 90 : 0), 0.0018, new Biquad('highpass', 2500));
+  const hhp = new Biquad('highpass', 4000);
+  const hiss = rmsTex(dur, () => hhp.process(n()));
+  // Kırılma: vuruştan sonra sıklaşan lif çatırtıları, 0.53'te büyük çatlama, devrilmenin başında seyrelerek sürer
+  const fibres: { t: number; a: number }[] = [];
+  for (let t = HIT + 0.05; t < BREAK; t += 1 / lerp(8, 60, (t - HIT) / (BREAK - HIT)) * lerp(0.6, 1.4, r())) fibres.push({ t, a: lerp(0.2, 0.6, r()) });
+  fibres.push({ t: BREAK, a: 1.6 }, { t: BREAK + 0.012, a: 1.1 }, { t: BREAK + 0.03, a: 0.8 });
+  for (let t = BREAK + 0.05; t < BREAK + 0.4; t += 1 / lerp(40, 6, (t - BREAK) / 0.4) * lerp(0.6, 1.4, r())) fibres.push({ t, a: lerp(0.15, 0.5, r()) });
+  const cracks = crackTrain(r, dur, fibres, woodBank(r, [650, 1250, 2300], 3));
+  // Devrilme: hızlanan gövdenin yarattığı hava akımı ve dal/yaprak hışırtısı (hız ∝ u^0.85)
+  const bpF = new Biquad('bandpass', 400, 0.9);
+  const air = rmsTex(dur, (t, i) => {
+    if (i % 8 === 0) bpF.set(350 + 900 * clamp01((t - BREAK) / fall), 0.9);
+    return bpF.process(n());
   });
-  normalize(creak);
-  const mod = new OnePole(4);
-  return finish(
-    render(dur, (t, i) => {
-      const u = t / dur;
-      const rustle = 0.5 + 3 * Math.abs(mod.process(r() * 2 - 1));
-      return creak[i] * smooth(u * 3) * (1 - 0.4 * u) * 0.7 + leaves[i] * rustle * u * u * 0.15;
-    }),
-    0.05,
-  );
-}
+  const lhp = new Biquad('highpass', 3000);
+  const leaves = rmsTex(dur, () => lhp.process(n()));
+  const rustle = new OnePole(8);
+  // Çarpma: alçak geçiren gürültü gümlemesi + kısa alçak sinüs, kopan dallar
+  const lpI = new Biquad('lowpass', 500);
+  const thud = rmsTex(dur, () => lpI.process(n()));
+  const snapsEv = Array.from({ length: 18 }, () => ({ t: IMPACT + 0.45 * r() ** 1.6, a: lerp(0.3, 1, r()) }));
+  const snaps = crackTrain(r, dur, snapsEv, woodBank(r, [900, 1800, 3200], 2.5));
+  // Sürüklenme: pürüzlü sürtünme, ağaç yavaşladıkça söner
+  const lpS = new Biquad('lowpass', 900);
+  const scrape = rmsTex(dur, () => lpS.process(n()));
+  const grit = grains(r, dur, () => 140, 0.003, new Biquad('bandpass', 1800, 1));
+  const whoosh0 = whoosh(seed + 1, 0.32, 900, 4200, 1.6);
+  const BOUNCE = 0.33;
 
-/** Ağacın yere çarpması: derin gümbürtü, sekme, kırılan dallar, yaprak çarpışı. */
-export function treeCrash(seed: number): Float32Array {
-  const r = rng(seed);
-  const n = white(r);
-  const dur = 2.3;
-  const lp = new Biquad('lowpass', 800);
-  const thud = rmsTex(dur, () => lp.process(n()));
-  const hp = new Biquad('highpass', 2500);
-  const leaves = rmsTex(dur, () => hp.process(n()));
-  const snaps = Array.from({ length: 6 }, () => ({ at: r() * 0.4, f: lerp(2000, 3500, r()) }));
-  const snapF = snaps.map((s) => new Biquad('bandpass', s.f, 2));
-  const bounce = lerp(0.16, 0.22, r());
   let ph = 0;
-  return finish(
-    render(dur, (t, i) => {
-      ph += (TAU * (32 + 40 * Math.exp(-t / 0.12))) / SR;
-      const e = hit(t, 0.003, 0.45) + 0.4 * hit(t - bounce, 0.003, 0.25);
-      let sn = 0;
-      const x = n();
-      snaps.forEach((s, k) => (sn += snapF[k].process(x * hit(t - s.at, 0.0008, 0.015))));
-      return (
-        drive(Math.sin(ph) * e * 1.5, 3) * 0.8 +
-        thud[i] * (hit(t, 0.002, 0.12) + 0.4 * hit(t - bounce, 0.002, 0.08)) * 0.35 +
-        sn * 1.4 +
-        leaves[i] * hit(t, 0.01, 0.6) * 0.18
-      );
-    }),
-    0.2,
-  );
+  let ph2 = 0;
+  const out = render(dur, (t, i) => {
+    const u = clamp01((t - BREAK) / fall);
+    const falling = t > BREAK && t < IMPACT ? Math.pow(u, 0.85) : t >= IMPACT ? Math.exp(-(t - IMPACT) / 0.05) : 0;
+    const di = t - IMPACT;
+    ph += (TAU * (40 + 25 * Math.exp(-Math.max(0, di) / 0.05))) / SR;
+    ph2 += (TAU * lerp(120, 70, clamp01((t - HIT) / 0.05))) / SR;
+    const burn = t > HIT ? smooth((t - HIT) / 0.05) * (1 - smooth((t - BREAK - 0.3) / 0.4)) : 0;
+    const slideX = clamp01((t - SLIDE_START) / (SLIDE_END - SLIDE_START));
+    const slideAmp = di > 0 ? Math.pow(1 - slideX, 1.35) * smooth(di / 0.06) : 0;
+    const rs = 0.5 + 3 * Math.abs(rustle.process(r() * 2 - 1));
+    return (
+      knock[i] * 1.0 +
+      Math.sin(ph2) * hit(t - HIT, 0.002, 0.05) * 0.5 +
+      (sizzle[i] * 0.25 + hiss[i] * 0.04) * burn +
+      cracks[i] * 0.85 +
+      (air[i] * 0.2 + leaves[i] * 0.08 * rs) * falling +
+      thud[i] * (hit(di, 0.003, 0.12) + 0.35 * hit(di - BOUNCE, 0.003, 0.08)) * 1.0 +
+      drive(Math.sin(ph) * (hit(di, 0.003, 0.18) + 0.3 * hit(di - BOUNCE, 0.003, 0.1)) * 1.4, 2) * 0.9 +
+      snaps[i] * 0.9 +
+      leaves[i] * rs * hit(di, 0.01, 0.7) * 0.18 +
+      (scrape[i] * 0.25 + grit[i] * 0.6) * slideAmp
+    );
+  });
+  return finish(mixInto(out, whoosh0, 0, 0.5), 0.2);
 }
 
 // ---------------------------------------------------------------------------------------------------
