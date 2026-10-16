@@ -49,13 +49,19 @@ try {
       const pass = () => {
         const times = [];
         const programsBefore = viewport.renderer.info.programs?.length ?? 0;
+        let evalSum = 0;
+        let renderSum = 0;
         for (let t = from; t < to; t += 1 / fps) {
           const t0 = performance.now();
           film.evaluate(t, format);
+          const t1 = performance.now();
           viewport.render(film);
           // GPU'nun kareyi bitirmesini bekle (yoksa yalnızca komut gönderme süresi ölçülür)
           gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
-          times.push({ t, ms: performance.now() - t0 });
+          const t2 = performance.now();
+          evalSum += t1 - t0;
+          renderSum += t2 - t1;
+          times.push({ t, ms: t2 - t0 });
         }
         const ms = times.map((x) => x.ms).sort((a, b) => a - b);
         const q = (p) => ms[Math.min(ms.length - 1, Math.floor(p * ms.length))];
@@ -69,6 +75,8 @@ try {
           over50ms: spikes.length,
           worst: spikes.sort((a, b) => +b.split(':')[1].replace('ms', '') - +a.split(':')[1].replace('ms', '')).slice(0, 8),
           newPrograms: (viewport.renderer.info.programs?.length ?? 0) - programsBefore,
+          evalAvg: +(evalSum / times.length).toFixed(1),
+          renderAvg: +(renderSum / times.length).toFixed(1),
         };
       };
 
@@ -99,6 +107,7 @@ try {
   for (const [name, r] of [['Soğuk (ilk geçiş)', result.cold], ['Sıcak (ikinci geçiş)', result.warm]]) {
     console.log(`\n${name}: ${r.frames} kare`);
     console.log(`  ort ${r.avg} ms · p50 ${r.p50} · p95 ${r.p95} · max ${r.max} ms`);
+    console.log(`  ortalama dağılım: sahne hesaplama (CPU) ${r.evalAvg} ms + çizim (GPU) ${r.renderAvg} ms`);
     console.log(`  >50 ms kare: ${r.over50ms} · yeni derlenen shader: ${r.newPrograms}`);
     if (r.worst.length) console.log(`  en kötü: ${r.worst.join('  ')}`);
   }

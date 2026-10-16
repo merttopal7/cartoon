@@ -1243,6 +1243,9 @@ const fmtTime = (t: number) => {
 };
 
 let lastTickTime = performance.now();
+/** Son çizilen önizleme karesi (durdurulmuşken aynı kare tekrar çizilmesin diye). */
+let lastDrawnFilm: unknown = null;
+let lastDrawnKey = '';
 
 function setPlaying(v: boolean) {
   playing = v;
@@ -1322,6 +1325,15 @@ function tick(now: number) {
     }
     lastTickTime = now;
     film.audio.update(time, playing);
+    // Durdurulmuşken ve hiçbir şey değişmemişken sahneyi her karede yeniden hesaplayıp çizme: açık bir sekme
+    // boşta beklerken GPU'yu sürekli meşgul ediyordu. Arama, senaryo ve mod değişiklikleri kendi çizimlerini yapar.
+    const frameKey = `${time}|${format.id}|${viewport.canvas.width}x${viewport.canvas.height}|${currentRenderMode}`;
+    if (!playing && film === lastDrawnFilm && frameKey === lastDrawnKey) {
+      requestAnimationFrame(tick);
+      return;
+    }
+    lastDrawnFilm = film;
+    lastDrawnKey = frameKey;
     const { scene, shot } = film.evaluate(time, format);
     viewport.render(film);
     ui.scrub.value = String(time);
