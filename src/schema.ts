@@ -460,6 +460,8 @@ export const SHARED_MIXAMO_ANIMATIONS: Record<string, string> = {
   // Temel duruş ve yürüyüş / koşu
   idle: 'models/animations/Neutral Idle.fbx',
   fight_idle: 'models/animations/Action Idle To Fight Idle.fbx',
+  /** Neşeli, zıplayan bekleme (2 sn döngü); Defne'nin bekleme klibi */
+  happy_idle: 'models/animations/Happy Idle.fbx',
   briefcase_idle: 'models/animations/Standing W_Briefcase Idle.fbx',
   sitting: 'models/animations/Sitting.fbx',
   crouch_to_stand: 'models/animations/Crouch To Stand.fbx',
@@ -478,6 +480,10 @@ export const SHARED_MIXAMO_ANIMATIONS: Record<string, string> = {
   // Zıplama, spor ve akrobasi
   jump: 'models/animations/Jump.fbx',
   jump_joy: 'models/animations/Joyful Jump.fbx',
+  /** Uzun sevinç/coşku hareketi (10 sn, yerinde) */
+  happy: 'models/animations/Happy.fbx',
+  /** Sola kavis çizerek neşeli yürüyüş: her adımda ~38° döner, düz walk_to için uygun değil */
+  happy_walk_arc_left: 'models/animations/Happy Walk Forward Arc Left.fbx',
   running_jump: 'models/animations/Running Jump.fbx',
   jump_down: 'models/animations/Jumping Down.fbx',
   pushup: 'models/animations/Jump Push Up.fbx',

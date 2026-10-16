@@ -45,6 +45,8 @@ assets:
     saturation: 0.88
     voice: o9DOmAyPjfFu8AfoFAnM
     element: hava
+    animations:
+      idle: models/animations/Happy Idle.fbx   # neşeli, çevik bekleme (kişilik)
   mese:
     src: models/characters/Erika/character.fbx
     height: 1.72

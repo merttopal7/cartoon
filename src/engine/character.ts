@@ -132,7 +132,7 @@ interface TimedAction {
 }
 
 /** Oynarken karakterin otomatik güldüğü klipler. */
-const HAPPY_CLIP = /jump_?joy|danc|hip_?hop|celebrat|cheer|victory|singing/i;
+const HAPPY_CLIP = /jump_?joy|danc|hip_?hop|celebrat|cheer|victory|singing|^happy$/i;
 
 /** Kesilen yürüyüşün animasyonunun ve savrulma yayının sönümlenme süresi (sn). */
 const CUT_FADE = 0.3;
