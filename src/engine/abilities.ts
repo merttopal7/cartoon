@@ -1831,11 +1831,17 @@ export class AbilitySystem {
           curBase.y,
           curBase.z + fallDir.z * (3.2 * smoothLaunchU),
         );
-        effectCenter.lerp(curTreeMid, 0.72);
+        // Devrilen ağaç ile sahnedeki tüm karakterlerin ortası: yeteneğin hedef karakteri yok; yalnızca
+        // Karabey ile ağaca bakınca kahramanlar yüksek açıda kadrajın alt kenarından taşıyordu
+        const fighters = new THREE.Vector3();
+        for (const c of characters.values()) fighters.add(c.positionAt(lt, new THREE.Vector3()));
+        fighters.divideScalar(Math.max(1, characters.size));
+        effectCenter.copy(fighters).lerp(curTreeMid, 0.4);
         effectCenter.y += caster.rig.height * 0.85;
 
-        // Kuş uçuşu yukarıdan bakış: ağaç kesilirken (0.65s .. 1.35s) yükselir, devrilme ve Karabey'in yanına
-        // sürüklenme boyunca (1.35s .. 3.20s) kuş uçuşu (54°) tepeden izletir, ardından yumuşakça iner
+        // Yüksek açıdan bakış: ağaç kesilirken (0.65s .. 1.35s) yükselir, devrilme ve Karabey'in yanına
+        // sürüklenme boyunca (1.35s .. 3.20s) 35°'den izletir, ardından yumuşakça iner.
+        // (54° ve 7.4'lük kadraj kamerayı 45 m yükseltip kesintisiz savaşın ritmini bölüyordu.)
         if (local >= 0.65 && local < 1.35) {
           const u = clamp((local - 0.65) / 0.70, 0, 1);
           birdEyeWeight = 0.5 - 0.5 * Math.cos(u * Math.PI);
@@ -1847,7 +1853,7 @@ export class AbilitySystem {
         } else {
           birdEyeWeight = 0;
         }
-        elevationOverride = 54;
+        elevationOverride = 35;
       } else {
         effectCenter.addScaledVector(dir, 0.55);
         effectCenter.lerp(targetPos, smoothLaunchU * 0.38);
@@ -1857,7 +1863,7 @@ export class AbilitySystem {
       const groupSize = v.ability.groupSize ?? 1;
       const suggestedSize =
         effectType === 'tree_fall'
-          ? 7.4
+          ? 6.2
           : groupSize > 1
             ? 3.45
             : effectType === 'rain'
