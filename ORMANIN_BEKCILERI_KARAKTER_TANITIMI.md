@@ -135,70 +135,70 @@ Motorumuz ([`src/schema.ts`](file:///c:/Users/DELL/Desktop/VSRODevelopment/EYLUL
 #### A) Temel Duruş, Yürüyüş ve Koşu (`walk_to` veya `clip` ile kullanılır)
 | Klip Kodu (`name` / `clip`) | Kategori | Açıklama / Kullanım Amacı | Kaynak Dosya (`public/models/...`) |
 | :--- | :--- | :--- | :--- |
-| `idle` | Duruş | Doğal nefes alma ve bekleme duruşu (Varsayılan) | `characters/main-character/animations/Neutral Idle.fbx` |
-| `fight_idle` | Duruş | Normal duruştan tetikte dövüş/savunma duruşuna geçiş | `characters/main-character/animations/Action Idle To Fight Idle.fbx` |
-| `briefcase_idle` | Duruş | Dikkatli / nöbetçi bekleme duruşu | `characters/main-character/animations/Standing W_Briefcase Idle.fbx` |
-| `sitting` | Duruş | Yerde/taşta dinlenerek oturma | `characters/main-character/animations/Sitting.fbx` |
-| `crouch_to_stand` | Geçiş | Çömelmiş/gizlenmiş pozisyondan ayağa kalkma | `characters/main-character/animations/Crouch To Stand.fbx` |
-| `walk` | Yürüyüş | Standart rahat yürüyüş (`speed: 1.1 - 1.3`) | `characters/main-character/animations/Walking.fbx` |
-| `drunk_walk` | Yürüyüş | Sersemlemiş / yorgun / sendeleyerek yürüyüş | `characters/main-character/animations/Drunk Walk.fbx` |
-| `jog` | Koşu | Tempolu hafif koşu (`speed: 1.5 - 1.8`) | `characters/main-character/animations/Jogging.fbx` |
-| `run` | Koşu | Tam hız depar / hızlı koşu (`speed: 1.8 - 2.6`) | `characters/main-character/animations/Running.fbx` |
-| `run_forward` | Koşu | Atik ileri koşu | `characters/main-character/animations/Standing Run Forward.fbx` |
-| `run_arc_left` | Koşu | Sola kavis çizerek koşu | `characters/main-character/animations/Run Forward Arc Left.fbx` |
-| `run_to_turn` | Koşu | Koşarken ani dönüş hareketi | `characters/main-character/animations/Running To Turn.fbx` |
-| `turn_left` | Dönüş | Olduğu yerde sola dönüş | `characters/main-character/animations/Left Turn.fbx` |
-| `turn_right` | Dönüş | Olduğu yerde sağa dönüş | `characters/main-character/animations/Right Turn.fbx` |
-| `rifle_turn` | Dönüş | Hızlı ve keskin gözcü dönüşü | `characters/main-character/animations/Rifle Turn.fbx` |
-| `swimming` | Hareket | Yüzme / kulaç atma hareketi | `characters/main-character/animations/Swimming.fbx` |
+| `idle` | Duruş | Doğal nefes alma ve bekleme duruşu (Varsayılan) | `animations/Neutral Idle.fbx` |
+| `fight_idle` | Duruş | Normal duruştan tetikte dövüş/savunma duruşuna geçiş | `animations/Action Idle To Fight Idle.fbx` |
+| `briefcase_idle` | Duruş | Dikkatli / nöbetçi bekleme duruşu | `animations/Standing W_Briefcase Idle.fbx` |
+| `sitting` | Duruş | Yerde/taşta dinlenerek oturma | `animations/Sitting.fbx` |
+| `crouch_to_stand` | Geçiş | Çömelmiş/gizlenmiş pozisyondan ayağa kalkma | `animations/Crouch To Stand.fbx` |
+| `walk` | Yürüyüş | Standart rahat yürüyüş (`speed: 1.1 - 1.3`) | `animations/Walking.fbx` |
+| `drunk_walk` | Yürüyüş | Sersemlemiş / yorgun / sendeleyerek yürüyüş | `animations/Drunk Walk.fbx` |
+| `jog` | Koşu | Tempolu hafif koşu (`speed: 1.5 - 1.8`) | `animations/Jogging.fbx` |
+| `run` | Koşu | Tam hız depar / hızlı koşu (`speed: 1.8 - 2.6`) | `animations/Running.fbx` |
+| `run_forward` | Koşu | Atik ileri koşu | `animations/Standing Run Forward.fbx` |
+| `run_arc_left` | Koşu | Sola kavis çizerek koşu | `animations/Run Forward Arc Left.fbx` |
+| `run_to_turn` | Koşu | Koşarken ani dönüş hareketi | `animations/Running To Turn.fbx` |
+| `turn_left` | Dönüş | Olduğu yerde sola dönüş | `animations/Left Turn.fbx` |
+| `turn_right` | Dönüş | Olduğu yerde sağa dönüş | `animations/Right Turn.fbx` |
+| `rifle_turn` | Dönüş | Hızlı ve keskin gözcü dönüşü | `animations/Rifle Turn.fbx` |
+| `swimming` | Hareket | Yüzme / kulaç atma hareketi | `animations/Swimming.fbx` |
 
 #### B) Zıplama, Spor ve Akrobasi
 | Klip Kodu (`name`) | Kategori | Açıklama / Kullanım Amacı | Kaynak Dosya (`public/models/...`) |
 | :--- | :--- | :--- | :--- |
-| `jump` | Zıplama | Standart ileri/yukarı sıçrama | `characters/main-character/animations/Jump.fbx` |
-| `jump_joy` | Zıplama | Kolları açarak neşeli sevinç sıçrayışı (Meşe'nin imzası) | `characters/main-character/animations/Joyful Jump.fbx` |
-| `running_jump` | Zıplama | Koşarak engelin üzerinden atlama | `characters/main-character/animations/Running Jump.fbx` |
-| `jump_down` | Zıplama | Yüksek bir yerden aşağı atlama ve dengeli iniş | `characters/main-character/animations/Jumping Down.fbx` |
-| `pushup` | Spor | Zıplayarak alkışlı şınav çekme (Toprak'ın imzası) | `characters/main-character/animations/Jump Push Up.fbx` |
-| `bicycle_crunch` | Spor | Yerde mekik / bisiklet egzersizi | `characters/main-character/animations/Bicycle Crunch.fbx` |
-| `stretch` | Spor | Kol ve omuz esnetme / ısınma hareketi | `characters/main-character/animations/Arm Stretching.fbx` |
-| `goalkeeper` | Akrobasi | Kaleci gibi yana uçarak yakalama / kurtarış hamlesi | `characters/main-character/animations/Goalkeeper Catch.fbx` |
+| `jump` | Zıplama | Standart ileri/yukarı sıçrama | `animations/Jump.fbx` |
+| `jump_joy` | Zıplama | Kolları açarak neşeli sevinç sıçrayışı (Meşe'nin imzası) | `animations/Joyful Jump.fbx` |
+| `running_jump` | Zıplama | Koşarak engelin üzerinden atlama | `animations/Running Jump.fbx` |
+| `jump_down` | Zıplama | Yüksek bir yerden aşağı atlama ve dengeli iniş | `animations/Jumping Down.fbx` |
+| `pushup` | Spor | Zıplayarak alkışlı şınav çekme (Toprak'ın imzası) | `animations/Jump Push Up.fbx` |
+| `bicycle_crunch` | Spor | Yerde mekik / bisiklet egzersizi | `animations/Bicycle Crunch.fbx` |
+| `stretch` | Spor | Kol ve omuz esnetme / ısınma hareketi | `animations/Arm Stretching.fbx` |
+| `goalkeeper` | Akrobasi | Kaleci gibi yana uçarak yakalama / kurtarış hamlesi | `animations/Goalkeeper Catch.fbx` |
 
 #### C) Dövüş, Savunma ve Aksiyon
 | Klip Kodu (`name`) | Kategori | Açıklama / Kullanım Amacı | Kaynak Dosya (`public/models/...`) |
 | :--- | :--- | :--- | :--- |
-| `hook_punch` | Saldırı / Yetenek | Güçlü sağ kroşe yumruk (genel `ates_topu` yeteneğinin animasyonu) | `characters/main-character/animations/Hook Punch.fbx` |
-| `hurricane_kick` | Saldırı / Yetenek | Kasırga dönüşlü tekme (`ruzgar_hortumu` ve `kasirga_tufani` yeteneklerinde tornado oluşana kadar döner) | `characters/main-character/animations/Hurricane Kick.fbx` |
-| `flying_kick` | Saldırı | Havada ileri süzülerek uçan tekme darbesi (Tornado hedefe gönderilirken kullanılır) | `characters/main-character/animations/Flying Kick.fbx` |
-| `chapa_giratoria` | Saldırı | 360 derece dönerek sert taban tekmesi (Chapa Giratoria) | `characters/main-character/animations/Chapa-Giratoria.fbx` |
-| `macaco_side` | Akrobasi / Savunma | Yana doğru tek elle akrobatik Macaco sıçrayışı / kaçınma | `characters/main-character/animations/Macaco Side.fbx` |
-| `kick` | Saldırı | Havada döner tekme (Martelo 2) | `characters/main-character/animations/Martelo 2.fbx` |
-| `mma_kick` | Saldırı | Güçlü MMA yan döner tekme | `characters/main-character/animations/Mma Kick.fbx` |
-| `rifle_kick` | Saldırı | Dönerek savunma tekmesi | `characters/main-character/animations/Rifle Turn And Kick.fbx` |
-| `dodge_back` | Savunma | Saldırıdan geriye doğru çevik sıçrayışla kaçınma | `characters/main-character/animations/Standing Dodge Backward.fbx` |
+| `hook_punch` | Saldırı / Yetenek | Güçlü sağ kroşe yumruk (genel `ates_topu` yeteneğinin animasyonu) | `animations/Hook Punch.fbx` |
+| `hurricane_kick` | Saldırı / Yetenek | Kasırga dönüşlü tekme (`ruzgar_hortumu` ve `kasirga_tufani` yeteneklerinde tornado oluşana kadar döner) | `animations/Hurricane Kick.fbx` |
+| `flying_kick` | Saldırı | Havada ileri süzülerek uçan tekme darbesi (Tornado hedefe gönderilirken kullanılır) | `animations/Flying Kick.fbx` |
+| `chapa_giratoria` | Saldırı | 360 derece dönerek sert taban tekmesi (Chapa Giratoria) | `animations/Chapa-Giratoria.fbx` |
+| `macaco_side` | Akrobasi / Savunma | Yana doğru tek elle akrobatik Macaco sıçrayışı / kaçınma | `animations/Macaco Side.fbx` |
+| `kick` | Saldırı | Havada döner tekme (Martelo 2) | `animations/Martelo 2.fbx` |
+| `mma_kick` | Saldırı | Güçlü MMA yan döner tekme | `animations/Mma Kick.fbx` |
+| `rifle_kick` | Saldırı | Dönerek savunma tekmesi | `animations/Rifle Turn And Kick.fbx` |
+| `dodge_back` | Savunma | Saldırıdan geriye doğru çevik sıçrayışla kaçınma | `animations/Standing Dodge Backward.fbx` |
 
 #### D) Dans, Kutlama ve Sahne Şovu
 > **Önemli Senaryo Kuralı:** Bu kategorideki animasyonlar (`dance`, `capoeira`, `hip_hop`, `breakdance`, `flair`, `singing`) **yalnızca dans, eğlence ve zafer kutlaması sahnelerinde** kullanılır; **düşmana karşı saldırı veya düello hareketi olarak kesinlikle kullanılamaz.**
 
 | Klip Kodu (`name`) | Kategori | Açıklama / Kullanım Amacı | Kaynak Dosya (`public/models/...`) |
 | :--- | :--- | :--- | :--- |
-| `dance` / `silly_dance` | Dans | Eğlenceli çizgi film zafer dansı (Grup kutlaması) | `characters/main-character/animations/Silly Dancing.fbx` |
-| `capoeira` | Dans | Ritmik Capoeira dans gösterisi (Yalnızca dans/kutlama sahnelerinde kullanılır; düşmana karşı kullanılamaz) | `characters/main-character/animations/Capoeira.fbx` |
-| `hip_hop` | Dans | Dinamik Hip-Hop sokak dansı | `characters/main-character/animations/Hip Hop Dancing.fbx` |
-| `breakdance` | Dans | 1990 stil dönüşlü Breakdance şovu | `characters/main-character/animations/Breakdance 1990.fbx` |
-| `flair` | Dans | Yerde değirmen (Flair) dans dönüşü | `characters/main-character/animations/Flair.fbx` |
-| `singing` | Şov | Duygulu ve neşeli şarkı söyleme performansı | `characters/main-character/animations/Singing.fbx` |
+| `dance` / `silly_dance` | Dans | Eğlenceli çizgi film zafer dansı (Grup kutlaması) | `animations/Silly Dancing.fbx` |
+| `capoeira` | Dans | Ritmik Capoeira dans gösterisi (Yalnızca dans/kutlama sahnelerinde kullanılır; düşmana karşı kullanılamaz) | `animations/Capoeira.fbx` |
+| `hip_hop` | Dans | Dinamik Hip-Hop sokak dansı | `animations/Hip Hop Dancing.fbx` |
+| `breakdance` | Dans | 1990 stil dönüşlü Breakdance şovu | `animations/Breakdance 1990.fbx` |
+| `flair` | Dans | Yerde değirmen (Flair) dans dönüşü | `animations/Flair.fbx` |
+| `singing` | Şov | Duygulu ve neşeli şarkı söyleme performansı | `animations/Singing.fbx` |
 
 #### E) Tepki, Jest ve Dramatik Durumlar
 | Klip Kodu (`name`) | Kategori | Açıklama / Kullanım Amacı | Kaynak Dosya (`public/models/...`) |
 | :--- | :--- | :--- | :--- |
-| `taunt` | Jest | Meydan okuma / kendine güvenen cesur duruş | `characters/main-character/animations/Taunt.fbx` |
-| `point` | Jest | Tek diz çökerek ilerideki hedefi/izi işaret etme | `characters/main-character/animations/Kneeling Pointing.fbx` |
-| `surprised` | Tepki | Elleri başa götürerek büyük şaşkınlık / hayret tepkisi | `characters/main-character/animations/Surprised.fbx` |
-| `defeated` | Tepki | Hayal kırıklığı, yorgunluk veya yenilgiyi kabul etme | `characters/main-character/animations/Defeated.fbx` |
-| `fall_flat` | Komedi | Yüzüstü yere kapaklanma (Slapstick çizgi film düşüşü) | `characters/main-character/animations/Fall Flat.fbx` |
-| `dying` | Dramatik | Bayılma / yere yığılma | `characters/main-character/animations/Dying.fbx` |
-| `death_left` | Dramatik | Sola doğru savrularak yere düşme | `characters/main-character/animations/Standing Death Left 01.fbx` |
+| `taunt` | Jest | Meydan okuma / kendine güvenen cesur duruş | `animations/Taunt.fbx` |
+| `point` | Jest | Tek diz çökerek ilerideki hedefi/izi işaret etme | `animations/Kneeling Pointing.fbx` |
+| `surprised` | Tepki | Elleri başa götürerek büyük şaşkınlık / hayret tepkisi | `animations/Surprised.fbx` |
+| `defeated` | Tepki | Hayal kırıklığı, yorgunluk veya yenilgiyi kabul etme | `animations/Defeated.fbx` |
+| `fall_flat` | Komedi | Yüzüstü yere kapaklanma (Slapstick çizgi film düşüşü) | `animations/Fall Flat.fbx` |
+| `dying` | Dramatik | Bayılma / yere yığılma | `animations/Dying.fbx` |
+| `death_left` | Dramatik | Sola doğru savrularak yere düşme | `animations/Standing Death Left 01.fbx` |
 
 #### F) İzcilik / Okçu (`Longbow`) Hareket Paketi
 | Klip Kodu (`name` / `clip`) | Açıklama / Kullanım Amacı | Kaynak Dosya (`public/models/...`) |

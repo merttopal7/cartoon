@@ -15,19 +15,19 @@
 
 imports:
   animations:
-    idle: models/characters/main-character/animations/Neutral Idle.fbx
-    walk: models/characters/main-character/animations/Walking.fbx
-    run: models/characters/main-character/animations/Running.fbx
-    jump_joy: models/characters/main-character/animations/Joyful Jump.fbx
-    stretch: models/characters/main-character/animations/Arm Stretching.fbx
-    point: models/characters/main-character/animations/Kneeling Pointing.fbx
-    hurricane_kick: models/characters/main-character/animations/Hurricane Kick.fbx
-    flying_kick: models/characters/main-character/animations/Flying Kick.fbx
-    dodge_back: models/characters/main-character/animations/Standing Dodge Backward.fbx
-    fall_flat: models/characters/main-character/animations/Fall Flat.fbx
-    taunt: models/characters/main-character/animations/Taunt.fbx
-    hip_hop: models/characters/main-character/animations/Hip Hop Dancing.fbx
-    fight_idle: models/characters/main-character/animations/Action Idle To Fight Idle.fbx
+    idle: models/animations/Neutral Idle.fbx
+    walk: models/animations/Walking.fbx
+    run: models/animations/Running.fbx
+    jump_joy: models/animations/Joyful Jump.fbx
+    stretch: models/animations/Arm Stretching.fbx
+    point: models/animations/Kneeling Pointing.fbx
+    hurricane_kick: models/animations/Hurricane Kick.fbx
+    flying_kick: models/animations/Flying Kick.fbx
+    dodge_back: models/animations/Standing Dodge Backward.fbx
+    fall_flat: models/animations/Fall Flat.fbx
+    taunt: models/animations/Taunt.fbx
+    hip_hop: models/animations/Hip Hop Dancing.fbx
+    fight_idle: models/animations/Action Idle To Fight Idle.fbx
 
 film:
   title: test-dort-element

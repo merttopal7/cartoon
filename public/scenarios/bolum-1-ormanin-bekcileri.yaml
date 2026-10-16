@@ -4,17 +4,17 @@
 
 imports:
   animations:
-    idle: models/characters/main-character/animations/Neutral Idle.fbx
-    walk: models/characters/main-character/animations/Walking.fbx
-    run: models/characters/main-character/animations/Running.fbx
-    jog: models/characters/main-character/animations/Jogging.fbx
-    jump_joy: models/characters/main-character/animations/Joyful Jump.fbx
-    pushup: models/characters/main-character/animations/Jump Push Up.fbx
-    kick: models/characters/main-character/animations/Martelo 2.fbx
-    taunt: models/characters/main-character/animations/Taunt.fbx
-    point: models/characters/main-character/animations/Kneeling Pointing.fbx
-    stretch: models/characters/main-character/animations/Arm Stretching.fbx
-    dance: models/characters/main-character/animations/Silly Dancing.fbx
+    idle: models/animations/Neutral Idle.fbx
+    walk: models/animations/Walking.fbx
+    run: models/animations/Running.fbx
+    jog: models/animations/Jogging.fbx
+    jump_joy: models/animations/Joyful Jump.fbx
+    pushup: models/animations/Jump Push Up.fbx
+    kick: models/animations/Martelo 2.fbx
+    taunt: models/animations/Taunt.fbx
+    point: models/animations/Kneeling Pointing.fbx
+    stretch: models/animations/Arm Stretching.fbx
+    dance: models/animations/Silly Dancing.fbx
 
 film:
   title: bolum-1-ormanin-bekcileri

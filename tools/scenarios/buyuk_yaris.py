@@ -9,7 +9,7 @@ import json, math, os
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 P = [p[:2] for p in json.load(open(os.path.join(ROOT, 'assets-src/maps/dirt-road/road.json')))['points']]
 OUT = os.path.join(ROOT, 'public/scenarios/bolum-5-buyuk-yaris.yaml')
-A = 'models/characters/main-character/animations'
+A = 'models/animations'
 
 # ------------------------------------------------------------------ yol yardımcıları
 def direction(i):

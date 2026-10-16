@@ -310,8 +310,11 @@ src/
     assets.ts          FBX/GLB yükleme, ayrı animasyon dosyaları, ölçekleme
     merge.ts           statik modellerde malzemeye göre mesh birleştirme
     terrain.ts         araziden yükseklik haritası (karakterler yüzeye basar; adla seçilebilir)
-  render/viewport.ts   WebGL + OutlineEffect
+  render/viewport.ts   WebGL çizimi; post.ts kontur, parlama, renk tonu
   export/mp4.ts        WebCodecs H.264 + mp4-muxer
+public/models/         modeller (git dışı)
+  animations/          bütün karakterlerin ortak Mixamo animasyonları ("Without Skin"); yeni klip buraya
+  characters/<ad>/     karakter modelleri; Erika ve sword-and-shield kendi paketlerini de taşır
 tools/
   convert-model.mjs    FBX/GLB → optimize GLB (npm run convert)
   blender/export_amy.py  Amy'yi orijinal .blend'den temiz GLB'ye aktaran Blender betiği

@@ -80,6 +80,7 @@ export class AssetLibrary {
   }
 
   private load(src: string): Promise<LoadedModel> {
+    src = movedPath(src);
     let p = this.cache.get(src);
     if (!p) {
       const fbx = isFbx(src);
@@ -195,6 +196,14 @@ export class AssetLibrary {
       }),
     );
   }
+}
+
+/**
+ * Taşınan dosyalar: ortak animasyon kütüphanesi eskiden models/characters/main-character/animations altındaydı
+ * (Toprak'ın klasörü gibi görünüyordu); artık models/animations. Eski yolla kaydedilmiş senaryolar da yüklensin.
+ */
+function movedPath(src: string): string {
+  return src.replace(/^(\/?)models\/characters\/main-character\/animations\//, '$1models/animations/');
 }
 
 const ENHANCED_TEXTURES = new WeakSet<THREE.Texture>();
