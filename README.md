@@ -134,7 +134,7 @@ scenes:
 
 - **Konuşma:** ağız sesin yüksekliğiyle açılıp kapanır. Toprak'ta ağız doku tablosundan, Defne'de çizilen anime ağızdan, şekil anahtarı olan modellerde `jawopen`/`mouth` şeklinden gelir.
 - **Ağız şekli olmayan yüz** (Meşe/Erika): varlığa `face` yazılır, yüklemede çene açma, gülümseme ve üzgün şekilleri üretilir ([face-morphs.ts](src/engine/rigs/face-morphs.ts)). Değerler modelin bağlama uzayında (FBX birimi; y yukarı, z ileri):
-  `face: { mesh: Body_Mesh, seam: 159.0, hinge: [161.5, 0.5], width: 5.3, corner: [2.3, 10.1] }` (dudak çizgisi, çene menteşesi, alt çene yarı genişliği, ağız köşesi).
+  `face: { mesh: Body_Mesh, seam: 159.0, hinge: [161.5, 0.5], width: 5.3, corner: [2.3, 10.1], front: 11.45 }` (dudak çizgisi, çene menteşesi, alt çene yarı genişliği, ağız köşesi, dudak ön yüzeyi). Dudaklar dudak çizgisinden ayrılır; ağız açılınca üst diş sırası ve koyu ağız içi görünür (dişsiz modele eklenir).
 - **Otomatik ifadeler:** yetenek kullanan güç toplarken kızgın/kararlı, vurulan karakter ~1 sn şaşkın, sevinç kliplerinde (`jump_joy`, dans, şarkı) mutlu. Senaryodaki `emote` eylemleriyle birleşir (en güçlüsü geçerli). Karabey'in yüzü miğferle kapalıdır.
 
 Testler: `node tools/test_face.mjs`.

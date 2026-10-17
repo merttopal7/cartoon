@@ -179,6 +179,8 @@ const modelAsset = z
         width: z.number().positive(),
         /** Ağız köşesi [x, z] */
         corner: z.tuple([z.number(), z.number()]),
+        /** Dudakların ortadaki ön yüzeyi (z); dişler bunun arkasına yerleşir */
+        front: z.number().optional(),
       })
       .strict()
       .optional(),
