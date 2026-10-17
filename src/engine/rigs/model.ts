@@ -102,6 +102,11 @@ export class ModelRig implements Rig {
   /** idle klibi yoksa boşta duruş: ilk klibin ilk karesi (Mixamo klipleri ayakta başlar). T-pozdan iyidir. */
   private readonly rest?: THREE.AnimationAction;
   private readonly head?: THREE.Bone;
+  /** Saç fiziği kemikleri (sırt, sol ve sağ ön tutam) */
+  private readonly hairBones: { back?: THREE.Object3D; l?: THREE.Object3D; r?: THREE.Object3D } = {};
+  get hairPhysics() {
+    return !!this.hairBones.back;
+  }
   /**
    * Prosedürel olarak değiştirilen kemiklerin karıştırıcı sonrası (taban) halleri. AnimationMixer
    * değer değişmediyse kemiğe yeniden yazmaz; geri yüklemezsek eklemeler her karede üst üste biner.
@@ -334,6 +339,11 @@ export class ModelRig implements Rig {
       if (ul && ll && fl && ur && lr && fr) this.legs.push({ upLeg: ul, leg: ll, foot: fl }, { upLeg: ur, leg: lr, foot: fr });
     }
     this.bowArch1 = bowArch1;
+    model.traverse((o) => {
+      if (o.name === 'hair_phys_back') this.hairBones.back = o;
+      else if (o.name === 'hair_phys_l') this.hairBones.l = o;
+      else if (o.name === 'hair_phys_r') this.hairBones.r = o;
+    });
     this.bowArch2 = bowArch2;
     this.rightStringFinger = rightStringFinger;
     if (eyelids) {
@@ -584,6 +594,24 @@ export class ModelRig implements Rig {
     for (const [bone, base] of this.touchedPos) bone.position.copy(base);
     this.touchedPos.clear();
     this.mixer.update(0);
+
+    // Saç fiziği: sırttaki saç ense hizasından, ön tutamlar omuz başlarından savrulur
+    if (this.hairBones.back && (p.hairBack || p.hairSide)) {
+      this.root.updateMatrixWorld(true);
+      const rq = this.root.getWorldQuaternion(new THREE.Quaternion());
+      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(rq);
+      const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(rq);
+      const swing = (bone: THREE.Object3D | undefined, k: number) => {
+        if (!bone) return;
+        this.touch(bone);
+        // Geriye savrulma: yan eksen etrafında (uç geriye gider); yana: ileri eksen etrafında
+        rotateWorld(bone, right, -p.hairBack * k);
+        rotateWorld(bone, fwd, -p.hairSide * k);
+      };
+      swing(this.hairBones.back, 1);
+      swing(this.hairBones.l, 0.6);
+      swing(this.hairBones.r, 0.6);
+    }
 
     // Yaylı okçu karakterlerde (Erika) yay kirişi kemiğini (mixamorigLeft_arch2) kiriş çekme ve
     // bırakma anlarında sağ elin parmaklarına kilitleyip ok çıktığı anda geri yaylandır.

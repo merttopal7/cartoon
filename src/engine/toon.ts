@@ -116,7 +116,8 @@ export function reduceTextureDetail(tex: THREE.Texture, maxDim = 512): THREE.Tex
 export function toonify(root: THREE.Object3D, outline: number | false) {
   root.traverse((o) => {
     const mesh = o as THREE.Mesh;
-    if (!mesh.isMesh) return;
+    // Zaten çizgi film malzemesi verilmiş ek parçalar (ör. Meşe'nin tepe noktası renkli saçı) olduğu gibi kalır
+    if (!mesh.isMesh || mesh.userData.keepMaterial) return;
     const convert = (src: THREE.Material) => {
       const s = src as THREE.MeshStandardMaterial;
 

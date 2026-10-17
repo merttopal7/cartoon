@@ -30,6 +30,15 @@ try {
     const jawAt = (t) => { b1.evaluate(t, f); return body.morphTargetInfluences[dict.jawopen]; };
     const talking = [51, 52.8, 54.8].map(jawAt);
     const silent = [48.0, 57.5].map(jawAt);
+    // Saç fiziği: koşarken saç geride akar, dururken neredeyse dik; aynı t her zaman aynı sonucu verir
+    const hair = (t) => { b1.evaluate(t, f); return [mese.pose.hairBack, mese.pose.hairSide]; };
+    const running = hair(80)[0];
+    const still = hair(30)[0];
+    const h1 = hair(47.0);
+    hair(12); hair(75);
+    const h2 = hair(47.0);
+    check('Meşe: saç koşarken geride akar, dururken dik', running > 0.25 && Math.abs(still) < 0.05, `koşu ${running.toFixed(2)} rad, duruş ${still.toFixed(2)} rad`);
+    check('saç fiziği belirli (aynı an, farklı sırayla)', h1[0] === h2[0] && h1[1] === h2[1], `${h1.map((v) => v.toFixed(4))} / ${h2.map((v) => v.toFixed(4))}`);
     check('Meşe: konuşurken çene açılır, susunca kapanır', talking.every((v) => v > 0.8) && silent.every((v) => v < 0.05), `konuşma ${talking.map((v) => v.toFixed(2))}, sessiz ${silent.map((v) => v.toFixed(2))}`);
     b1.dispose();
 

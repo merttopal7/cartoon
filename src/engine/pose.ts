@@ -49,6 +49,9 @@ export interface Pose {
   blink: number;
   mouth: number;
   expr: Record<Expression, number>;
+  /** Saç fiziği (radyan): + geriye / + karakterin sağına savrulma; ModelRig saç kemiklerini döndürür */
+  hairBack: number;
+  hairSide: number;
   clips: ClipState[];
 }
 
@@ -80,6 +83,8 @@ export function createPose(): Pose {
     blink: 0,
     mouth: 0,
     expr: { happy: 0, sad: 0, surprised: 0, angry: 0 },
+    hairBack: 0,
+    hairSide: 0,
     clips: [],
   };
 }
@@ -91,6 +96,7 @@ export function resetPose(p: Pose) {
   p.waveWeight = p.waveTime = p.jumpWeight = p.jumpTime = 0;
   p.headYaw = p.headPitch = p.blink = p.mouth = 0;
   p.expr.happy = p.expr.sad = p.expr.surprised = p.expr.angry = 0;
+  p.hairBack = p.hairSide = 0;
   p.clips.length = 0;
   p.walkClip = '';
 }
@@ -108,6 +114,8 @@ export interface Rig {
   prepareWarmup?(): () => void;
   /** Arazi yüksekliği verilirse ayaklar eğimli zemine basar (ayak IK'sı). */
   setGround?(ground: (x: number, z: number) => number | null): void;
+  /** Saç fiziği kemikleri var (Character saçın savrulmasını hesaplar). */
+  readonly hairPhysics?: boolean;
   /**
    * Ayak sesleri için yürüme/koşu klibinin ritmi: klip süresi (period), verilen hızdaki oynatma hızı ve
    * ayakların yere bastığı klip anları. Klip zamanı = sahne zamanı × rate (mod period).

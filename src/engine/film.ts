@@ -1106,7 +1106,8 @@ function liftCharacter(root: THREE.Object3D, amount: number) {
     if (!mesh.isMesh) return;
     for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
       const mat = m as THREE.MeshToonMaterial;
-      if (!mat.isMeshToonMaterial) continue;
+      // Saç dolgu ışığı almaz: tepe noktası renkli tutam gölgeleri düz bir renge dönerdi
+      if (!mat.isMeshToonMaterial || mat.userData.noFill) continue;
       mat.emissive.copy(mat.color);
       mat.emissiveMap = mat.map;
       mat.emissiveIntensity = amount;

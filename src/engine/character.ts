@@ -131,6 +131,15 @@ interface TimedAction {
   cutAt?: number;
 }
 
+/** Saç fiziği: geçmişin tümlendiği pencere (sn), adım sıklığı (Hz), yayın doğal frekansı (Hz) ve sönümü. */
+const HAIR_WINDOW = 1.6;
+const HAIR_HZ = 30;
+const HAIR_FREQ = 1.15;
+const HAIR_DAMP = 0.32;
+/** Hızın saçı geriye akıtması (rad / (m/sn)) ve ivmenin savurması (rad·sn² / m) */
+const HAIR_DRAG = 0.11;
+const HAIR_ACC = 0.9;
+
 /** Oynarken karakterin otomatik güldüğü klipler. */
 const HAPPY_CLIP = /jump_?joy|danc|hip_?hop|celebrat|cheer|victory|singing|^happy$/i;
 
@@ -577,9 +586,58 @@ export class Character {
       }
     }
 
+    if (this.rig.hairPhysics) this.hairSwing(t, ctx, p);
     p.blink = this.blinkAt(t);
     p.breathe = Math.sin((t * TAU) / 3.2 + this.seed) * 0.015;
     p.sway = Math.sin((t * TAU) / 4.3 + this.seed * 2) * 0.03 * (1 - p.walkWeight);
+  }
+
+  /**
+   * Saç fiziği: sönümlü yay, karakterin yerel eksenlerinde (geri / yan). Sürücüler: ivme (hızlanınca saç geride
+   * kalır, durunca öne savrulur), hızla orantılı hava sürüklemesi (koşarken geride akar), dönüşte merkezkaç ve
+   * hafif esinti. Durum taşınmaz: t'den önceki HAIR_WINDOW saniye her karede baştan tümlenir; aynı t her zaman
+   * aynı sonucu verir (önizleme atlasa da dışa aktarım kare kare ilerlese de).
+   */
+  private hairSwing(t: number, ctx: SceneContext, p: Pose) {
+    const N = Math.round(HAIR_WINDOW * HAIR_HZ);
+    const dt = 1 / HAIR_HZ;
+    const pos: THREE.Vector3[] = [];
+    const yaw: number[] = [];
+    for (let k = -1; k <= N + 1; k++) {
+      const tk = t - HAIR_WINDOW + k * dt;
+      pos.push(this.positionAt(tk, new THREE.Vector3()));
+      yaw.push(this.facingAt(tk, ctx));
+    }
+    const w0 = TAU * HAIR_FREQ;
+    let xb = 0;
+    let vb = 0;
+    let xs = 0;
+    let vs = 0;
+    for (let k = 1; k <= N + 1; k++) {
+      const tk = t - HAIR_WINDOW + (k - 1) * dt;
+      const f = new THREE.Vector3(Math.sin(yaw[k]), 0, Math.cos(yaw[k]));
+      const r = new THREE.Vector3(Math.cos(yaw[k]), 0, -Math.sin(yaw[k]));
+      const vel = pos[k + 1].clone().sub(pos[k - 1]).divideScalar(2 * dt);
+      const acc = pos[k + 1].clone().add(pos[k - 1]).sub(pos[k].clone().multiplyScalar(2)).divideScalar(dt * dt);
+      const turn = wrapAngle(yaw[k + 1] - yaw[k - 1]) / (2 * dt);
+      const breeze = Math.sin(tk * 1.3 + this.seed) * 0.5 + Math.sin(tk * 2.9 + this.seed * 3) * 0.3;
+      // Denge konumu: hızla geriye akış, dönüşte dışa savrulma, esinti
+      const targetB = clamp(vel.dot(f) * HAIR_DRAG, -0.25, 0.45) + 0.015 * breeze;
+      const targetS = clamp(-vel.dot(r) * HAIR_DRAG * 0.6 - turn * vel.length() * 0.05, -0.35, 0.35) + 0.03 * breeze;
+      const ab = w0 * w0 * (targetB - xb) - 2 * HAIR_DAMP * w0 * vb + (acc.dot(f) * HAIR_ACC);
+      const as = w0 * w0 * (targetS - xs) - 2 * HAIR_DAMP * w0 * vs - (acc.dot(r) * HAIR_ACC);
+      if (k === 1) {
+        xb = targetB;
+        xs = targetS;
+      }
+      vb += ab * dt;
+      vs += as * dt;
+      xb += vb * dt;
+      xs += vs * dt;
+    }
+    // Öne savrulma sınırlı (saç sırta çarpar), geriye ve yana daha serbest
+    p.hairBack = clamp(xb, -0.08, 0.6);
+    p.hairSide = clamp(xs, -0.45, 0.45);
   }
 
   /** Bakış: kameranın konumu belli olduktan sonra ikinci geçişte hesaplanır. */

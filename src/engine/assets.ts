@@ -11,7 +11,7 @@ import { ModelRig } from './rigs/model';
 import { PlaceholderRig, type CharacterKind } from './rigs/placeholder';
 import { ROOT_SPEED, SOURCE_HIPS_HEIGHT, SOURCE_SKELETON } from './clips';
 import { mergeStatic } from './merge';
-import { OUTLINE, toonify } from './toon';
+import { OUTLINE, toonMaterial, toonify } from './toon';
 
 type ModelAsset = Extract<AssetDef, { src: string }>;
 
@@ -561,17 +561,32 @@ async function customizeErikaModel(root: THREE.Object3D) {
   }
 }
 
-/** Meşe'nin saç rengi (koyu kestane-kızıl) */
-const ERIKA_HAIR_COLOR = '#4a1d16';
-/** Saçın kafadan göğse geçtiği yükseklik aralığı (bağlama uzayı, cm): üstü kafayla, altı göğüsle hareket eder */
+/** Meşe'nin saç rengi (kestane-kızıl); tepe noktası renkleri bunu çarpar (kök koyu, uçlar bakır, tutam tonları) */
+const ERIKA_HAIR_COLOR = '#6b2419';
+/** Saçın kafadan gövdeye geçtiği yükseklik aralığı (bağlama uzayı, cm): üstü kafayla, altı gövdeyle hareket eder */
 const HAIR_HEAD_FROM = 148.5;
 const HAIR_HEAD_TO = 157.5;
+/**
+ * Saç fiziği kemikleri (göğüs kemiğinin çocukları, bağlama uzayında dönme noktaları): sırttaki saç ense
+ * hizasından, ön tutamlar omuz başlarından sallanır. ModelRig adlarından bulur, Character yay fiziğiyle sürer.
+ */
+const HAIR_PIVOTS: { name: string; at: [number, number, number] }[] = [
+  { name: 'hair_phys_back', at: [0, 156, -7.5] },
+  { name: 'hair_phys_l', at: [7.5, 153, 0.5] },
+  { name: 'hair_phys_r', at: [-7.5, 153, 0.5] },
+];
+
+const hash3 = (x: number, y: number, z: number) => {
+  const h = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453;
+  return h - Math.floor(h);
+};
 
 /**
- * Blender'da modellenen uzun dalgalı saç (sırtın ortasına inen katmanlı tutamlar, omuzlardan göğse dökülen ön
- * tutamlar, yana taranmış kâkül): public/models/characters/Erika/sac.obj, modelin bağlama uzayında (y yukarı).
- * Ağırlık yüksekliğe göre: boyun hizasının üstü kafa kemiğine, omuzların altı göğüs kemiğine (Spine2), arası
- * yumuşak geçiş. Böylece baş dönünce sırttaki saç gövdenin içinden geçmez.
+ * Blender'da modellenen uzun dalgalı saç (sırtın ortasına inen katmanlı tutamlar, kulakları örten yan saç,
+ * omuzlardan göğse dökülen ön tutamlar, yana taranmış kâkül): public/models/characters/Erika/sac.obj, modelin
+ * bağlama uzayında (y yukarı). Çizgi film gölgelendirmesi; tepe noktası renkleriyle kök koyu, uçlar açık, tutamlar
+ * arasında ton farkı, tepede ışık bandı. Ağırlıklar: boyun üstü kafa; aşağısı gövde ile fizik kemikleri arasında,
+ * dönme noktasından uzaklaştıkça fizik payı artar (uçlar en çok sallanır).
  */
 async function attachErikaHair(root: THREE.Object3D) {
   let body: THREE.SkinnedMesh | undefined;
@@ -584,8 +599,26 @@ async function attachErikaHair(root: THREE.Object3D) {
   const headIdx = bones.findIndex((b) => /head$/i.test(b.name));
   const chestIdx = bones.findIndex((b) => /spine2$/i.test(b.name));
   if (headIdx < 0 || chestIdx < 0) return;
+  // Fizik kemikleri: model şu an bağlama pozunda; dönme noktaları göğüs kemiğinin yerel uzayına çevrilir
+  root.updateMatrixWorld(true);
+  const chest = bones[chestIdx];
+  const physBones = HAIR_PIVOTS.map(({ name, at }) => {
+    const b = new THREE.Bone();
+    b.name = name;
+    chest.add(b);
+    b.position.copy(chest.worldToLocal(new THREE.Vector3(...at)));
+    b.updateMatrixWorld(true);
+    return b;
+  });
+  const allBones = [...bones, ...physBones];
+  const inverses = [...face.skeleton.boneInverses, ...physBones.map((b) => b.matrixWorld.clone().invert())];
+  const [backIdx, leftIdx, rightIdx] = physBones.map((_, i) => bones.length + i);
+
   const hair = await new OBJLoader().loadAsync('/models/characters/Erika/sac.obj');
-  const material = new THREE.MeshStandardMaterial({ color: ERIKA_HAIR_COLOR, name: 'erika_sac' });
+  const material = toonMaterial(ERIKA_HAIR_COLOR, { outline: false });
+  material.vertexColors = true;
+  material.name = 'erika_sac';
+  material.userData.noFill = true;
   hair.traverse((o) => {
     const mesh = o as THREE.Mesh;
     if (!mesh.isMesh) return;
@@ -593,19 +626,46 @@ async function attachErikaHair(root: THREE.Object3D) {
     const pos = g.attributes.position;
     const si = new Uint16Array(pos.count * 4);
     const sw = new Float32Array(pos.count * 4);
+    const col = new Float32Array(pos.count * 3);
     for (let i = 0; i < pos.count; i++) {
-      const k = THREE.MathUtils.smoothstep(pos.getY(i), HAIR_HEAD_FROM, HAIR_HEAD_TO);
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+      // --- Ağırlık: kafa / gövde / fizik
+      const kHead = THREE.MathUtils.smoothstep(y, HAIR_HEAD_FROM, HAIR_HEAD_TO);
+      const front = z > -1 && Math.abs(x) > 3.5 && y < 158;
+      const phys = front ? (x > 0 ? leftIdx : rightIdx) : backIdx;
+      const pivotY = front ? 153 : 156;
+      const reach = Math.pow(THREE.MathUtils.clamp((pivotY - y) / 20, 0, 1), 0.8) * (1 - kHead);
       si[i * 4] = headIdx;
-      sw[i * 4] = k;
+      sw[i * 4] = kHead;
       si[i * 4 + 1] = chestIdx;
-      sw[i * 4 + 1] = 1 - k;
+      sw[i * 4 + 1] = (1 - kHead) - reach;
+      si[i * 4 + 2] = phys;
+      sw[i * 4 + 2] = reach;
+      // --- Renk: kökten uca açılan ton, tutam tonları (yatay konuma göre şeritler), tepede ışık bandı
+      const tip = THREE.MathUtils.clamp((168 - y) / 34, 0, 1);
+      const ang = Math.atan2(x, -z);
+      // Tutam şeritleri: geniş açık/koyu bantlar + aralarda ince koyu çizgiler (tutam ayrımı)
+      const s1 = Math.sin(ang * 9 + Math.sin(y * 0.19) * 0.9);
+      const s2 = Math.sin(ang * 23 + 1.3 + Math.sin(y * 0.33) * 0.6);
+      const strand = 0.5 + 0.35 * s1 + 0.15 * s2 - 0.35 * Math.pow(Math.max(0, -s2), 6);
+      const grain = hash3(Math.round(x * 3), Math.round(y * 0.7), Math.round(z * 3)) - 0.5;
+      const band = Math.exp(-(((y - 174.5) / 1.6) ** 2)) * THREE.MathUtils.clamp(-z / 6 + 0.6, 0, 1);
+      let k = 0.62 + 0.38 * tip + 0.5 * (strand - 0.5) + 0.08 * grain + 0.45 * band;
+      k = THREE.MathUtils.clamp(k, 0.35, 1.4);
+      col[i * 3] = k * (1 + 0.06 * tip);
+      col[i * 3 + 1] = k * (1 + 0.1 * tip);
+      col[i * 3 + 2] = k;
     }
     g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
     g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     const skinnedHair = new THREE.SkinnedMesh(g, material);
     skinnedHair.name = 'erika_sac';
+    skinnedHair.userData.keepMaterial = true;
     skinnedHair.frustumCulled = false;
-    skinnedHair.bind(face.skeleton, face.bindMatrix);
+    skinnedHair.bind(new THREE.Skeleton(allBones, inverses), face.bindMatrix);
     (face.parent ?? root).add(skinnedHair);
   });
 }
