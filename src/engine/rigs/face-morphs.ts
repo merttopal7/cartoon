@@ -136,7 +136,7 @@ export function addFaceMorphs(root: THREE.Object3D, spec: FaceSpec) {
 }
 
 /** Dişlerin rengi (fildişi beyazı) ve ağız içinin rengi (koyu kırmızı) */
-const TEETH_COLOR = '#efe8da';
+const TEETH_COLOR = '#cfc3ae';
 const MOUTH_COLOR = '#3a1215';
 
 /**

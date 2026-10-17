@@ -52,6 +52,7 @@ assets:
     height: 1.72
     voice: KAGDtM2gzDrjWlUp2KNe
     element: su
+    fill: 0.3          # kendi ten renginde dolgu ışığı: yüz gölgede yeşile kaymasın, göz çukurları kararmasın
     # Modelde ağız şekli yok: yüklemede çene açma / gülümseme / üzgün şekilleri üretilir (bağlama uzayı, cm)
     face: { mesh: Body_Mesh, seam: 159.0, hinge: [161.5, 0.5], width: 5.3, corner: [2.3, 10.1], front: 11.45 }
   karabey:

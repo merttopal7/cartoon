@@ -691,7 +691,10 @@ export async function buildFilm(
     const characters = new Map<string, Character>();
     for (const c of def.characters) {
       const rig = await lib.character(s.assets[c.asset]);
-      liftCharacter(rig.root, def.environment.character_light ?? CHARACTER_LIGHT[def.environment.preset]);
+      // Karakter ışığı: varlığın kendi dolgu değeri (fill) ya da sahnenin varsayılanı
+      const assetDef = s.assets[c.asset];
+      const fill = assetDef && 'fill' in assetDef && assetDef.fill !== undefined ? assetDef.fill : undefined;
+      liftCharacter(rig.root, fill ?? def.environment.character_light ?? CHARACTER_LIGHT[def.environment.preset]);
       if (rig.clipDuration && rig.clipDuration('idle') === undefined)
         warnings.push(`${def.id}: "${c.id}" modelinde "idle" klibi yok; boşta dururken hareketsiz kalır (ilk klibin ilk karesindeki poz)`);
       rig.root.name = `character_${c.id}`;

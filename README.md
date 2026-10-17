@@ -139,7 +139,9 @@ scenes:
 
 Testler: `node tools/test_face.mjs`.
 
-**Karakter renk dengesi:** dokusu çok açık (pastel) bir karakter aynı ışıkta diğerlerinden fırlıyorsa varlığına `brightness` (renk çarpanı, doğrusal ışıkta; 0.6 ≈ göze %20 daha koyu) ve `saturation` yazılır. Defne: `brightness: 0.6, saturation: 0.88`.
+**Karakter renk dengesi:** dokusu çok açık (pastel) bir karakter aynı ışıkta diğerlerinden fırlıyorsa varlığına `brightness` (renk çarpanı, doğrusal ışıkta; 0.6 ≈ göze %20 daha koyu) ve `saturation` yazılır. Defne: `brightness: 0.6, saturation: 0.88`. Gölgedeki yüz sahnenin (yeşil zemin) ışığına kayıp solgun görünüyorsa `fill: 0.3`: karakter kendi ten renginde dolgu ışığı alır (Meşe).
+
+**Meşe'nin görünümü:** saç Blender'da modellendi (yüksek at kuyruğu, yana taranmış kâkül, yüzü çerçeveleyen tutamlar): `models/characters/Erika/sac.obj` ve `sac_bag.obj`, modelin bağlama uzayında; motor kafa kemiğine bağlar. Yüz dokusu `FemaleFitA_Body_diffuse_mese.png` (temiz göz akı, su-yeşili iris, sağlıklı dudak; asıl doku dokunulmadan duruyor). Blender dosyasında `Mese_Sac` sahnesi saç üzerinde çalışmak için duruyor.
 
 Maliyet (önizleme, 759×427): renk tonu ~2 ms, kontur ~1.5 ms; parlama yalnızca yetenek sırasında. Shader'lar yüklemede hazırlanır, ilk karelerde takılma olmaz. Kareleri gözle kontrol etmek için: `node tools/capture_frames.mjs <senaryo> <klasör> <t1,t2> render 1920` (`CROP=x,y,genişlik,yükseklik` oranlarıyla kırpma).
 

@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import type { AssetDef } from '../schema';
 import type { Rig } from './pose';
 import { buildProp, type PropKind } from './props';
@@ -453,7 +454,8 @@ async function customizeErikaModel(root: THREE.Object3D) {
     const texLoader = new THREE.TextureLoader();
     const [greenClothesTex, bodyTex] = await Promise.all([
       texLoader.loadAsync('/models/characters/Erika/Erika_Archer_Clothes_diffuse.png'),
-      texLoader.loadAsync('/models/characters/Erika/FemaleFitA_Body_diffuse.png'),
+      // Çizgi film tonuna çekilmiş yüz: temiz göz akı, su-yeşili iris, sağlıklı dudak (Blender/Python ile düzenlendi)
+      texLoader.loadAsync('/models/characters/Erika/FemaleFitA_Body_diffuse_mese.png'),
     ]);
     greenClothesTex.colorSpace = THREE.SRGBColorSpace;
     bodyTex.colorSpace = THREE.SRGBColorSpace;
@@ -462,7 +464,8 @@ async function customizeErikaModel(root: THREE.Object3D) {
       const skinned = o as THREE.SkinnedMesh;
       if (!skinned.isMesh) return;
 
-      if (/body_mesh/i.test(skinned.name)) {
+      // Gözler de aynı atlasın göz bölgesini kullanır (düzeltilmiş göz akı ve iris)
+      if (/body_mesh|eyes_mesh/i.test(skinned.name)) {
         const mats = Array.isArray(skinned.material) ? skinned.material : [skinned.material];
         for (const mat of mats) {
           const std = mat as THREE.MeshPhongMaterial | THREE.MeshStandardMaterial;
@@ -488,12 +491,6 @@ async function customizeErikaModel(root: THREE.Object3D) {
         const skinIdx = geom.attributes.skinIndex;
         const skinW = geom.attributes.skinWeight;
         if (!pos || !norm || !uv || !skinIdx || !skinW) return;
-
-        let headBoneIdx = 5;
-        if (skinned.skeleton && skinned.skeleton.bones) {
-          const found = skinned.skeleton.bones.findIndex((b) => /head$/i.test(b.name));
-          if (found >= 0) headBoneIdx = found;
-        }
 
         const newPos: number[] = [];
         const newNorm: number[] = [];
@@ -546,207 +543,6 @@ async function customizeErikaModel(root: THREE.Object3D) {
           }
         }
 
-        interface HairPoint {
-          x: number;
-          y: number;
-          z: number;
-          u: number;
-          v: number;
-        }
-
-        const pushHairTri = (a: HairPoint, b: HairPoint, c: HairPoint) => {
-          const abx = b.x - a.x, aby = b.y - a.y, abz = b.z - a.z;
-          const acx = c.x - a.x, acy = c.y - a.y, acz = c.z - a.z;
-          let nx = aby * acz - abz * acy;
-          let ny = abz * acx - abx * acz;
-          let nz = abx * acy - aby * acx;
-          const len = Math.hypot(nx, ny, nz) || 1;
-          nx /= len;
-          ny /= len;
-          nz /= len;
-          for (const pt of [a, b, c]) {
-            newPos.push(pt.x, pt.y, pt.z);
-            newNorm.push(nx, ny, nz);
-            newUV.push(pt.u, pt.v);
-            newSkinIdx.push(headBoneIdx, 0, 0, 0);
-            newSkinW.push(1, 0, 0, 0);
-          }
-        };
-
-        const addHairGrid = (grid: HairPoint[][], flipNormals = false) => {
-          const rows = grid.length;
-          const cols = grid[0].length;
-          for (let r = 0; r < rows - 1; r++) {
-            for (let c = 0; c < cols - 1; c++) {
-              const v00 = grid[r][c];
-              const v01 = grid[r][c + 1];
-              const v10 = grid[r + 1][c];
-              const v11 = grid[r + 1][c + 1];
-              if (!flipNormals) {
-                pushHairTri(v00, v10, v11);
-                pushHairTri(v00, v11, v01);
-              } else {
-                pushHairTri(v00, v11, v10);
-                pushHairTri(v00, v01, v11);
-              }
-            }
-          }
-        };
-
-        // 1. Ortadan ayrılmış tepe, şakak/yanak çerçeveleyen tutamlar ve omuzlara dökülen katmanlı 3B saç hacmi
-        const cx = 0.0, cy = 166.6, cz = 1.15;
-        const nRows = 30;
-        const nCols = 80;
-        const outerGrid: HairPoint[][] = [];
-        const innerGrid: HairPoint[][] = [];
-
-        for (let r = 0; r <= nRows; r++) {
-          const vFrac = r / nRows;
-          const rowOut: HairPoint[] = [];
-          const rowIn: HairPoint[] = [];
-          for (let c = 0; c <= nCols; c++) {
-            const uFrac = (c % nCols) / nCols;
-            const theta = (uFrac - 0.5) * 2.0 * Math.PI;
-            const absT = Math.abs(theta);
-            const sinT = Math.sin(theta);
-            const cosT = Math.cos(theta);
-
-            let phiMax: number;
-            if (absT < 0.42) {
-              const s = absT / 0.42;
-              const sSmooth = s * s * (3.0 - 2.0 * s);
-              phiMax = (0.345 + 0.080 * sSmooth) * Math.PI;
-            } else if (absT < 0.72) {
-              const s = (absT - 0.42) / (0.72 - 0.42);
-              const sSmooth = s * s * (3.0 - 2.0 * s);
-              phiMax = (0.425 + 0.435 * sSmooth) * Math.PI;
-            } else if (absT < 1.20) {
-              const s = (absT - 0.72) / (1.20 - 0.72);
-              const lockTip = 0.040 * Math.sin(s * Math.PI);
-              phiMax = (0.86 + lockTip) * Math.PI;
-            } else {
-              const s = (absT - 1.20) / (Math.PI - 1.20);
-              const sSmooth = s * s * (3.0 - 2.0 * s);
-              const tipWave = 0.024 * Math.cos(theta * 10.0);
-              phiMax = (0.86 + 0.06 * sSmooth + tipWave) * Math.PI;
-            }
-
-            const phi = vFrac * phiMax;
-            const cosPhi = Math.cos(phi);
-
-            let horizScale: number;
-            let vertY: number;
-            if (phi <= 0.5 * Math.PI) {
-              horizScale = Math.sin(phi);
-              vertY = cy + 12.10 * cosPhi;
-            } else {
-              const dropT = (phi - 0.5 * Math.PI) / (0.45 * Math.PI);
-              const cheekFrame = -0.04 * Math.sin(Math.min(1.0, dropT * 1.3) * Math.PI) * Math.max(0.0, cosT);
-              const shoulderFlare = 0.14 * Math.pow(dropT, 1.35) * (0.35 + 0.65 * Math.max(0.0, -cosT));
-              horizScale = 1.0 + cheekFrame + shoulderFlare;
-              vertY = cy - 16.5 * dropT;
-            }
-
-            const rx = 8.60;
-            const rz = cosT >= 0.0 ? 10.50 : 11.25;
-
-            const partGroove =
-              -0.58 *
-              Math.exp(-Math.pow(theta / 0.11, 2)) *
-              Math.sin(Math.min(1.0, vFrac * 2.5) * Math.PI * 0.5) *
-              (1.0 - 0.35 * vFrac);
-            const crownSwell =
-              0.72 *
-              Math.sin(Math.min(1.0, absT / 0.58) * Math.PI) *
-              Math.sin(Math.min(1.0, phi / (0.52 * Math.PI)) * Math.PI);
-
-            const strandEnv = Math.sin(vFrac * Math.PI * 0.92);
-            const strandRidge =
-              (0.30 * Math.cos(theta * 14.0) + 0.16 * Math.sin(theta * 7.0) + 0.08 * Math.cos(theta * 28.0)) *
-              strandEnv;
-
-            const templeLockBulge =
-              0.75 * Math.exp(-Math.pow((absT - 0.78) / 0.26, 2)) * Math.sin(vFrac * Math.PI * 0.92);
-            const earZone =
-              Math.exp(-Math.pow((absT - 1.35) / 0.48, 2)) *
-              Math.exp(-Math.pow((phi - 0.50 * Math.PI) / 0.36, 2));
-
-            const rxLocal = rx + 1.05 * earZone + 0.60 * templeLockBulge + strandRidge * 0.80;
-
-            let frontEdgeTaper = 0.0;
-            if (absT < 0.68 && vFrac > 0.68) {
-              const tEdge = (vFrac - 0.68) / 0.32;
-              frontEdgeTaper = -0.45 * Math.pow(tEdge, 1.4) * Math.cos((absT / 0.68) * Math.PI * 0.5);
-            }
-
-            const rzLocal = rz + 0.70 * templeLockBulge + strandRidge + frontEdgeTaper;
-
-            const px = cx + rxLocal * horizScale * sinT;
-            const py = vertY + (partGroove + crownSwell) * Math.max(0.0, cosPhi);
-            const pz = cz + rzLocal * horizScale * cosT;
-
-            const inScale = vFrac < 0.94 ? 0.935 : 0.985;
-            const pxIn = cx + (px - cx) * inScale;
-            const pyIn = py - 0.25 * (1.0 - vFrac);
-            const pzIn = cz + (pz - cz) * inScale;
-
-            const uCoord = 0.80 + 0.14 * Math.abs(Math.sin(theta * 2.0));
-            const vCoord = 0.275 + 0.060 * vFrac;
-            rowOut.push({ x: px, y: py, z: pz, u: uCoord, v: vCoord });
-            rowIn.push({ x: pxIn, y: pyIn, z: pzIn, u: uCoord, v: vCoord });
-          }
-          outerGrid.push(rowOut);
-          innerGrid.push(rowIn);
-        }
-
-        addHairGrid(outerGrid, false);
-        addHairGrid(innerGrid, true);
-
-        // Dış ve iç saç kabuğunun alt sınırını birleştirerek hacimli kenar oluştur
-        for (let c = 0; c < nCols; c++) {
-          const v00 = outerGrid[nRows][c];
-          const v01 = outerGrid[nRows][c + 1];
-          const v10 = innerGrid[nRows][c];
-          const v11 = innerGrid[nRows][c + 1];
-          pushHairTri(v00, v10, v11);
-          pushHairTri(v00, v11, v01);
-        }
-
-        // 2. Başın arkasında dalgalı okçu at kuyruğu (ponytail)
-        const ptRows = 18;
-        const ptCols = 20;
-        const ptGrid: HairPoint[][] = [];
-        for (let r = 0; r <= ptRows; r++) {
-          const t = r / ptRows;
-          const spineX = 0.0;
-          const spineY = 168.5 - 23.5 * Math.pow(t, 1.12) + 1.8 * Math.sin(t * Math.PI);
-          const spineZ = -9.2 - 5.0 * Math.sin(t * Math.PI * 0.72) - 1.5 * t;
-          let radX: number;
-          let radZ: number;
-          if (t < 0.15) {
-            radX = 2.6 - 0.5 * (t / 0.15);
-            radZ = 2.4 - 0.4 * (t / 0.15);
-          } else {
-            const s = (t - 0.15) / 0.85;
-            const envelope = Math.sin(s * Math.PI * 0.82) * (1.0 - 0.82 * Math.pow(s, 1.5));
-            radX = Math.max(0.25, 2.1 * (1.0 - 0.88 * Math.pow(s, 1.4)) + 1.85 * envelope);
-            radZ = Math.max(0.25, 2.0 * (1.0 - 0.88 * Math.pow(s, 1.4)) + 1.55 * envelope);
-          }
-          const rowList: HairPoint[] = [];
-          for (let c = 0; c <= ptCols; c++) {
-            const ang = ((c % ptCols) / ptCols) * 2.0 * Math.PI;
-            const ridge = 1.0 + 0.14 * Math.cos(ang * 8.0) * Math.sin(t * Math.PI);
-            const px = spineX + radX * ridge * Math.sin(ang);
-            const py = spineY + 0.35 * radZ * Math.cos(ang);
-            const pz = spineZ + radZ * ridge * Math.cos(ang);
-            const uCoord = 0.80 + 0.14 * ((c % ptCols) / ptCols);
-            const vCoord = 0.275 + 0.060 * t;
-            rowList.push({ x: px, y: py, z: pz, u: uCoord, v: vCoord });
-          }
-          ptGrid.push(rowList);
-        }
-
-        addHairGrid(ptGrid, false);
 
         const nextGeom = new THREE.BufferGeometry();
         nextGeom.setAttribute('position', new THREE.Float32BufferAttribute(newPos, 3));
@@ -758,7 +554,56 @@ async function customizeErikaModel(root: THREE.Object3D) {
         skinned.geometry = nextGeom;
       }
     });
+    await attachErikaHair(root);
   } catch (err) {
     console.warn('Erika model özelleştirmesi uygulanamadı:', err);
   }
+}
+
+/** Meşe'nin saç rengi (koyu kestane-kızıl) ve saç bağı rengi */
+const ERIKA_HAIR_COLOR = '#4a1d16';
+const ERIKA_TIE_COLOR = '#2e5a31';
+
+/**
+ * Blender'da modellenen saç (yüksek at kuyruğu, yana taranmış kâkül, yüzü çerçeveleyen iki tutam) ve saç bağı:
+ * public/models/characters/Erika/sac.obj ve sac_bag.obj, modelin bağlama uzayında (FBX birimi, y yukarı).
+ * Kafa kemiğine tam ağırlıkla bağlanır; kafa ile birlikte hareket eder.
+ */
+async function attachErikaHair(root: THREE.Object3D) {
+  let body: THREE.SkinnedMesh | undefined;
+  root.traverse((o) => {
+    if ((o as THREE.SkinnedMesh).isSkinnedMesh && /body_mesh/i.test(o.name)) body = o as THREE.SkinnedMesh;
+  });
+  if (!body) return;
+  const face = body;
+  const headIdx = face.skeleton.bones.findIndex((b) => /head$/i.test(b.name));
+  if (headIdx < 0) return;
+  const loader = new OBJLoader();
+  const [hair, tie] = await Promise.all([
+    loader.loadAsync('/models/characters/Erika/sac.obj'),
+    loader.loadAsync('/models/characters/Erika/sac_bag.obj'),
+  ]);
+  const attach = (group: THREE.Object3D, name: string, color: string) => {
+    group.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const g = mesh.geometry;
+      const count = g.attributes.position.count;
+      const si = new Uint16Array(count * 4);
+      const sw = new Float32Array(count * 4);
+      for (let i = 0; i < count; i++) {
+        si[i * 4] = headIdx;
+        sw[i * 4] = 1;
+      }
+      g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
+      g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+      const skinnedHair = new THREE.SkinnedMesh(g, new THREE.MeshStandardMaterial({ color, name }));
+      skinnedHair.name = name;
+      skinnedHair.frustumCulled = false;
+      skinnedHair.bind(face.skeleton, face.bindMatrix);
+      (face.parent ?? root).add(skinnedHair);
+    });
+  };
+  attach(hair, 'erika_sac', ERIKA_HAIR_COLOR);
+  attach(tie, 'erika_sac_bag', ERIKA_TIE_COLOR);
 }

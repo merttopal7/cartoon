@@ -193,6 +193,11 @@ const modelAsset = z
      * "fırlıyorsa" düşürülür; ör. 0.8.
      */
     brightness: z.number().min(0.3).max(1.5).optional(),
+    /**
+     * Karakterin kendi doku renginde dolgu ışığı (0–1); gölgedeki yüz sahnenin (ör. yeşil zemin) ışığına değil
+     * kendi rengine kayar, göz çukurları kararmaz. Verilmezse sahnenin character_light değeri.
+     */
+    fill: z.number().min(0).max(1).optional(),
     /** Renk doygunluğu çarpanı (1 = dokunun kendisi; 0 = gri). */
     saturation: z.number().min(0).max(1.5).optional(),
     /** Ayrı dosyadaki animasyonlar: klip adı → dosya, ör. { walk: models/kedi-walk.fbx } (Mixamo "Without Skin") */
