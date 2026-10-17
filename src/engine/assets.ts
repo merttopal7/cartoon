@@ -453,7 +453,8 @@ async function customizeErikaModel(root: THREE.Object3D) {
   try {
     const texLoader = new THREE.TextureLoader();
     const [greenClothesTex, bodyTex] = await Promise.all([
-      texLoader.loadAsync('/models/characters/Erika/Erika_Archer_Clothes_diffuse.png'),
+      // Su elementine uygun mavi tonlu kıyafet (yeşilden çevrildi)
+      texLoader.loadAsync('/models/characters/Erika/Erika_Archer_Clothes_diffuse_mavi.png'),
       // Çizgi film tonuna çekilmiş yüz: temiz göz akı, su-yeşili iris, sağlıklı dudak (Blender/Python ile düzenlendi)
       texLoader.loadAsync('/models/characters/Erika/FemaleFitA_Body_diffuse_mese.png'),
     ]);
@@ -560,14 +561,17 @@ async function customizeErikaModel(root: THREE.Object3D) {
   }
 }
 
-/** Meşe'nin saç rengi (koyu kestane-kızıl) ve saç bağı rengi */
+/** Meşe'nin saç rengi (koyu kestane-kızıl) */
 const ERIKA_HAIR_COLOR = '#4a1d16';
-const ERIKA_TIE_COLOR = '#2e5a31';
+/** Saçın kafadan göğse geçtiği yükseklik aralığı (bağlama uzayı, cm): üstü kafayla, altı göğüsle hareket eder */
+const HAIR_HEAD_FROM = 148.5;
+const HAIR_HEAD_TO = 157.5;
 
 /**
- * Blender'da modellenen saç (yüksek at kuyruğu, yana taranmış kâkül, yüzü çerçeveleyen iki tutam) ve saç bağı:
- * public/models/characters/Erika/sac.obj ve sac_bag.obj, modelin bağlama uzayında (FBX birimi, y yukarı).
- * Kafa kemiğine tam ağırlıkla bağlanır; kafa ile birlikte hareket eder.
+ * Blender'da modellenen uzun dalgalı saç (sırtın ortasına inen katmanlı tutamlar, omuzlardan göğse dökülen ön
+ * tutamlar, yana taranmış kâkül): public/models/characters/Erika/sac.obj, modelin bağlama uzayında (y yukarı).
+ * Ağırlık yüksekliğe göre: boyun hizasının üstü kafa kemiğine, omuzların altı göğüs kemiğine (Spine2), arası
+ * yumuşak geçiş. Böylece baş dönünce sırttaki saç gövdenin içinden geçmez.
  */
 async function attachErikaHair(root: THREE.Object3D) {
   let body: THREE.SkinnedMesh | undefined;
@@ -576,34 +580,32 @@ async function attachErikaHair(root: THREE.Object3D) {
   });
   if (!body) return;
   const face = body;
-  const headIdx = face.skeleton.bones.findIndex((b) => /head$/i.test(b.name));
-  if (headIdx < 0) return;
-  const loader = new OBJLoader();
-  const [hair, tie] = await Promise.all([
-    loader.loadAsync('/models/characters/Erika/sac.obj'),
-    loader.loadAsync('/models/characters/Erika/sac_bag.obj'),
-  ]);
-  const attach = (group: THREE.Object3D, name: string, color: string) => {
-    group.traverse((o) => {
-      const mesh = o as THREE.Mesh;
-      if (!mesh.isMesh) return;
-      const g = mesh.geometry;
-      const count = g.attributes.position.count;
-      const si = new Uint16Array(count * 4);
-      const sw = new Float32Array(count * 4);
-      for (let i = 0; i < count; i++) {
-        si[i * 4] = headIdx;
-        sw[i * 4] = 1;
-      }
-      g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
-      g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
-      const skinnedHair = new THREE.SkinnedMesh(g, new THREE.MeshStandardMaterial({ color, name }));
-      skinnedHair.name = name;
-      skinnedHair.frustumCulled = false;
-      skinnedHair.bind(face.skeleton, face.bindMatrix);
-      (face.parent ?? root).add(skinnedHair);
-    });
-  };
-  attach(hair, 'erika_sac', ERIKA_HAIR_COLOR);
-  attach(tie, 'erika_sac_bag', ERIKA_TIE_COLOR);
+  const bones = face.skeleton.bones;
+  const headIdx = bones.findIndex((b) => /head$/i.test(b.name));
+  const chestIdx = bones.findIndex((b) => /spine2$/i.test(b.name));
+  if (headIdx < 0 || chestIdx < 0) return;
+  const hair = await new OBJLoader().loadAsync('/models/characters/Erika/sac.obj');
+  const material = new THREE.MeshStandardMaterial({ color: ERIKA_HAIR_COLOR, name: 'erika_sac' });
+  hair.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const g = mesh.geometry;
+    const pos = g.attributes.position;
+    const si = new Uint16Array(pos.count * 4);
+    const sw = new Float32Array(pos.count * 4);
+    for (let i = 0; i < pos.count; i++) {
+      const k = THREE.MathUtils.smoothstep(pos.getY(i), HAIR_HEAD_FROM, HAIR_HEAD_TO);
+      si[i * 4] = headIdx;
+      sw[i * 4] = k;
+      si[i * 4 + 1] = chestIdx;
+      sw[i * 4 + 1] = 1 - k;
+    }
+    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
+    g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+    const skinnedHair = new THREE.SkinnedMesh(g, material);
+    skinnedHair.name = 'erika_sac';
+    skinnedHair.frustumCulled = false;
+    skinnedHair.bind(face.skeleton, face.bindMatrix);
+    (face.parent ?? root).add(skinnedHair);
+  });
 }
