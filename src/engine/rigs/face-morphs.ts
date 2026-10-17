@@ -136,7 +136,7 @@ export function addFaceMorphs(root: THREE.Object3D, spec: FaceSpec) {
 }
 
 /** Ağız içinin rengi (koyu kahve-kırmızı). */
-const MOUTH_COLOR = '#4a201b';
+const MOUTH_COLOR = '#36160f';
 
 /**
  * Dudak kavsini izleyen, kafa kemiğine bağlı kavisli şerit (bağlama uzayında). back: dudak ön yüzeyinin ne kadar
