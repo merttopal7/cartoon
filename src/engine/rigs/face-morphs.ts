@@ -24,8 +24,8 @@ export interface FaceSpec {
   front?: number;
 }
 
-/** Çene açma şeklinin tam etkideki dönüşü (derece). Motor ağız açıklığını ~3.5 katına kadar sürer: konuşmada ~5°, en çok ~9°. */
-const JAW_DEGREES = 2.6;
+/** Çene açma şeklinin tam etkideki dönüşü (derece). Motor ağız açıklığını ~3.5 katına kadar sürer: konuşmada ~4°, en çok ~7°. */
+const JAW_DEGREES = 1.9;
 
 const smoothstep = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -132,12 +132,11 @@ export function addFaceMorphs(root: THREE.Object3D, spec: FaceSpec) {
     mesh.morphTargetInfluences = names.map(() => 0);
     if ((mesh as THREE.SkinnedMesh).isSkinnedMesh) faces.push(mesh as THREE.SkinnedMesh);
   });
-  for (const face of faces) addTeeth(face, spec, boneRe);
+  for (const face of faces) addMouthInterior(face, spec, boneRe);
 }
 
-/** Dişlerin rengi (fildişi beyazı) ve ağız içinin rengi (koyu kırmızı) */
-const TEETH_COLOR = '#cfc3ae';
-const MOUTH_COLOR = '#3a1215';
+/** Ağız içinin rengi (koyu kahve-kırmızı). */
+const MOUTH_COLOR = '#4a201b';
 
 /**
  * Dudak kavsini izleyen, kafa kemiğine bağlı kavisli şerit (bağlama uzayında). back: dudak ön yüzeyinin ne kadar
@@ -195,16 +194,14 @@ function mouthStrip(
 }
 
 /**
- * Ağız içi ve üst diş sırası (model dişsiz): dudakların arkasında, kafa kemiğine bağlı. Ağız kapalıyken dudakların
- * ardında kalır; çene inince dudak yarığından üstte beyaz dişler, arkada koyu ağız boşluğu görünür.
+ * Ağız içi (model dişsiz): dudakların arkasında koyu bir yüzey, kafa kemiğine bağlı. Çene inince dudak yarığından
+ * koyu ağız boşluğu görünür. Diş eklenmez: düz beyaz bir diş şeridi gerçekçi yüzde her açılışta parlayıp yapay
+ * (korkutucu) duruyordu.
  */
-function addTeeth(face: THREE.SkinnedMesh, spec: FaceSpec, boneRe: RegExp) {
+function addMouthInterior(face: THREE.SkinnedMesh, spec: FaceSpec, boneRe: RegExp) {
   const parent = face.parent ?? face;
-  if (parent.getObjectByName('face_teeth')) return;
+  if (parent.getObjectByName('face_mouth')) return;
   const boneIdx = face.skeleton.bones.findIndex((b) => boneRe.test(b.name));
   if (boneIdx < 0) return;
-  parent.add(
-    mouthStrip(face, spec, boneIdx, { name: 'face_mouth', color: MOUTH_COLOR, y0: spec.seam - 1.6, y1: spec.seam + 0.5, back: 1.7, halfScale: 0.95 }),
-    mouthStrip(face, spec, boneIdx, { name: 'face_teeth', color: TEETH_COLOR, y0: spec.seam - 0.28, y1: spec.seam + 0.4, back: 0.8, halfScale: 0.72 }),
-  );
+  parent.add(mouthStrip(face, spec, boneIdx, { name: 'face_mouth', color: MOUTH_COLOR, y0: spec.seam - 1.6, y1: spec.seam + 0.5, back: 1.4, halfScale: 0.95 }));
 }
