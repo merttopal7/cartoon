@@ -20,6 +20,7 @@ import { ImpactFeel } from './impact';
 import { FocusTrack } from './focus-track';
 import { RoadPath } from './road';
 import { buildSfx } from './sfx/cues';
+import { expandCoverage, type CoverageImpact, type CoverageKind, type CoverageLine } from './coverage';
 import { markCharacterMaterial, DEFAULT_LOOK, GRADES, resolveGrade, type FilmLook, type Grade } from './look';
 
 export interface BuiltShot {
@@ -28,6 +29,8 @@ export interface BuiltShot {
   duration: number;
   camera: CameraDef;
   transition: TransitionType;
+  /** Kurgu kapsaması (derlemede alt çekimlere bölünür) */
+  coverage?: CoverageKind[];
 }
 
 export interface FilmOptions {
@@ -232,6 +235,17 @@ export class BuiltScene implements SceneContext {
     for (const id of ids) {
       const c = this.characters.get(id)!;
       const pos = c.positionAt(t, new THREE.Vector3());
+      // Bu anın pozu uygulanmışsa kadraj gövdenin gerçek yerini izler (dövüş duruşu gibi klipler kalçayı kökten
+      // yarım metre kaydırabiliyor; yakın planda karakter kenara kayıyordu). Yürürken kök: kalça salınımı
+      // kamerayı sallamasın. Kamera yolu örneklenirken (başka t) kök kullanılır.
+      if (c.pose.time === t && c.pose.walkWeight < 1) {
+        const hp = c.rig.hipsPosition?.(new THREE.Vector3());
+        if (hp) {
+          const k = Math.min(1, 1 - c.pose.walkWeight);
+          pos.x += (hp.x - pos.x) * k;
+          pos.z += (hp.z - pos.z) * k;
+        }
+      }
       center.add(pos);
       height = Math.max(height, c.rig.height);
       maxWidth = Math.max(maxWidth, c.rig.width);
@@ -363,7 +377,7 @@ export class Film {
     const resolvedCam = resolveCamera(shot.camera, format, this.options.handheld);
     const shotProgress = EASES[resolvedCam.ease](clamp((lt - shot.start) / shot.duration));
     const wt = sc.actionTime(lt);
-    const abilityFocus = sc.focus?.at(wt) ?? null;
+    const abilityFocus = shot.camera.focus === false ? null : (sc.focus?.at(wt) ?? null);
     if (
       abilityFocus &&
       abilityFocus.birdEyeWeight !== undefined &&
@@ -722,7 +736,8 @@ export async function buildFilm(
     const camEntries = def.cameras ?? def.shots ?? [];
     camEntries.forEach((shot, index) => {
       const shotStart = shot.at !== undefined ? shot.at : t;
-      shots.push({ index, start: shotStart, duration: shot.duration, camera: shot.camera, transition: shot.transition });
+      const cov = 'coverage' in shot && shot.coverage ? (Array.isArray(shot.coverage) ? shot.coverage : [shot.coverage]) : undefined;
+      shots.push({ index, start: shotStart, duration: shot.duration, camera: shot.camera, transition: shot.transition, coverage: cov });
       if ('actions' in shot && Array.isArray(shot.actions)) {
         for (const action of shot.actions) {
           allActions.push({ action, start: shotStart + action.at });
@@ -1023,6 +1038,57 @@ export async function buildFilm(
         groupIndex,
         groupSize,
       });
+    }
+
+    // Kurgu kapsaması: dialogue/fight girişleri replik ve isabetlere göre kısa çekimlere bölünür
+    if (shots.some((sh) => sh.coverage)) {
+      const lines: CoverageLine[] = allActions
+        .filter(({ action }) => action.do === 'talk')
+        .map(({ action, start }) => {
+          const end = start + (action.do === 'talk' ? action.duration : 0);
+          const toCamera = allActions.some(
+            ({ action: b, start: bs }) =>
+              b.do === 'look_at' && b.who === action.who && b.target === 'camera' && bs < end && bs + b.duration > start + 0.3,
+          );
+          return { who: action.who, start, end, toCamera };
+        });
+      const byCast = new Map<string, CoverageImpact>();
+      for (const a of abilities.allUses()) {
+        if (a.recipe.targetKind !== 'character') continue;
+        const key = `${a.who}@${a.start}`;
+        const ex = byCast.get(key);
+        if (ex) ex.targets.push(a.target);
+        else byCast.set(key, { time: a.start + a.recipe.impactOffset, caster: a.who, targets: [a.target] });
+      }
+      const world = {
+        ids: [...characters.keys()],
+        pos: (id: string, tt: number) => {
+          const p = characters.get(id)!.positionAt(tt, new THREE.Vector3());
+          return { x: p.x, z: p.z };
+        },
+        facing: (id: string, tt: number) => characters.get(id)!.facingAt(tt, compileCtx),
+        // Yüzün gerçek yönü: o anın pozu uygulanıp kafa kemiğinden okunur (yoksa kök yönü)
+        bodyFacing: (id: string, tt: number) => {
+          const ch = characters.get(id)!;
+          ch.computeBody(tt, compileCtx);
+          ch.rig.apply(ch.pose);
+          return ch.rig.bodyFacing?.() ?? ch.facingAt(tt, compileCtx);
+        },
+        height: (id: string) => characters.get(id)!.rig.height,
+      };
+      const expanded: BuiltShot[] = [];
+      for (const sh of shots) {
+        if (!sh.coverage) {
+          expanded.push(sh);
+          continue;
+        }
+        expandCoverage({ start: sh.start, duration: sh.duration, camera: sh.camera, kinds: sh.coverage }, lines, [...byCast.values()], world).forEach((c, i) =>
+          expanded.push({ index: 0, start: c.start, duration: c.duration, camera: c.camera, transition: i === 0 ? sh.transition : 'cut' }),
+        );
+      }
+      expanded.sort((p, q) => p.start - q.start).forEach((sh, i) => (sh.index = i));
+      shots.length = 0;
+      shots.push(...expanded);
     }
 
     const built = new BuiltScene(

@@ -124,31 +124,37 @@ scenes:
 
       # 3. Element gösterisi (18.8–48.6 sn): her element yandan çekilir ki saldırı çizgisi ekranda yatay uzansın;
       #    yol kenarındaki ağaçlar kamera açıklığıyla kendiliğinden gizlenir.
-      #    Yetenek odağı (yakınlaşma, kuş bakışı) otomatik.
+      #    Yetenek odağı (yakınlaşma, kuş bakışı) otomatik; isabetten sonra vurulanın yakın planına kesilir (coverage: fight).
       - at: 18.8
         duration: 4.8
         transition: cut
+        coverage: fight
         camera: { target: [karabey, toprak], size: { from: 2.7, to: 2.4 }, angle: { from: 24, to: 10 }, elevation: 9, ease: inOut }
       - at: 23.6
         duration: 4.0
         transition: cut
+        coverage: fight
         camera: { target: [toprak, karabey], size: { from: 2.6, to: 2.3 }, angle: { from: -6, to: 6 }, elevation: 10, ease: inOut }
       - at: 27.6
         duration: 5.0
         transition: cut
+        coverage: fight
         # Defne yolun güneyinde: güneyden ve biraz yukarıdan çekilir (kuzeyden Meşe önüne geçiyordu, alçaktan yol kenarı çalıları)
         camera: { target: [defne, karabey], size: { from: 2.3, to: 2.15 }, angle: { from: 194, to: 172 }, elevation: { from: 17, to: 14 }, ease: inOut }
       - at: 32.6
         duration: 5.3
         transition: cut
+        coverage: fight
         camera: { target: [mese, karabey], size: { from: 2.6, to: 2.4 }, angle: { from: -4, to: 10 }, elevation: 9, ease: inOut }
       - at: 37.9
         duration: 4.7
         transition: cut
+        coverage: fight
         camera: { target: [toprak, defne, mese, karabey], size: { from: 3.0, to: 2.8 }, angle: { from: 8, to: 20 }, elevation: 11, ease: inOut }
       - at: 42.6
         duration: 6.0
         transition: cut
+        coverage: fight
         camera: { target: [toprak, defne, mese, karabey], size: { from: 3.1, to: 3.4 }, angle: { from: 28, to: 6 }, elevation: { from: 10, to: 13 }, ease: inOut }
 
       # 4. Kapanış (48.6–55 sn): bekçiler sevinir

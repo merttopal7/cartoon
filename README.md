@@ -163,6 +163,19 @@ Maliyet (önizleme, 759×427): renk tonu ~2 ms, kontur ~1.5 ms; parlama yalnızc
 
 **Yetenek odağı:** Yetenek kullanılırken kamera, çekim tanımının üstüne yeteneğin etkisine doğru yaklaşır. Bu odak zaman içinde yumuşatılır: 2 sn'den kısa aralarla gelen yeteneklerde kamera geri çekilmez, odak karakterden karaktere akarak geçer, kadraj boyutu yavaş değişir. Hareketi önceden sezer (gelecek yetenekler de hesaba katılır); yine yalnızca zamana bağlıdır. Bkz. `src/engine/focus-track.ts`.
 
+**Kurgu kapsaması (`coverage`):** Kamera girişine `coverage: dialogue`, `coverage: fight` ya da ikisi birden (`[dialogue, fight]`) yazılırsa o aralık otomatik kısa çekimlere bölünür (çizgi filmlerde çekim genelde 2–4 sn):
+
+- `dialogue` (karşılıklı çekim): her replikte konuşan, dinleyenin tarafından omuz üstü açısıyla çekilir; dinleyen, konuşanın baktığı yöndeki karakterlerdir. 180° kuralı korunur (kamera kapsama boyunca konuşanlar arasındaki çizginin aynı tarafında); taraf, yüzlerin en iyi göründüğü taraftır (dövüş/yay duruşunda gövde dönük olsa da kafanın gerçek yönüne göre). Önünde başka karakter kalan açı kullanılmaz. Uzun repliklerin ortasına dinleyenin ~1.2 sn tepki çekimi girer. Kameraya konuşan (`look_at: camera`) karakterde orta plandan yakın plana kesilir.
+- `fight`: her isabetten 0.1 sn sonra vurulanın ~1 sn'lik yakın planı (bu çekimde yetenek kamera odağı kapalı), sonra girişin kamerası.
+- Replik ya da isabet olmayan aralıklarda girişin kendi kamerası (hareketi o parçaya göre bölünmüş) kalır. Kurgu yalnızca zaman çizelgesine bağlıdır, her derlemede aynıdır. Bir çekimin yetenek odağından etkilenmemesi için elle de `focus: false` yazılabilir. Bkz. [coverage.ts](src/engine/coverage.ts), testler: `node tools/test_coverage.mjs`.
+
+```yaml
+- at: 16.5
+  duration: 14.5
+  coverage: dialogue
+  camera: { target: [toprak, defne, mese], size: 2.3, angle: 10, relative: true }
+```
+
 **Kamera açıklığı:** Kamera arazinin altına inmez. Haritadaki çamlardan o çekimde kameranın içine girdiği, hedefi örttüğü ya da kameranın hemen önünde kadrajı kapattığı ağaçlar çekimin tamamında ana kameradan gizlenir (gölgeleri kalır). Ağaç yalnızca kesmede kaybolduğu için fark edilmez. Yetenekle devrilen ağaçlar, devrildikleri çekimde hiç gizlenmez; sonraki çekimlerde kamera onlara girerse onlar da gizlenir. Gizlenen ağaçları kaldırmak için kamerayı o ağaçtan uzaklaştırın. Bkz. `src/engine/camera-clearance.ts`.
 
 ### Hareketler (`actions`)

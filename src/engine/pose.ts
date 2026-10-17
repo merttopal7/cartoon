@@ -114,6 +114,10 @@ export interface Rig {
   prepareWarmup?(): () => void;
   /** Arazi yüksekliği verilirse ayaklar eğimli zemine basar (ayak IK'sı). */
   setGround?(ground: (x: number, z: number) => number | null): void;
+  /** Yüzün son uygulanan pozdaki gerçek yönü (radyan, 0 = +Z); klipler gövdeyi kök yönünden çevirebilir. */
+  bodyFacing?(): number | undefined;
+  /** Kalçanın son uygulanan pozdaki dünya konumu. */
+  hipsPosition?(out: THREE.Vector3): THREE.Vector3 | undefined;
   /** Saç fiziği kemikleri var (Character saçın savrulmasını hesaplar). */
   readonly hairPhysics?: boolean;
   /**

@@ -31,6 +31,8 @@ const cameraFields = {
   handheld: z.number().min(0).max(1).optional(),
   /** true: angle hedef karakterin yüzüne göre (0 = tam karşıdan); false: dünya eksenine göre. */
   relative: z.boolean().optional(),
+  /** false: bu çekim yetenek kamera odağından (yakınlaşma, yandan bakış) etkilenmez (ör. tepki çekimi). */
+  focus: z.boolean().optional(),
 };
 const cameraOverride = z.object(cameraFields).strict();
 const camera = z
@@ -285,6 +287,12 @@ const cameraCut = z
     camera,
     /** Bu kameraya geçiş: cut, fade, iris (çizgi film daire kapanışı), stripes (dinamik şeritler) ya da flash. */
     transition: z.enum(TRANSITION_TYPES).default('cut'),
+    /**
+     * Kurgu kapsaması: bu kamera aralığını otomatik kısa çekimlere böler (src/engine/coverage.ts).
+     * dialogue = karşılıklı çekim (konuşana kes, dinleyenin tepkisi, 180° kuralı; kameraya konuşmada orta → yakın),
+     * fight = vuruşlardan sonra vurulanın kısa yakın planı. İkisi birlikte verilebilir: [dialogue, fight].
+     */
+    coverage: z.union([z.enum(['dialogue', 'fight']), z.array(z.enum(['dialogue', 'fight']))]).optional(),
   })
   .strict();
 

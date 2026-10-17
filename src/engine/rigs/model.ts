@@ -104,6 +104,55 @@ export class ModelRig implements Rig {
   private readonly head?: THREE.Bone;
   /** Saç fiziği kemikleri (sırt, sol ve sağ ön tutam) */
   private readonly hairBones: { back?: THREE.Object3D; l?: THREE.Object3D; r?: THREE.Object3D } = {};
+  /** Kalça kemiğinin son uygulanan pozdaki dünya konumu (klipler gövdeyi kökten kaydırabilir). */
+  hipsPosition(out: THREE.Vector3): THREE.Vector3 | undefined {
+    const h = this.boneBySuffix(/hips$/i);
+    if (!h) return undefined;
+    h.updateWorldMatrix(true, false);
+    return h.getWorldPosition(out);
+  }
+
+  /** Ada göre kemik (ilk eşleşen; önbellekli). */
+  private boneBySuffix(re: RegExp): THREE.Object3D | undefined {
+    const key = re.source;
+    if (!this.boneCache.has(key)) {
+      // Modelde iskeletin birden çok kopyası olabilir (ek kıyafet parçaları); animasyonlu olan, baş çevirmede
+      // kullanılan kafa kemiğinin iskeletidir: aramayı o iskeletin kökünden (kafanın en üst kemik atası) yap
+      let skelRoot: THREE.Object3D = this.root;
+      for (let b: THREE.Object3D | null = this.head ?? null; b; b = b.parent) {
+        if ((b as THREE.Bone).isBone) skelRoot = b;
+        else break;
+      }
+      let found: THREE.Object3D | undefined;
+      skelRoot.traverse((o) => {
+        if (!found && (o as THREE.Bone).isBone && re.test(o.name)) found = o;
+      });
+      this.boneCache.set(key, found);
+    }
+    return this.boneCache.get(key);
+  }
+  private readonly boneCache = new Map<string, THREE.Object3D | undefined>();
+
+  /**
+   * Yüzün son uygulanan pozdaki gerçek yönü (radyan, 0 = +Z): kafa kemiğinin ileri ekseninden (Mixamo +Z), yoksa
+   * omuz çizgisinden. Dövüş/yay duruşu gibi klipler gövdeyi kök yönünden ~90° çevirir, baş çoğu zaman hedefe
+   * döner; kurgu kapsaması yüzü gören kamera tarafını buna göre seçer.
+   */
+  bodyFacing(): number | undefined {
+    if (this.head) {
+      this.head.updateWorldMatrix(true, false);
+      const f = new THREE.Vector3(0, 0, 1).applyQuaternion(this.head.getWorldQuaternion(new THREE.Quaternion()));
+      if (Math.hypot(f.x, f.z) > 0.3) return Math.atan2(f.x, f.z);
+    }
+    const l = this.boneBySuffix(/leftshoulder$/i) ?? this.boneBySuffix(/leftarm$/i);
+    const r = this.boneBySuffix(/rightshoulder$/i) ?? this.boneBySuffix(/rightarm$/i);
+    if (!l || !r) return undefined;
+    this.root.updateMatrixWorld(true);
+    const d = l.getWorldPosition(new THREE.Vector3()).sub(r.getWorldPosition(new THREE.Vector3()));
+    // ileri = (sol − sağ) × yukarı
+    return Math.atan2(-d.z, d.x);
+  }
+
   get hairPhysics() {
     return !!this.hairBones.back;
   }

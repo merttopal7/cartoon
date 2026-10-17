@@ -161,6 +161,7 @@ scenes:
       - at: 10.0
         duration: 6.5
         transition: cut
+        coverage: dialogue    # karşılıklı çekim: konuşana kes, uzun replikte dinleyenin tepkisi
         camera:
           target: karabey
           size:
@@ -179,6 +180,7 @@ scenes:
       - at: 16.5
         duration: 14.5
         transition: cut
+        coverage: dialogue
         camera:
           target:
             - toprak
@@ -196,12 +198,13 @@ scenes:
           ease: inOut
           relative: true
 
-      # Kamera 4 (31.0s - 76.0s): TEK KESİNTİSİZ SAVAŞ SAHNESİ (45.0 Saniye)
-      # Savaş boyunca hiçbir kamera kesmesi (cut/flash/stripes) yapılmaz; kamera tüm savaş alanını
-      # ve yetenek kullanan karakterleri kesintisiz, yumuşak (smooth) geçişlerle takip eder.
+      # Kamera 4 (31.0s - 76.0s): SAVAŞ SAHNESİ (45.0 Saniye)
+      # Ana kamera savaş alanını ve yetenek kullananları yumuşak geçişlerle takip eder; her isabetten hemen
+      # sonra vurulanın ~1 sn'lik yakın planına kesilir (coverage: fight), sonra ana kameraya dönülür.
       - at: 31.0
         duration: 45.0
         transition: cut
+        coverage: fight
         camera:
           target:
             - toprak
