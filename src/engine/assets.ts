@@ -633,26 +633,30 @@ async function attachErikaHair(root: THREE.Object3D) {
       const z = pos.getZ(i);
       // --- Ağırlık: kafa / gövde / fizik
       const kHead = THREE.MathUtils.smoothstep(y, HAIR_HEAD_FROM, HAIR_HEAD_TO);
-      const front = z > -1 && Math.abs(x) > 3.5 && y < 158;
-      const phys = front ? (x > 0 ? leftIdx : rightIdx) : backIdx;
-      const pivotY = front ? 153 : 156;
+      // Tek parça saç: önde (omuzların önü) yan fizik kemikleri, arkada sırt kemiği; aradaki geçiş yumuşak
+      // (iki fizik kemiği karışır), yoksa ön ile arka arasında saç yırtılırdı
+      const kFront = THREE.MathUtils.smoothstep(z, -2, 2);
+      const sideIdx = x > 0 ? leftIdx : rightIdx;
+      const pivotY = 156 - 3 * kFront;
       const reach = Math.pow(THREE.MathUtils.clamp((pivotY - y) / 20, 0, 1), 0.8) * (1 - kHead);
       si[i * 4] = headIdx;
       sw[i * 4] = kHead;
       si[i * 4 + 1] = chestIdx;
       sw[i * 4 + 1] = (1 - kHead) - reach;
-      si[i * 4 + 2] = phys;
-      sw[i * 4 + 2] = reach;
+      si[i * 4 + 2] = backIdx;
+      sw[i * 4 + 2] = reach * (1 - kFront);
+      si[i * 4 + 3] = sideIdx;
+      sw[i * 4 + 3] = reach * kFront;
       // --- Renk: kökten uca açılan ton, tutam tonları (yatay konuma göre şeritler), tepede ışık bandı
       const tip = THREE.MathUtils.clamp((168 - y) / 34, 0, 1);
       const ang = Math.atan2(x, -z);
       // Tutam şeritleri: geniş açık/koyu bantlar + aralarda ince koyu çizgiler (tutam ayrımı)
       const s1 = Math.sin(ang * 9 + Math.sin(y * 0.19) * 0.9);
       const s2 = Math.sin(ang * 23 + 1.3 + Math.sin(y * 0.33) * 0.6);
-      const strand = 0.5 + 0.35 * s1 + 0.15 * s2 - 0.35 * Math.pow(Math.max(0, -s2), 6);
+      const strand = 0.5 + 0.25 * s1 + 0.12 * s2 - 0.22 * Math.pow(Math.max(0, -s2), 6);
       const grain = hash3(Math.round(x * 3), Math.round(y * 0.7), Math.round(z * 3)) - 0.5;
       const band = Math.exp(-(((y - 174.5) / 1.6) ** 2)) * THREE.MathUtils.clamp(-z / 6 + 0.6, 0, 1);
-      let k = 0.62 + 0.38 * tip + 0.5 * (strand - 0.5) + 0.08 * grain + 0.45 * band;
+      let k = 0.66 + 0.36 * tip + 0.45 * (strand - 0.5) + 0.05 * grain + 0.4 * band;
       k = THREE.MathUtils.clamp(k, 0.35, 1.4);
       col[i * 3] = k * (1 + 0.06 * tip);
       col[i * 3 + 1] = k * (1 + 0.1 * tip);
