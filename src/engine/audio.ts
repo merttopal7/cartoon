@@ -24,12 +24,18 @@ export interface AudioCue {
   url: string;
   start: number;     // Absolute film time in seconds
   duration: number;  // Duration in seconds
+  gain?: number;     // Replik / karakter bazında ses seviyesi çarpanı (1 = normal)
   buffer?: AudioBuffer;
   rms?: Float32Array;
   rmsFps?: number;
   activeStart?: number;
   activeEnd?: number;
 }
+
+/** Karakterlerin varsayılan ses seviyesi çarpanları (kaydı diğerlerinden yüksek/düşük olanlar için) */
+export const DEFAULT_CHARACTER_VOICE_GAIN: Record<string, number> = {
+  defne: 0.78, // Defne'nin yeni ses kaydı diğer bekçilere göre daha gür çıkıyordu, eşitlendi
+};
 
 export interface MusicConfig {
   src: string;
@@ -663,7 +669,15 @@ export class AudioTimeline {
     const ctx = this.getContext();
     const src = ctx.createBufferSource();
     src.buffer = cue.buffer;
-    src.connect(this.getMasterGain());
+    const cueGain = cue.gain ?? DEFAULT_CHARACTER_VOICE_GAIN[cue.who] ?? 1.0;
+    if (cueGain !== 1.0) {
+      const gNode = ctx.createGain();
+      gNode.gain.value = cueGain;
+      src.connect(gNode);
+      gNode.connect(this.getMasterGain());
+    } else {
+      src.connect(this.getMasterGain());
+    }
     src.onended = () => {
       if (this.activeSources.get(cue.id) === src) {
         this.activeSources.delete(cue.id);
@@ -719,7 +733,15 @@ export class AudioTimeline {
       if (!cue.buffer) continue;
       const src = offlineCtx.createBufferSource();
       src.buffer = cue.buffer;
-      src.connect(out);
+      const cueGain = cue.gain ?? DEFAULT_CHARACTER_VOICE_GAIN[cue.who] ?? 1.0;
+      if (cueGain !== 1.0) {
+        const gNode = offlineCtx.createGain();
+        gNode.gain.value = cueGain;
+        src.connect(gNode);
+        gNode.connect(out);
+      } else {
+        src.connect(out);
+      }
       src.start(Math.max(0, cue.start));
     }
 

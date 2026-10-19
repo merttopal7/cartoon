@@ -193,6 +193,8 @@ const modelAsset = z
       .optional(),
     /** Karakterin varsayılan ElevenLabs ses kimliği veya ses adı */
     voice: z.string().optional(),
+    /** Ses seviyesi çarpanı (1 = normal; kaydı diğer karakterlerden yüksek/düşük olanlar için dengeleme) */
+    voice_volume: z.number().min(0).max(2).optional(),
     /** Karakterin elementi; kullandığı yeteneklerin elementiyle uyuşmazsa yüklemede uyarı verilir. */
     element: z.enum(['ates', 'su', 'toprak', 'hava']).optional(),
     /**

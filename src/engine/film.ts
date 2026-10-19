@@ -796,6 +796,8 @@ export async function buildFilm(
           allActions.push({ action, start: shotStart + action.at });
 
           if (action.do === 'talk' && action.audio) {
+            const charAsset = s.assets[action.who];
+            const voiceGain = charAsset && 'voice_volume' in charAsset ? charAsset.voice_volume : undefined;
             audioCues.push({
               id: `${def.id}_${action.who}_${index}_${audioCues.length}`,
               who: action.who,
@@ -803,6 +805,7 @@ export async function buildFilm(
               url: action.audio,
               start: filmTime + shotStart + action.at,
               duration: action.duration,
+              gain: voiceGain,
             });
           }
         }
@@ -815,6 +818,8 @@ export async function buildFilm(
       allActions.push({ action, start: action.at });
 
       if (action.do === 'talk' && action.audio) {
+        const charAsset = s.assets[action.who];
+        const voiceGain = charAsset && 'voice_volume' in charAsset ? charAsset.voice_volume : undefined;
         audioCues.push({
           id: `${def.id}_${action.who}_scene_${audioCues.length}`,
           who: action.who,
@@ -822,6 +827,7 @@ export async function buildFilm(
           url: action.audio,
           start: filmTime + action.at,
           duration: action.duration,
+          gain: voiceGain,
         });
       }
     }

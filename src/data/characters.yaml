@@ -25,6 +25,7 @@ defne:
   brightness: 0.3    # pastel dokusu aynı ışıkta diğerlerinden fırlıyordu
   saturation: 0.88
   voice: KbaseEXyT9EE0CQLEfbB
+  voice_volume: 0.78 # Defne'nin yeni ses kaydı diğerlerine göre daha gür çıkıyordu, eşitlendi
   element: hava
   animations:
     idle: models/animations/Neutral Idle.fbx   # sakin bekleme (Happy Idle çok sallanıyordu)
