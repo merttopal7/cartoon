@@ -643,6 +643,15 @@ async function customizeErikaModel(root: THREE.Object3D) {
               const kWaist = Math.sin(THREE.MathUtils.clamp((vy - 88.0) / (150.5 - 88.0), 0, 1) * Math.PI);
               vx *= 1 - (0.14 + 0.05 * kWaist);
             }
+            // Çocuk çizgi filmine uygunluk: göğüs çıkıntısını yumuşakça geriye çekerek düzleştir
+            if (vy >= 110.0 && vy <= 132.0 && ax <= 14.0 && vz > 8.5) {
+              const yWeight = vy < 118.0
+                ? THREE.MathUtils.smoothstep(vy, 110.0, 118.0)
+                : 1 - THREE.MathUtils.smoothstep(vy, 118.0, 132.0);
+              const xWeight = 1 - THREE.MathUtils.smoothstep(ax, 9.8, 14.0);
+              const zExcess = vz - 8.5;
+              vz -= zExcess * 0.55 * yWeight * xWeight;
+            }
             newPos.push(vx, vy, vz);
             newNorm.push(norm.getX(idx), norm.getY(idx), norm.getZ(idx));
             newUV.push(uv.getX(idx), uv.getY(idx));
@@ -692,6 +701,30 @@ async function customizeJackieModel(root: THREE.Object3D) {
         std.map = tex;
         std.needsUpdate = true;
       }
+    });
+
+    // Çocuk çizgi filmine uygunluk: göğüs çıkıntısını yumuşakça geriye çekerek düzleştir
+    root.traverse((o) => {
+      const mesh = o as THREE.SkinnedMesh;
+      if (!mesh.isSkinnedMesh || !/ch29/i.test(mesh.name)) return;
+      const geom = mesh.geometry;
+      const pos = geom?.attributes?.position;
+      if (!pos) return;
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const ax = Math.abs(x);
+        if (y >= 106.0 && y <= 125.0 && ax <= 13.0 && z > 7.8) {
+          const yWeight = y < 116.0
+            ? THREE.MathUtils.smoothstep(y, 106.0, 116.0)
+            : 1 - THREE.MathUtils.smoothstep(y, 116.0, 125.0);
+          const xWeight = 1 - THREE.MathUtils.smoothstep(ax, 9.1, 13.0);
+          const zExcess = z - 7.8;
+          pos.setZ(i, z - zExcess * 0.55 * yWeight * xWeight);
+        }
+      }
+      pos.needsUpdate = true;
     });
   } catch (err) {
     console.warn('Jackie (Defne) hava kıyafeti uygulanamadı:', err);

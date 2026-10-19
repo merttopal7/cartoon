@@ -27,7 +27,35 @@ export function webCodecsSupported(): boolean {
   return typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined';
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/**
+ * Arayüze sıra veren bekleme. setTimeout arka plandaki sekmede en az 1 sn bekletilir (5 dk sonra dakikada bir):
+ * sekme gizlenince dışa aktarım ~10 kat yavaşlıyor, uzun bölümde neredeyse duruyordu. MessageChannel mesajları
+ * kısılmaz; render sekme arka plandayken de aynı hızda sürer.
+ */
+const yieldTask = (() => {
+  let channel: MessageChannel | null = null;
+  const waiting: Array<() => void> = [];
+  return () =>
+    new Promise<void>((resolve) => {
+      if (!channel) {
+        channel = new MessageChannel();
+        channel.port1.onmessage = () => waiting.shift()?.();
+      }
+      waiting.push(resolve);
+      channel.port2.postMessage(null);
+    });
+})();
+
+/** Kodlayıcı kuyruğu `max`'a inene kadar bekler (kodlayıcının kendi 'dequeue' olayıyla; zamanlayıcı yok). */
+async function drain(encoder: VideoEncoder | AudioEncoder, max: number) {
+  while (encoder.encodeQueueSize > max && encoder.state === 'configured') {
+    if ('ondequeue' in encoder) {
+      await new Promise<void>((resolve) => encoder.addEventListener('dequeue', () => resolve(), { once: true }));
+    } else {
+      await yieldTask();
+    }
+  }
+}
 
 /**
  * H.264 seviyeleri (level_idc, saniyedeki en çok makroblok, kare başına en çok makroblok, en çok bitrate bps).
@@ -139,9 +167,9 @@ export async function encodeVideoRange({
       frame.close();
       onProgress?.(i - from + 1, count);
 
-      while (encoder.encodeQueueSize > 6) await sleep(1);
+      await drain(encoder, 6);
       if (backpressure) await backpressure();
-      if (i % 4 === 0) await sleep(0); // arayüz nefes alsın
+      if (i % 4 === 0) await yieldTask(); // arayüz nefes alsın
     }
     await encoder.flush();
     if (encodeError) throw encodeError;
@@ -218,7 +246,7 @@ export async function encodeAudio(
       audioEncoder.encode(audioData);
       audioData.close();
 
-      while (audioEncoder.encodeQueueSize > 12) await sleep(1);
+      await drain(audioEncoder, 12);
     }
     await audioEncoder.flush();
     if (encodeError) throw encodeError;
