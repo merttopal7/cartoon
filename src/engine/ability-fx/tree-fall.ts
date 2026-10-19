@@ -2,7 +2,45 @@ import * as THREE from 'three';
 import type { Character } from '../character';
 import { clamp } from '../math';
 import { DETAIL_COUNT, SMOKE_COUNT, type AbilityVisual } from './visual';
-import { TREE_REF_RELEASE, type MapTreeRecord } from '../abilities';
+import { TREE_PUSH_TIME, TREE_REF_RELEASE, treePushOffset, type MapTreeRecord, type ScheduledAbility } from '../abilities';
+
+/** Devrilmenin son yatış açısı (radyan, ~82°). */
+export const TREE_FALL_ANGLE = 1.43;
+
+/**
+ * Devrilip sürüklenmesi bitmiş ağacın lt anındaki (sahne zamanı) dünya pozu (updateTreeFall'ın devrilme sonrası
+ * pozuyla aynı; o ana kadarki itmeler dahil): kök konumu ve devrilme ekseni etrafındaki yatış açısı. Ağaç dikme
+ * yeteneği bu pozdan başlar.
+ */
+export function restingFallPose(fall: ScheduledAbility, mapTree: MapTreeRecord, lt = Infinity): { base: THREE.Vector3; axis: THREE.Vector3; angle: number } {
+  const fallDir = (fall.fallDirXZ ?? new THREE.Vector3(0, 0, 1)).clone().normalize();
+  const base = (fall.slideTargetPos ?? mapTree.worldPos).clone().add(treePushOffset(fall.treePushes, lt));
+  // Devrilme sonrası kesik yüksekliği: cutLift(tilt = TREE_FALL_ANGLE, slideU = 1)
+  base.y += Math.sin(Math.min(1, TREE_FALL_ANGLE / 0.5)) * 0.46 * (1 - 0.45);
+  return { base, axis: new THREE.Vector3(fallDir.z, 0, -fallDir.x).normalize(), angle: TREE_FALL_ANGLE };
+}
+
+/** Devrik gövde itilip sürüklenirken gövde boyunca yerden kalkan toz (dt: itmenin başından saniye). */
+function pushDust(v: AbilityVisual, dt: number, base: THREE.Vector3, fallDir: THREE.Vector3, right: THREE.Vector3, length: number) {
+  const fade = Math.min(1, dt / 0.12) * Math.exp(-dt * 2.2);
+  for (let i = 0; i < SMOKE_COUNT; i++) {
+    const s0 = v.seeds[i * 4 + 0];
+    const s1 = v.seeds[i * 4 + 1];
+    const s2 = v.seeds[i * 4 + 2];
+    const s3 = v.seeds[i * 4 + 3];
+    const along = 0.5 + s0 * length;
+    const spread = (s1 - 0.5) * 1.8 * (0.6 + dt);
+    v.smokePositions[i * 3 + 0] = base.x + fallDir.x * along + right.x * spread;
+    v.smokePositions[i * 3 + 1] = base.y + 0.15 + s2 * 0.6 + dt * 0.4;
+    v.smokePositions[i * 3 + 2] = base.z + fallDir.z * along + right.z * spread;
+    v.smokeColors[i * 3 + 0] = 0.5;
+    v.smokeColors[i * 3 + 1] = 0.42;
+    v.smokeColors[i * 3 + 2] = 0.31;
+    v.smokeSizes[i] = 0.7 + s3 * 0.7 + dt * 0.6;
+    v.smokeAngles[i] = s3 * Math.PI * 2 + dt;
+    v.smokeAlphas[i] = 0.45 * fade;
+  }
+}
 
 /**
  * 5. KARABEY'İN HARİTA AĞACI DEVİRME YETENEĞİ (Haritadaki Gerçek Çam Ağacını Kesip Yere Devirme)
@@ -72,7 +110,7 @@ export function updateTreeFall(
   let tiltAngle = 0.0;
   let trunkShudderX = 0.0;
   let trunkShudderZ = 0.0;
-  const maxFallAngle = 1.43; // ~82 derece
+  const maxFallAngle = TREE_FALL_ANGLE;
 
   if (local < chargeEnd) {
     if (local > 1.32) {
@@ -103,6 +141,9 @@ export function updateTreeFall(
     slideTarget,
     slideU,
   );
+  // Karabey'e isabet eden yeteneklerde devrik gövde ondan uzağa itilip sürüklenir (planTreePushes)
+  curTreeBase.add(treePushOffset(v.ability.treePushes, lt));
+  const push = v.ability.treePushes?.find((p) => lt >= p.time && lt < p.time + TREE_PUSH_TIME + 0.9);
 
   if (mapTree) {
     // Sağ el kuralına göre: Dünya +Y eksenini (0,1,0) doğrudan fallDirXZ (Karabey) yönüne yatıran eksen = U x F = (fallDirXZ.z, 0, -fallDirXZ.x)
@@ -116,10 +157,13 @@ export function updateTreeFall(
     const cutLift = Math.sin(Math.min(1, tiltAngle / 0.5)) * 0.46 * (1 - slideU * 0.45);
     const cutSlide = Math.sin(tiltAngle) * 0.42 * (1 - slideU);
     // Sürüklenme sırasında zemin sürtünmesi titreşimi
+    const pushU = push ? clamp((lt - push.time) / TREE_PUSH_TIME, 0, 1) : 1;
     const dragRumble =
       rawSlide > 0 && rawSlide < 1
         ? Math.sin(local * 44.0) * 0.05 * (1 - rawSlide)
-        : 0;
+        : pushU < 1
+          ? Math.sin(local * 44.0) * 0.04 * (1 - pushU)
+          : 0;
     const targetWorldPos = new THREE.Vector3(
       curTreeBase.x + fallDirXZ.x * cutSlide + trunkShudderX + rightXZ.x * dragRumble,
       curTreeBase.y + cutLift,
@@ -155,9 +199,11 @@ export function updateTreeFall(
   // Yetenek süresi tamamlandıktan sonra ağaç Karabey'in yanında yatık halde ve kütük kök yerinde kalır; duman, kıymık ve ışık efektleri kapanır
   if (local > totalDuration) {
     v.treeSlashMesh.visible = false;
-    v.smokePoints.visible = false;
     v.detailPoints.visible = false;
     v.light.intensity = 0;
+    // İtilirken gövde boyunca yerden kalkan toz
+    v.smokePoints.visible = !!push;
+    if (push) pushDust(v, lt - push.time, curTreeBase, fallDirXZ, rightXZ, 12.5 * treeScale);
     return;
   }
 

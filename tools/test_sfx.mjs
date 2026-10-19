@@ -70,9 +70,16 @@ try {
     const amb = S.ambience(7, 'day');
     const ambMs = performance.now() - t0;
     check('orman ortamı (24 sn stereo) 1.5 sn altında', ambMs < 1500 && health(amb).bad === 0, `${ambMs.toFixed(0)} ms`);
-    // Döngü dikişi: son örnek ile ilk örnek arası sıçrama, sıradan örnek farkından büyük olmamalı
+    // Döngü dikişi: son örnek ile ilk örnek arası sıçrama, sinyalin kendi ardışık örnek farklarının %99'luk
+    // diliminden büyük olmamalı (yüksek frekanslı hışırtıda sıradan farklar da büyüktür; mutlak eşik yanıltır)
+    const seamOk = amb.every((c) => {
+      const steps = [];
+      for (let i = 1; i < c.length; i += 7) steps.push(Math.abs(c[i] - c[i - 1]));
+      steps.sort((x, y) => x - y);
+      return Math.abs(c[0] - c[c.length - 1]) <= steps[Math.floor(steps.length * 0.99)];
+    });
     const seam = Math.max(...amb.map((c) => Math.abs(c[0] - c[c.length - 1])));
-    check('ortam döngüsünde dikiş yok', seam < 0.05, `sıçrama ${seam.toFixed(4)}`);
+    check('ortam döngüsünde dikiş yok', seamOk, `sıçrama ${seam.toFixed(4)}`);
     if (wantWav) {
       const gap = Math.round(0.45 * 44100);
       const total = parts.reduce((s, p) => s + p.length + gap, 0) + 6 * 44100;
@@ -131,6 +138,8 @@ try {
       const impactKinds = { fire: 'fireI', earth: 'earthI', rain: 'storm', shadow: 'shadowI', tree_fall: 'tree' };
       let miss = [];
       for (const a of uses) {
+        // Sahne başından devrik duran ağacın devrilme sesi yoktur
+        if (a.prefallen) continue;
         const kind = impactKinds[a.recipe.effectType];
         if (!kind) continue;
         const t = sc.start + a.start + a.recipe.impactOffset;
@@ -160,7 +169,9 @@ try {
             return w.y - (sc.clearance?.terrain?.heightAt(w.x, w.z) ?? 0);
           }));
         };
-        const evs = ch.motionEvents().filter((e) => e.kind === 'step' && e.time > 2 && e.time < 15).slice(0, 10);
+        // Toprak'ın ilk yürüyüşü (anlar senaryodan; bölüm üretilir, zamanlar seslendirmeyle değişir)
+        const walk0 = p.scenario.scenes[0].actions.find((a) => a.who === 'toprak' && a.do === 'walk_to')?.at ?? 0;
+        const evs = ch.motionEvents().filter((e) => e.kind === 'step' && e.time > walk0 + 2 && e.time < walk0 + 15).slice(0, 10);
         let vel = 0;
         for (const e of evs) vel += (lowY(e.time + 0.01) - lowY(e.time - 0.01)) / 0.02;
         vel /= evs.length;

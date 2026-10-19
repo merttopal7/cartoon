@@ -1,7 +1,8 @@
 /**
  * Web Audio timeline playback & synchronization for cartoon dialogues.
  */
-import { reverbImpulse } from './sfx/dsp';
+import { clamp01, reverbImpulse } from './sfx/dsp';
+import { renderMainTheme } from './music/theme';
 import type { AmbienceCue, SfxCue } from './sfx/cues';
 
 /** Önizlemede efektlerin önceden zamanlandığı pencere (sn): kare atlansa da ses tam anında çalar. */
@@ -10,6 +11,11 @@ const SFX_LOOKAHEAD = 0.25;
 const AMBIENCE_DUCK = 0.55;
 /** Ortam sesinin sahne başında/sonunda açılıp kapanma süresi (sn). */
 const AMBIENCE_EDGE = 0.8;
+/** Ana temanın savaş müziğine geçerken kısılma ve savaştan sonra geri gelme süreleri (sn). */
+const BATTLE_MAIN_OUT = 1.4;
+const BATTLE_MAIN_BACK = 2.4;
+/** Savaş müziği konuşmada en fazla bu orana kısılır (ana temadan hafif: savaşın gerilimi düşmesin). */
+const BATTLE_DUCK = 0.5;
 
 export interface AudioCue {
   id: string;
@@ -36,15 +42,31 @@ export interface MusicConfig {
   enabled: boolean;     // varsayılan true
 }
 
+/** Bir savaşın müziği: tampon `start` anında başlar; `end` kapanış akorudur, ana tema ardından geri gelir. */
+export interface BattleMusicSegment {
+  buffer: AudioBuffer;
+  start: number;
+  end: number;
+  volume: number;
+}
+
 export class AudioTimeline {
   private ctx: AudioContext | null = null;
   private cues: AudioCue[] = [];
   private activeSources = new Map<string, AudioBufferSourceNode>();
+  /**
+   * Bu oynatmada (son aramadan beri) başlatılmış replikler: biten bir replik, film saati replik bitişine henüz
+   * varmadıysa yeniden başlatılmaz (eskiden sonu tekrar çalıyordu).
+   */
+  private readonly cuePlayed = new Set<string>();
+  /** Sonraki update bir arama (seek) sayılsın: tüm sesler o andan yeniden kurulur. */
+  private seekPending = false;
   private masterGain: GainNode | null = null;
   private musicGainNode: GainNode | null = null;
   private musicSource: AudioBufferSourceNode | null = null;
   private musicBuffer: AudioBuffer | null = null;
   private musicLoadingUrl: string | null = null;
+  private musicFallback: string | null = null;
   private filmDuration = 0;
   private volume = 1.0;
   private isMuted = false;
@@ -61,9 +83,12 @@ export class AudioTimeline {
   /** Bu oynatmada zamanlanmış efektler (atlama/durdurmada sıfırlanır; aynı efekt iki kez çalmasın). */
   private readonly sfxPlayed = new Set<string>();
   private readonly ambSources = new Map<AmbienceCue, { src: AudioBufferSourceNode; gain: GainNode }>();
+  private battle: BattleMusicSegment[] = [];
+  private readonly battleSources = new Map<BattleMusicSegment, AudioBufferSourceNode>();
+  private battleGainNode: GainNode | null = null;
 
   private musicConfig: MusicConfig = {
-    src: '/audio/main-theme/jyproject-carousel-dreams-396029.mp3',
+    src: 'procedural:main',
     volume: 0.35,
     loop: true,
     ducking: 0.25,
@@ -87,6 +112,84 @@ export class AudioTimeline {
 
   getMusicBuffer(): AudioBuffer | null {
     return this.musicBuffer;
+  }
+
+  /** Savaş müziklerini ayarlar (film derlenirken). */
+  setBattleMusic(segments: BattleMusicSegment[]): void {
+    this.stopBattle();
+    this.battle = [...segments].sort((a, b) => a.start - b.start);
+  }
+
+  getBattleMusic(): BattleMusicSegment[] {
+    return this.battle;
+  }
+
+  /** Ana temanın t anındaki savaş payı çarpanı: savaş girerken kısılır, kapanış akorundan sonra geri gelir. */
+  private mainThemeMix(t: number): number {
+    let k = 1;
+    for (const b of this.battle) {
+      const out = clamp01((t - (b.start - 0.4)) / BATTLE_MAIN_OUT);
+      const back = clamp01((t - (b.end + 0.6)) / BATTLE_MAIN_BACK);
+      k *= 1 - out * (1 - back);
+    }
+    return k;
+  }
+
+  /** Savaş müziğinin t anındaki kazancı (konuşmada hafif kısılır, film sonunda söner). */
+  getBattleGainAt(segment: BattleMusicSegment, t: number): number {
+    if (!this.musicConfig.enabled) return 0;
+    if (t < segment.start || t >= segment.start + segment.buffer.duration) return 0;
+    let g = segment.volume * clamp01((t - segment.start) / 0.05);
+    if (this.isVoiceActive(t)) g *= Math.max(this.musicConfig.ducking, BATTLE_DUCK);
+    const fadeOut = this.musicConfig.fadeOut;
+    if (this.filmDuration > 0 && fadeOut > 0) g *= clamp01((this.filmDuration - t) / fadeOut);
+    return g;
+  }
+
+  private getBattleGainNode(): GainNode {
+    const ctx = this.getContext();
+    if (!this.battleGainNode) {
+      this.battleGainNode = ctx.createGain();
+      this.battleGainNode.gain.value = 0;
+      this.battleGainNode.connect(this.getMasterGain());
+    }
+    return this.battleGainNode;
+  }
+
+  /** Savaş müziğini t anına göre başlatır/durdurur ve kazancını günceller. */
+  private updateBattle(time: number, jumped: boolean) {
+    if (jumped) this.stopBattle();
+    const ctx = this.getContext();
+    let gain = 0;
+    for (const seg of this.battle) {
+      const inside = this.musicConfig.enabled && time >= seg.start && time < seg.start + seg.buffer.duration;
+      const playing = this.battleSources.get(seg);
+      if (inside && !playing) {
+        const src = ctx.createBufferSource();
+        src.buffer = seg.buffer;
+        src.connect(this.getBattleGainNode());
+        src.start(0, time - seg.start);
+        this.battleSources.set(seg, src);
+      } else if (!inside && playing) {
+        this.stopBattleSource(seg);
+      }
+      gain = Math.max(gain, this.getBattleGainAt(seg, time));
+    }
+    if (this.battleGainNode) this.battleGainNode.gain.setTargetAtTime(gain, ctx.currentTime, 0.03);
+  }
+
+  private stopBattleSource(seg: BattleMusicSegment) {
+    const src = this.battleSources.get(seg);
+    if (!src) return;
+    try {
+      src.stop();
+      src.disconnect();
+    } catch {}
+    this.battleSources.delete(seg);
+  }
+
+  private stopBattle() {
+    for (const seg of [...this.battleSources.keys()]) this.stopBattleSource(seg);
   }
 
   setSyncTiming(leadInMs: number, leadOutMs: number): void {
@@ -308,17 +411,34 @@ export class AudioTimeline {
 
     if (this.musicBuffer && this.musicLoadingUrl === src) return;
     this.musicLoadingUrl = src;
+    this.musicFallback = null;
 
     try {
+      if (src.startsWith('procedural:')) {
+        // Yordamsal ana tema (telifsiz; kod içinde sentezlenir, kusursuz döngü)
+        this.musicBuffer = await renderMainTheme();
+        return;
+      }
       const res = await fetch(src);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const ab = await res.arrayBuffer();
       const ctx = this.getContext();
       this.musicBuffer = await ctx.decodeAudioData(ab);
     } catch (err) {
-      console.warn(`[AudioTimeline] Arkaplan müziği yüklenemedi: ${src}`, err);
-      this.musicBuffer = null;
+      // Dosya yoksa (ör. silinmiş eski parça) film sessiz kalmasın: yordamsal ana temaya dönülür
+      console.warn(`[AudioTimeline] Arkaplan müziği yüklenemedi, ana tema çalınıyor: ${src}`, err);
+      this.musicFallback = src;
+      try {
+        this.musicBuffer = await renderMainTheme();
+      } catch {
+        this.musicBuffer = null;
+      }
     }
+  }
+
+  /** Senaryodaki müzik dosyası yüklenemediyse o dosyanın yolu (yerine ana tema çalınıyor). */
+  getMusicFallback(): string | null {
+    return this.musicFallback;
   }
 
   setMusicConfig(partial: Partial<MusicConfig>): void {
@@ -371,6 +491,9 @@ export class AudioTimeline {
       }
     }
 
+    // 4. Savaş müziği çalarken ana tema çekilir
+    gain *= this.mainThemeMix(filmTime);
+
     return Math.max(0, Math.min(1, gain));
   }
 
@@ -422,6 +545,19 @@ export class AudioTimeline {
     );
   }
 
+  /**
+   * Önizlemenin ana saati (sn): ses bağlamının saati. Oynatırken film zamanı buna bağlanır; görüntü yavaş çizilse de
+   * (render modu) ses ile görüntü ayrışmaz. Ses bağlamı henüz yoksa null.
+   */
+  clock(): number | null {
+    return this.ctx ? this.ctx.currentTime : null;
+  }
+
+  /** Zaman dışarıdan değişti (arama, döngü başı): sonraki update tüm sesleri o andan yeniden kurar. */
+  seek(): void {
+    this.seekPending = true;
+  }
+
   /** Oynatma döngüsünde her karede çağrılır (zamanı takip edip sesleri tetikler). */
   update(time: number, playing: boolean) {
     if (!playing) {
@@ -436,8 +572,10 @@ export class AudioTimeline {
       ctx.resume().catch(() => {});
     }
 
-    // Zaman geriye veya ileriye sıçradıysa (seek)
-    const jumped = Math.abs(time - this.lastTime) > 0.35 || !this.isPlaying;
+    // Arama: açıkça bildirilen arama, oynatmanın başı, geriye gidiş ya da çok büyük sıçrama. Film zamanı ses saatine
+    // bağlı olduğundan yavaş çizilen bir kare (0.35 sn'den uzun) arama sayılmaz; eskiden tüm sesler baştan kuruluyordu.
+    const jumped = this.seekPending || !this.isPlaying || time < this.lastTime - 0.05 || time - this.lastTime > 2;
+    this.seekPending = false;
     this.isPlaying = true;
     this.lastTime = time;
 
@@ -453,16 +591,18 @@ export class AudioTimeline {
       }
       this.startMusicAt(time);
       this.updateSfx(time, true);
+      this.updateBattle(time, true);
       return;
     }
 
     this.updateSfx(time, false);
+    this.updateBattle(time, false);
 
     // Normal akış: başlangıç anı bu kareye denk gelen sesleri başlat
     for (const cue of this.cues) {
       if (!cue.buffer) continue;
       if (time >= cue.start && time < cue.start + cue.duration) {
-        if (!this.activeSources.has(cue.id)) {
+        if (!this.activeSources.has(cue.id) && !this.cuePlayed.has(cue.id)) {
           const offset = Math.max(0, time - cue.start);
           this.playCue(cue, offset);
         }
@@ -531,6 +671,7 @@ export class AudioTimeline {
     };
     src.start(0, offset);
     this.activeSources.set(cue.id, src);
+    this.cuePlayed.add(cue.id);
   }
 
   private stopCue(id: string) {
@@ -552,8 +693,10 @@ export class AudioTimeline {
       } catch {}
     }
     this.activeSources.clear();
+    this.cuePlayed.clear();
     this.stopMusic();
     this.stopSfx();
+    this.stopBattle();
   }
 
   getCues(): AudioCue[] {
@@ -599,6 +742,23 @@ export class AudioTimeline {
       }
       musicGain.gain.setValueCurveAtTime(curve, 0, duration);
       musicSrc.start(Math.max(0, this.musicConfig.start));
+    }
+
+    // 2b. Savaş müzikleri (ana temayla çapraz geçiş getMusicGainAt içinde)
+    for (const seg of this.battle) {
+      if (!this.musicConfig.enabled || seg.start >= duration) continue;
+      const end = Math.min(seg.start + seg.buffer.duration, duration);
+      const src = offlineCtx.createBufferSource();
+      src.buffer = seg.buffer;
+      const gain = offlineCtx.createGain();
+      const points = Math.max(2, Math.floor((end - seg.start) * 25));
+      const curve = new Float32Array(points);
+      for (let i = 0; i < points; i++) curve[i] = this.getBattleGainAt(seg, seg.start + (i / (points - 1)) * (end - seg.start - 1e-3));
+      gain.gain.setValueCurveAtTime(curve, seg.start, end - seg.start);
+      src.connect(gain);
+      gain.connect(out);
+      src.start(seg.start);
+      src.stop(end);
     }
 
     // 3. Ses efektleri (yankı + sınırlayıcı kanalından) ve döngülü ortam sesleri

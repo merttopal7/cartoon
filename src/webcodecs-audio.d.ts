@@ -44,3 +44,20 @@ declare class AudioEncoder {
   close(): void;
   static isConfigSupported(config: AudioEncoderConfig): Promise<{ supported: boolean; config: AudioEncoderConfig }>;
 }
+
+interface EncodedAudioChunk {
+  readonly type: 'key' | 'delta';
+  readonly timestamp: number;
+  readonly duration: number | null;
+  readonly byteLength: number;
+  copyTo(destination: BufferSource): void;
+}
+
+interface EncodedAudioChunkMetadata {
+  decoderConfig?: {
+    codec: string;
+    sampleRate?: number;
+    numberOfChannels?: number;
+    description?: BufferSource;
+  };
+}

@@ -14,12 +14,14 @@ import { buildSceneRenderDetails } from './details';
 import { loadOverlayFonts, renderMotionGraphicsLayer, type TransitionCue } from './motion-graphics';
 import { AbilitySystem, type AbilityRecipe, type ActiveAbilityHUDInfo } from './abilities';
 import { buildRecipe, resolveAbility } from './ability-registry';
-import { setupLods } from './lod';
+import { showcaseAnchor, showcaseLift } from './ability-fx/showcase';
+import { LodLock, setupLods } from './lod';
 import { CLEARANCE_SAMPLE_STEP, CameraClearance, type CameraSample } from './camera-clearance';
 import { ImpactFeel } from './impact';
 import { FocusTrack } from './focus-track';
 import { RoadPath } from './road';
 import { buildSfx } from './sfx/cues';
+import { planBattles, renderBattleMusic, type FightUse } from './music/battle';
 import { expandCoverage, type CoverageImpact, type CoverageKind, type CoverageLine } from './coverage';
 import { markCharacterMaterial, DEFAULT_LOOK, GRADES, resolveGrade, type FilmLook, type Grade } from './look';
 
@@ -57,11 +59,16 @@ const SHAKE_SCALE = 0.01;
 const KNOCKBACK_ARC_BASE = 0.15;
 const KNOCKBACK_ARC_PER_M = 0.4;
 
+/** Kadrajın kalçayı izlemesinde yumuşak ölü bölge (m): bundan küçük kalça kayması kamerayı oynatmaz. */
+const HIPS_DEADZONE = 0.25;
+
 export class BuiltScene implements SceneContext {
   readonly cameraPosition = new THREE.Vector3();
   audio?: AudioTimeline;
   /** Kameranın ağaçlara girmesini önler (haritada ağaç veya arazi varsa). */
   clearance: CameraClearance | null = null;
+  /** Ağaç ayrıntı seviyeleri çekim boyunca sabit (kesmede değişir) */
+  lodLock: LodLock | null = null;
   /** Yetenek isabetlerinde hit-stop ve kamera sarsıntısı (sahnede isabet varsa). */
   impact: ImpactFeel | null = null;
   /** Yeteneklerin kamera odağı, zaman içinde yumuşatılmış (peş peşe yeteneklerde kamera pompalamasın). */
@@ -107,7 +114,6 @@ export class BuiltScene implements SceneContext {
       this.hemi.intensity = isPreview ? this.hemi.userData.origIntensity * 1.15 : this.hemi.userData.origIntensity;
     }
 
-    this.wind?.setRenderMode(mode);
 
     this.group.traverse((o) => {
       // Karakterleri, yetenek efektlerini ve bileşenlerini koru
@@ -236,14 +242,20 @@ export class BuiltScene implements SceneContext {
       const c = this.characters.get(id)!;
       const pos = c.positionAt(t, new THREE.Vector3());
       // Bu anın pozu uygulanmışsa kadraj gövdenin gerçek yerini izler (dövüş duruşu gibi klipler kalçayı kökten
-      // yarım metre kaydırabiliyor; yakın planda karakter kenara kayıyordu). Yürürken kök: kalça salınımı
-      // kamerayı sallamasın. Kamera yolu örneklenirken (başka t) kök kullanılır.
+      // yarım metre kaydırabiliyor; yakın planda karakter kenara kayıyordu). Küçük kalça salınımı (bekleme
+      // sallanması, ağırlık aktarımı, yürüyüşte yaylanma) yumuşak ölü bölgeyle yok sayılır: kamera her salınımı
+      // izleyince kadraj sağa sola oynuyor, baş döndürüyordu. Kamera yolu örneklenirken (başka t) kök kullanılır.
       if (c.pose.time === t && c.pose.walkWeight < 1) {
         const hp = c.rig.hipsPosition?.(new THREE.Vector3());
         if (hp) {
           const k = Math.min(1, 1 - c.pose.walkWeight);
-          pos.x += (hp.x - pos.x) * k;
-          pos.z += (hp.z - pos.z) * k;
+          const dx = hp.x - pos.x;
+          const dz = hp.z - pos.z;
+          const m = Math.hypot(dx, dz);
+          // f(m) = m − D·tanh(m/D): birkaç cm'de ≈ 0, yarım metrede ≈ m − D (sürekli ve yumuşak)
+          const follow = m > 1e-6 ? Math.max(0, m - HIPS_DEADZONE * Math.tanh(m / HIPS_DEADZONE)) / m : 0;
+          pos.x += dx * follow * k;
+          pos.z += dz * follow * k;
         }
       }
       center.add(pos);
@@ -279,6 +291,8 @@ export class Film {
   currentSceneLocalTime = 0;
   currentOverlays: OverlayDef[] = [];
   currentActiveAbilities: ActiveAbilityHUDInfo[] = [];
+  /** Çekim başına örneklenen kamera yolu (kamera açıklığı ve ağaç ayrıntı kilidi ortak kullanır). */
+  private readonly shotSamples = new Map<string, CameraSample[]>();
   readonly transitionCues: TransitionCue[] = [];
   /** Kontur ve parlama ayarları (son işlem; src/render/post.ts). */
   look: FilmLook = { ...DEFAULT_LOOK };
@@ -325,9 +339,10 @@ export class Film {
   evaluate(t: number, format: FormatPreset): FrameInfo {
     t = clamp(t, 0, this.duration - 1e-6);
     const sc = this.scenes.find((s) => t < s.start + s.duration) ?? this.scenes[this.scenes.length - 1];
+    // Her karede yalnızca etkin sahne görünür: yalnızca bir öncekini gizlemek, ısıtma ya da örnekleme sonrası açık
+    // kalan bir sahneyi (çok sahneli filmde açılışın arkasında bölüm karakterleri) gizlemiyordu
+    for (const s of this.scenes) s.group.visible = s === sc;
     if (this.active !== sc) {
-      if (this.active) this.active.group.visible = false;
-      sc.group.visible = true;
       this.scene.background = sc.sky;
       this.scene.fog = sc.fog;
       this.active = sc;
@@ -336,9 +351,6 @@ export class Film {
     const lt = t - sc.start;
     const shot = sc.shots.find((s) => lt < s.start + s.duration) ?? sc.shots[sc.shots.length - 1];
     const shotProgress = EASES[resolveCamera(shot.camera, format).ease](clamp((lt - shot.start) / shot.duration));
-    if (this.renderMode === 'render') {
-      sc.wind?.update(t);
-    }
     // Karakterler ve efektler hit-stop'lu zamanda (wt); kamera hareketi ve sesler gerçek zamanda (lt) akar
     const wt = sc.actionTime(lt);
     for (const c of sc.characters.values()) {
@@ -347,11 +359,21 @@ export class Film {
     }
     sc.abilities?.update(wt, sc.characters);
     this.placeCamera(this.camera, sc, shot, lt, t, format);
-    // O çekimde kameranın içine girdiği ya da konuşanı örttüğü ağaçlar çekim boyunca gizlenir
-    sc.clearance?.apply(`${shot.index}|${format.id}|${format.width}x${format.height}`, shot.start, wt, () =>
-      this.sampleShot(sc, shot, format),
-    );
+    // O çekimde kameranın içine girdiği ya da konuşanı örttüğü ağaçlar çekim boyunca gizlenir; ağaçların ayrıntı
+    // seviyesi de çekim boyunca sabit (kamera yolu çekim başına bir kez örneklenir, ikisi de onu kullanır)
+    const shotKey = `${sc.id}|${shot.index}|${format.id}|${format.width}x${format.height}`;
+    const samples = () => {
+      let s = this.shotSamples.get(shotKey);
+      if (!s) {
+        s = this.sampleShot(sc, shot, format);
+        this.shotSamples.set(shotKey, s);
+      }
+      return s;
+    };
+    sc.clearance?.apply(`${shot.index}|${format.id}|${format.width}x${format.height}`, samples);
+    sc.lodLock?.apply(shotKey, () => samples().map((x) => x.camera));
     sc.cameraPosition.copy(this.camera.position);
+    sc.wind?.update(t, this.camera.position);
     const spec = shot.camera;
     if (this.renderMode === 'render') {
       sc.followShadow(sc.subject(spec.target, wt, new THREE.Vector3(1, 0, 0), shotProgress).center);
@@ -415,6 +437,18 @@ export class Film {
           : sides.sort((x, y) => Math.abs(x) - Math.abs(y))[0];
       const turn = THREE.MathUtils.clamp(toSide, -SIDE_VIEW_MAX, SIDE_VIEW_MAX) * abilityFocus.sideWeight;
       resolvedCam.angle = baseAz + turn - facingDeg;
+    }
+    // Belirli bakış yönü (ağaç dikme: kullananın arkası): kamera o yöne en kısa yoldan, ağırlıkla döner
+    if (abilityFocus?.viewWeight && abilityFocus.viewAngle !== undefined) {
+      const k = EASES[resolvedCam.ease](clamp((lt - shot.start) / shot.duration));
+      const a = resolvedCam.angle;
+      const from = typeof a === 'object' && a !== null && 'from' in a ? a.from : a;
+      const to = typeof a === 'object' && a !== null && 'from' in a ? a.to : a;
+      const facingDeg = resolvedCam.relative ? (sc.facingOf(resolvedCam.target, wt) * 180) / Math.PI : 0;
+      const baseAz = THREE.MathUtils.lerp(from, to, k) + facingDeg;
+      const wrap = (d: number) => ((((d + 180) % 360) + 360) % 360) - 180;
+      const w = abilityFocus.viewWeight * abilityFocus.viewWeight * (3 - 2 * abilityFocus.viewWeight);
+      resolvedCam.angle = baseAz + wrap((abilityFocus.viewAngle * 180) / Math.PI - baseAz) * w - facingDeg;
     }
     const aim = applyCamera(
       cam,
@@ -623,6 +657,8 @@ export async function buildFilm(
   const scenes: BuiltScene[] = [];
   const audioCues: AudioCue[] = [];
   let filmTime = 0;
+  /** Yetenek kullanımları (film zamanı): savaş müziğinin aralığı bunlardan çıkar */
+  const fightUses: FightUse[] = [];
 
   onProgress?.('Varlıklar önbelleğe alınıyor…', 0.05);
   const usedAssetKeys = new Set<string>();
@@ -728,7 +764,20 @@ export async function buildFilm(
     const abilities = new AbilitySystem();
     if (terrain) abilities.setGround((x, z) => terrain!.heightAt(x, z));
     group.add(abilities.group);
+    // Haritada toprak yolun üstüne yerleştirilmiş çamlar (harita hatası) kaldırılır
+    const onRoad = removeTreesOnRoad(group);
+    if (onRoad.length) console.info(`${def.id}: yolun üstündeki ${onRoad.length} çam kaldırıldı (${onRoad.join(', ')})`);
     abilities.bindSceneTrees(group);
+    if (def.clear_vegetation.length) clearVegetation(group, def.clear_vegetation);
+    // Sahne başında devrik duran ağaçlar (fallen_trees): Ağaç Dikme bunları da kaldırabilir
+    if (def.fallen_trees.length) {
+      const fellDef = resolveAbility('agac_devirme');
+      for (const f of def.fallen_trees) {
+        if (!fellDef || !abilities.addFallenTree(f.tree, f.toward, buildRecipe(fellDef).recipe)) {
+          warnings.push(`${def.id}: devrik ağaç "${f.tree}" haritada bulunamadı`);
+        }
+      }
+    }
 
     const shots: BuiltShot[] = [];
     const allActions: { action: Action; start: number }[] = [];
@@ -780,6 +829,13 @@ export async function buildFilm(
       | { kind: 'action'; time: number; action: Action; start: number }
       | {
           kind: 'tree_fall_cast';
+          time: number;
+          action: Extract<Action, { do: 'ability' }>;
+          start: number;
+          recipe: AbilityRecipe;
+        }
+      | {
+          kind: 'self_cast';
           time: number;
           action: Extract<Action, { do: 'ability' }>;
           start: number;
@@ -838,6 +894,21 @@ export async function buildFilm(
             recipeWarned.add(w);
             warnFn(w);
           }
+        }
+
+        // Element gösterisi (hedefsiz): kullanan kliplerini oynatır, efekt onun çevresinde oluşur
+        if (recipe.targetKind === 'self') {
+          let clipStart = start;
+          for (const c of recipe.clips) {
+            caster.schedule(
+              { who: action.who, at: clipStart, do: 'clip', name: c.name, duration: c.duration, loop: c.loop ?? false, fade: c.fade ?? ABILITY_CLIP_FADE },
+              clipStart,
+              warnFn,
+            );
+            clipStart += c.duration;
+          }
+          timelineEvents.push({ kind: 'self_cast', time: start, action, start, recipe });
+          continue;
         }
 
         // Ağaç Devirme gibi çevreye yönelik (hasar vermeyen) yetenekler haritadaki gerçek ağacı devirir
@@ -941,6 +1012,72 @@ export async function buildFilm(
         const yaw = yawTo(from, centroid);
         const to = ev.targets.length === 1 ? ev.targets[0] : (yaw * 180) / Math.PI;
         caster.schedule({ who: ev.who, at: ev.time, do: 'turn', to, duration: turnDuration(caster, ev.time, yaw) }, ev.time, warnFn);
+        continue;
+      }
+
+      if (ev.kind === 'self_cast') {
+        // Gösteri: efekt kullananın fırlatma anındaki yerinde ve yönünde kurulur; kaya, hortum ve dalga onu
+        // yükselişten inişe kadar tepelerinde taşır
+        const { action, start, recipe } = ev;
+        const caster = characters.get(action.who)!;
+        const at = start + recipe.chargeEnd;
+        const pos = caster.positionAt(at, new THREE.Vector3());
+        const facing = caster.facingAt(at, compileCtx);
+        const lift = showcaseLift(recipe.effectType, recipe);
+        if (lift) {
+          caster.scheduleElevation({ start: start + lift.riseStart, up: start + lift.riseEnd, down: start + lift.sinkStart, end: start + lift.sinkEnd, height: lift.height });
+        }
+        abilities.add({
+          who: action.who,
+          target: action.who,
+          name: action.name,
+          recipe,
+          start,
+          knockback: 0,
+          impactPos: showcaseAnchor(recipe.effectType, pos, facing),
+          facing,
+          groupIndex: 0,
+          groupSize: 1,
+        });
+        continue;
+      }
+
+      if (ev.kind === 'tree_fall_cast' && ev.recipe.effectType === 'tree_lift') {
+        // Ağaç Dikme: devrik ağaca döner, rüzgârla kaldırıp kütüğüne geri diker
+        const { action, start, recipe } = ev;
+        const caster = characters.get(action.who)!;
+        const casterPos = caster.positionAt(start, new THREE.Vector3());
+        const preferredTreeId = typeof action.target === 'string' ? action.target : undefined;
+        const picked = abilities.selectMapTreeForLift(casterPos, preferredTreeId);
+        if (!picked) {
+          warnFn(`${action.who}: "${action.name}" için dikilecek ağaç bulunamadı${preferredTreeId ? ` (${preferredTreeId})` : ''}`);
+          continue;
+        }
+        if (!picked.fall) warnFn(`${action.who}: "${picked.tree.id}" devrik değil; yerinde havalanıp yeniden oturur`);
+        else if (picked.fall.start + picked.fall.recipe.totalDuration > start + recipe.chargeEnd) {
+          warnFn(`${action.who}: "${picked.tree.id}" devrilmesi bitmeden kaldırılıyor (${(picked.fall.start + picked.fall.recipe.totalDuration).toFixed(2)} sn'den sonra başlatın)`);
+        }
+        // Devrik gövdenin ortasına döner
+        const look = picked.tree.worldPos.clone();
+        if (picked.fall?.slideTargetPos && picked.fall.fallDirXZ) {
+          look.copy(picked.fall.slideTargetPos).addScaledVector(picked.fall.fallDirXZ, 6 * picked.tree.origScale.x);
+        }
+        const yawDeg = (Math.atan2(look.x - casterPos.x, look.z - casterPos.z) * 180) / Math.PI;
+        caster.schedule({ who: action.who, at: start, do: 'turn', to: yawDeg, duration: turnDuration(caster, start, (yawDeg * Math.PI) / 180) }, start, warnFn);
+        abilities.add({
+          who: action.who,
+          target: picked.tree.id,
+          name: action.name,
+          recipe,
+          start,
+          knockback: 0,
+          impact: action.impact,
+          impactPos: picked.tree.worldPos.clone(),
+          groupIndex: 0,
+          groupSize: 1,
+          mapTreeId: picked.tree.id,
+          liftFrom: picked.fall,
+        });
         continue;
       }
 
@@ -1075,6 +1212,7 @@ export async function buildFilm(
           return ch.rig.bodyFacing?.() ?? ch.facingAt(tt, compileCtx);
         },
         height: (id: string) => characters.get(id)!.rig.height,
+        blocked: (x: number, z: number, tt: number) => abilities.insideFallenCrown(x, z, tt),
       };
       const expanded: BuiltShot[] = [];
       for (const sh of shots) {
@@ -1107,15 +1245,25 @@ export async function buildFilm(
       def.overlays ?? [],
       abilities,
     );
+    // Devrik ağaçlar Karabey'e isabet eden yeteneklerde itilir (tüm yetenekler ve savrulmalar zamanlandıktan sonra)
+    abilities.planTreePushes(characters);
+    // Ateş büyülerinde alevin elden çıkacağı nokta (kullanan fırlatma anına pozlanır)
+    abilities.planLaunchPoints(characters, built);
     if (abilities.getScheduledCasts().length) built.focus = new FocusTrack(abilities, characters);
     built.grade = resolveGrade(def.environment.grade ?? s.film.look.grade);
     const impacts = abilities.impactEvents();
     if (impacts.length) built.impact = new ImpactFeel(impacts, { shake: s.film.impact_shake, hitStop: s.film.hit_stop });
     const trees = abilities.clearanceTrees();
     if (trees.length || terrain) {
-      built.clearance = new CameraClearance(trees, terrain, env.sun.shadow.camera, (lt) => abilities.update(lt, characters));
+      built.clearance = new CameraClearance(trees, terrain, env.sun.shadow.camera);
     }
+    const lodLock = new LodLock(group);
+    if (lodLock.count) built.lodLock = lodLock;
     scenes.push(built);
+    // Ağaç dikme savaş hamlesi değil (ör. zafer sonrası onarım): savaş müziğini uzatmaz
+    for (const a of abilities.allUses()) {
+      if (a.recipe.effectType !== 'tree_lift' && a.recipe.targetKind !== 'self' && !a.prefallen) fightUses.push({ start: filmTime + a.start, impact: filmTime + a.start + a.recipe.impactOffset });
+    }
     filmTime += t;
   }
 
@@ -1129,10 +1277,11 @@ export async function buildFilm(
   }
   await film.audio.load(audioCues);
 
-  // Arkaplan müziğini yükle (varsayılan: jyproject-carousel-dreams-396029.mp3)
+  // Arkaplan müziğini yükle (varsayılan: yordamsal ana tema)
   const musicDef = s.film.music;
-  const musicSrc = musicDef?.src || '/audio/main-theme/jyproject-carousel-dreams-396029.mp3';
-  await film.audio.loadMusic({
+  const musicSrc = musicDef?.src || 'procedural:main';
+  // Ana tema (yordamsal ise sentezlenir) savaş müziği ve efektlerle aynı anda hazırlanır
+  const music = film.audio.loadMusic({
     src: musicSrc,
     volume: musicDef?.volume ?? 0.35,
     ducking: musicDef?.ducking ?? 0.25,
@@ -1143,13 +1292,38 @@ export async function buildFilm(
     enabled: musicDef?.enabled ?? true,
   });
 
+  // Savaş müziği (yordamsal; yetenek kullanımlarından). Ses iş parçacığında sentezlenir; efekt sentezi (ana iş
+  // parçacığı) ile aynı anda yürür
+  const battleDef = musicDef?.battle;
+  const bpm = battleDef?.bpm ?? 140;
+  const battle =
+    battleDef?.enabled !== false && fightUses.length
+      ? Promise.all(
+          planBattles(fightUses, bpm, film.duration).map(async (b) => ({
+            buffer: await renderBattleMusic({ bpm, introBars: b.introBars, bodyBars: b.bodyBars }),
+            start: b.start,
+            end: b.end,
+            volume: battleDef?.volume ?? 0.32,
+          })),
+        )
+      : Promise.resolve([]);
+
   // Ses efektleri (sentezlenir; dosya indirilmez)
-  onProgress?.('Ses efektleri hazırlanıyor…', 0.95);
-  const sfx = await buildSfx(
-    film,
-    s.scenes.map((d) => d.environment.preset),
-    s.film.sfx,
-  );
+  onProgress?.(fightUses.length ? 'Ses efektleri ve savaş müziği hazırlanıyor…' : 'Ses efektleri hazırlanıyor…', 0.92);
+  const [sfx, battleSegments] = await Promise.all([
+    buildSfx(
+      film,
+      s.scenes.map((d) => d.environment.preset),
+      s.film.sfx,
+      // Ortam rüzgârı sahnenin rüzgâr ayarını izler (kapalıysa hafif esinti)
+      s.scenes.map((d) => (d.environment.wind?.enabled ? (d.environment.wind.strength ?? 0.5) : 0)),
+    ),
+    battle,
+    music,
+  ]);
+  film.audio.setBattleMusic(battleSegments);
+  const missingMusic = film.audio.getMusicFallback();
+  if (missingMusic) warnings.push(`Müzik dosyası yüklenemedi (${missingMusic}); yerine yordamsal ana tema çalınıyor. Senaryoda "src: procedural:main" yazabilirsiniz.`);
   film.audio.setSfx(sfx.cues, sfx.ambience);
 
   for (const scene of scenes) {
@@ -1179,4 +1353,99 @@ function liftCharacter(root: THREE.Object3D, amount: number) {
       mat.emissiveIntensity = amount;
     }
   });
+}
+
+/** Yer bitkisi mesh'i (çimen, kuru ot, çalı): ağaç, gövde ve iğne değil. */
+const GROUND_PLANT = /(grass|bush|vegetation|shrub|weed|fern)/i;
+const NOT_GROUND_PLANT = /(pine|tree|trunk|needle|leaves|road|ground|dirt|terrain|close|aerial)/i;
+
+/**
+ * Yer bitkilerinin, verilen noktaların çevresindeki üçgenlerini kaldırır (sahneye özel: geometri kopyalanır, başka
+ * sahnelerde ve önbellekteki haritada otlar yerinde kalır). Üçgen merkezinin dünya konumu yatay uzaklıkla ölçülür.
+ */
+function clearVegetation(root: THREE.Object3D, spots: { at: [number, number]; radius: number }[]) {
+  const v = new THREE.Vector3();
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.geometry?.attributes.position || (mesh as THREE.InstancedMesh).isInstancedMesh) return;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const name = `${mesh.name} ${mats.map((m) => m?.name ?? '').join(' ')}`;
+    if (!GROUND_PLANT.test(name) || NOT_GROUND_PLANT.test(name)) return;
+    const src = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone();
+    const pos = src.attributes.position;
+    const keep: number[] = [];
+    let removed = 0;
+    for (let t = 0; t + 2 < pos.count; t += 3) {
+      let cx = 0;
+      let cz = 0;
+      for (let k = 0; k < 3; k++) {
+        v.fromBufferAttribute(pos, t + k).applyMatrix4(mesh.matrixWorld);
+        cx += v.x / 3;
+        cz += v.z / 3;
+      }
+      if (spots.some((sp) => Math.hypot(cx - sp.at[0], cz - sp.at[1]) < sp.radius)) removed++;
+      else keep.push(t);
+    }
+    if (!removed) {
+      src.dispose();
+      return;
+    }
+    const next = new THREE.BufferGeometry();
+    for (const [key, attr] of Object.entries(src.attributes)) {
+      const a = attr as THREE.BufferAttribute;
+      const n = a.itemSize;
+      const out = new (a.array.constructor as new (len: number) => THREE.TypedArray)(keep.length * 3 * n);
+      keep.forEach((t, i) => out.set((a.array as THREE.TypedArray).subarray(t * n, (t + 3) * n), i * 3 * n));
+      next.setAttribute(key, new THREE.BufferAttribute(out, n, a.normalized));
+    }
+    if (src.groups.length) {
+      // Çok malzemeli örtüde gruplar yeniden hesaplanır
+      let start = 0;
+      for (const g of src.groups) {
+        const end = g.start + g.count;
+        const cnt = keep.filter((t) => t >= g.start && t < end).length * 3;
+        if (cnt) next.addGroup(start, cnt, g.materialIndex);
+        start += cnt;
+      }
+    }
+    src.dispose();
+    mesh.geometry = next;
+  });
+}
+
+/**
+ * Gövdesi toprak yol yüzeyinin (Dirt_Road, Dirt_Road_Bare, Dirt_Road_Trails) üstünde duran harita çamlarını sahneden
+ * çıkarır: haritada birkaç çam yolun ortasına yerleştirilmiş (doğu kıvrımında yolu kapatıyordu). Yol kenarı şeridi ve
+ * taş döşeli alanlardaki ağaçlar kalır. Gövde tabanının çevresindeki beş noktadan aşağı ışın atılır; çoğu yol
+ * yüzeyine (tabana 1.5 m'den yakın) çarpıyorsa ağaç yoldadır. Kaldırılan ağaçların kimlikleri döner.
+ */
+function removeTreesOnRoad(root: THREE.Object3D): string[] {
+  const roads: THREE.Object3D[] = [];
+  const trees: THREE.Object3D[] = [];
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (m.isMesh && /dirt_road/i.test(m.name)) roads.push(m);
+    if (/^Realistic_Pine_\d+$/i.test(o.name)) trees.push(o);
+  });
+  if (!roads.length) return [];
+  const rc = new THREE.Raycaster();
+  const p = new THREE.Vector3();
+  const down = new THREE.Vector3(0, -1, 0);
+  const removed: string[] = [];
+  for (const tree of trees) {
+    tree.getWorldPosition(p);
+    let hits = 0;
+    for (const [dx, dz] of [[0, 0], [0.6, 0], [-0.6, 0], [0, 0.6], [0, -0.6]]) {
+      rc.set(new THREE.Vector3(p.x + dx, p.y + 50, p.z + dz), down);
+      const h = rc.intersectObjects(roads, false)[0];
+      if (h && Math.abs(h.point.y - p.y) < 1.5) hits++;
+    }
+    if (hits >= 3) {
+      tree.parent?.remove(tree);
+      removed.push(tree.name);
+    }
+  }
+  return removed;
 }

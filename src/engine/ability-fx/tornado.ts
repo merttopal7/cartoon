@@ -43,14 +43,6 @@ export function updateTornado(
   impactOffset: number,
   totalDuration: number,
 ) {
-  v.fireCoreMesh.visible = false;
-  v.fireCoronaMesh.visible = false;
-  v.lightningLine.visible = false;
-  v.arrowGroup.visible = false;
-  v.treeGroup.visible = false;
-  v.vortexMesh.visible = true;
-  v.outerVortexMesh.visible = true;
-
   const casterPos = caster.positionAt(lt, new THREE.Vector3());
   const endGround = v.ability.impactPos.clone();
   const tornadoPos = tornadoCenter(local, casterPos, endGround, target.positionAt(lt, new THREE.Vector3()), chargeEnd, impactOffset, totalDuration, new THREE.Vector3());
@@ -83,6 +75,30 @@ export function updateTornado(
     alpha = Math.max(0, 1 - Math.pow(u, 1.35));
     outerAlpha = alpha;
   }
+
+  drawTornado(v, tornadoPos, local, scaleXZ, scaleY, alpha, outerAlpha);
+}
+
+/**
+ * Hortumun görseli (huni, dış kılıf, taban tozu, yapraklar, ışık) verilen zemin merkezinde ve ölçekte. Saldırı
+ * hortumu ve Defne'nin açılıştaki gösteri hortumu (showcase.ts) aynı görünümü kullanır.
+ */
+export function drawTornado(
+  v: AbilityVisual,
+  tornadoPos: THREE.Vector3,
+  local: number,
+  scaleXZ: number,
+  scaleY: number,
+  alpha: number,
+  outerAlpha: number,
+) {
+  v.fireCoreMesh.visible = false;
+  v.fireCoronaMesh.visible = false;
+  v.lightningLine.visible = false;
+  v.arrowGroup.visible = false;
+  v.treeGroup.visible = false;
+  v.vortexMesh.visible = true;
+  v.outerVortexMesh.visible = true;
 
   // 1. İç Yoğuşma Hunisi (3B Trompet Gövde)
   v.vortexMesh.position.copy(tornadoPos);

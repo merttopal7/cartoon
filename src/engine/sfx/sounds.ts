@@ -36,21 +36,26 @@ const finish = (buf: Float32Array, fadeOut = 0.02) => edgeFade(normalize(buf), 0
 // HAREKET
 // ---------------------------------------------------------------------------------------------------
 
-/** Ayak sesi: toprak/orman zemininde topuk + parmak ucu, biraz çakıl. Koşuda daha kısa ve sert. */
+/**
+ * Ayak sesi: yumuşak toprak/orman zemininde topuk + parmak ucu. Tok gövde öne çıkar; çakıl çıtırtısı hafif ve
+ * kısık (yüksek frekanslı keskin tıkırtı uzun sahnelerde rahatsız ediyordu). Koşuda biraz daha kısa.
+ */
 export function step(seed: number, run = false): Float32Array {
   const r = rng(seed);
   const n = white(r);
   const dur = 0.2;
-  const bp = new Biquad('bandpass', lerp(650, 1300, r()), 0.8);
+  const bp = new Biquad('bandpass', lerp(380, 760, r()), 0.7);
   const scuff = rmsTex(dur, () => bp.process(n()));
   const toe = lerp(0.022, 0.04, r());
-  const grit = grains(r, dur, (t) => (t < 0.08 ? 160 : 0), 0.004, new Biquad('highpass', 2600));
-  const thumpF = lerp(70, 95, r());
-  const decay = run ? 0.02 : 0.028;
+  const grit = grains(r, dur, (t) => (t < 0.06 ? 90 : 0), 0.003, new Biquad('bandpass', 2400, 1.1));
+  const thumpF = lerp(65, 90, r());
+  const decay = run ? 0.022 : 0.03;
+  const soft = new OnePole(3200);
   return finish(
     render(dur, (t, i) => {
-      const e = hit(t, 0.0015, decay) + 0.5 * hit(t - toe, 0.0015, decay * 0.8);
-      return scuff[i] * e * 0.5 + grit[i] * 0.9 + Math.sin(TAU * thumpF * t) * hit(t, 0.003, 0.03) * 0.4;
+      const e = hit(t, 0.004, decay) + 0.45 * hit(t - toe, 0.004, decay * 0.8);
+      const x = scuff[i] * e * 0.55 + grit[i] * 0.22 + Math.sin(TAU * thumpF * t) * hit(t, 0.004, 0.035) * 0.6;
+      return soft.process(x);
     }),
   );
 }
@@ -134,20 +139,45 @@ export function fireCharge(seed: number, dur: number): Float32Array {
   );
 }
 
-/** Ateş topunun fırlayışı: "vuuş" + alev patlaması. */
+/**
+ * Alevin elden çıkışı: gaz tutuşması gibi keskin bir "fuuum". Gürültü yüksek frekanstan hızla iner (tutuşma),
+ * alev gövdesinin tok rezonansı (~260 Hz) kabarır, türbülans titremesi (~23–37 Hz) ve kısa çıtırtılar eşlik eder;
+ * sonda uçan alevin uzaklaşan uğultusu. (Eskisi genel bir "vuuş" ve alçak sinüs "güm"üydü.)
+ */
 export function fireLaunch(seed: number): Float32Array {
   const r = rng(seed);
-  const dur = 0.75;
-  const w = whoosh(seed + 1, 0.6, 300, 2600, 1.1);
-  const b = brown(r);
-  const lp = new Biquad('lowpass', 700);
-  const roar = rmsTex(dur, () => lp.process(b()));
-  let ph = 0;
-  const base = render(dur, (t, i) => {
-    ph += (TAU * (60 + 80 * Math.exp(-t / 0.08))) / SR;
-    return roar[i] * hit(t, 0.01, 0.18) * 0.35 + Math.sin(ph) * hit(t, 0.004, 0.12) * 0.5;
+  const n = white(r);
+  const dur = 0.9;
+  // Tutuşma: alçak geçiren 7 kHz'ten 700 Hz'e iner
+  const sweep = new Biquad('lowpass', 7000, 0.8);
+  const ignite = render(dur, (t) => {
+    sweep.set(700 + 6300 * Math.exp(-t / 0.09), 0.8);
+    return sweep.process(n());
   });
-  return finish(mixInto(base, w, 0, 0.9), 0.05);
+  // Alev gövdesi: dar bant gürültü (tok "fuum")
+  const bodyBp = new Biquad('bandpass', 260, 1.4);
+  const body = rmsTex(dur, () => bodyBp.process(n()));
+  // Uzaklaşan uğultu: orta bant, merkez yavaşça iner
+  const tailBp = new Biquad('bandpass', 900, 0.9);
+  const tail = rmsTex(dur, (t) => {
+    tailBp.set(1100 - 500 * (t / dur), 0.9);
+    return tailBp.process(n());
+  });
+  const crackle = grains(r, dur, (t) => 140 * Math.exp(-t / 0.18), 0.002, new Biquad('highpass', 2600));
+  const ph1 = r() * TAU;
+  const ph2 = r() * TAU;
+  return finish(
+    render(dur, (t, i) => {
+      const turb = 0.72 + 0.18 * Math.sin(TAU * 23 * t + ph1) + 0.1 * Math.sin(TAU * 37 * t + ph2);
+      return (
+        ignite[i] * hit(t, 0.006, 0.12) * 1.3 * turb +
+        body[i] * hit(t - 0.01, 0.025, 0.2) * 0.55 * turb +
+        tail[i] * hit(t - 0.08, 0.12, 0.35) * 0.22 +
+        crackle[i] * 0.45
+      );
+    }),
+    0.12,
+  );
 }
 
 /** Ateş isabeti: patlama (alçak gümbürtü + yayılan gürültü), çıtırdayan alev kuyruğu. */
@@ -240,6 +270,32 @@ export function earthImpact(seed: number): Float32Array {
   return finish(out, 0.15);
 }
 
+/**
+ * Toprak'ı kaldıran kaya sütunu (rise: yükselme süresi): ilk anda yerden kopan çatırtı, yükselirken taş sürtünmesi
+ * ve gümbürtü, dökülen çakıl, tepeye oturunca tok bir vuruş. sink: kaya geri batarken daha kısık, yumuşak sürtünme.
+ */
+export function rockRise(seed: number, dur: number, sink = false): Float32Array {
+  const r = rng(seed);
+  const n = white(r);
+  const b = brown(r);
+  const total = dur + 0.6;
+  const lp = new Biquad('lowpass', 240);
+  const rumble = rmsTex(total, () => lp.process(b()));
+  const bp = new Biquad('bandpass', 600, 0.9);
+  const grind = rmsTex(total, (t, i) => {
+    if (i % 16 === 0) bp.set(sink ? 700 - 300 * clamp01(t / dur) : 450 + 550 * clamp01(t / dur), 0.9);
+    return bp.process(n());
+  });
+  const pebbles = grains(r, total, (t) => (t < dur ? (sink ? 14 : 38) : 38 * Math.exp(-(t - dur) / 0.25)), 0.003, new Biquad('bandpass', 2600, 1.2));
+  let out = render(total, (t, i) => {
+    const e = sink ? Math.sin(Math.PI * clamp01(t / dur)) : smooth(t / 0.06) * (1 - smooth((t - dur) / 0.3));
+    const settle = sink ? 0 : drive(Math.sin(TAU * 58 * t) * hit(t - dur, 0.003, 0.16) * 1.4, 2) * 0.6;
+    return rumble[i] * e * 0.45 + grind[i] * e * (sink ? 0.22 : 0.3) + pebbles[i] * 0.3 + settle;
+  });
+  if (!sink) out = mixInto(out, earthSpike(seed + 7, 0.9), 0, 0.75);
+  return finish(out, 0.12);
+}
+
 // ---------------------------------------------------------------------------------------------------
 // HAVA
 // ---------------------------------------------------------------------------------------------------
@@ -251,7 +307,16 @@ export function earthImpact(seed: number): Float32Array {
  * pitch (isteğe bağlı, hz örnek/sn): Doppler perde çarpanı. Ses gürültüden sentezlendiği için perde, filtre
  * frekansları çarpılarak kaydırılır; zamanlama hiç değişmez (isabet esintisi yerinde kalır).
  */
-export function tornado(seed: number, chargeEnd: number, impact: number, total: number, pitch?: Float32Array, pitchHz = 40): Float32Array {
+export function tornado(
+  seed: number,
+  chargeEnd: number,
+  impact: number,
+  total: number,
+  pitch?: Float32Array,
+  pitchHz = 40,
+  /** Gösteri hortumu: isabet esintisi yok; yerinde dönerken kısık sürer (replik duyulsun), son 1.2 sn'de söner */
+  hold = false,
+): Float32Array {
   const pitchAt = (t: number) => {
     if (!pitch) return 1;
     const k = t * pitchHz;
@@ -272,6 +337,7 @@ export function tornado(seed: number, chargeEnd: number, impact: number, total: 
     let e: number;
     if (t < chargeEnd) e = 0.7 * smooth(t / chargeEnd);
     else if (t < impact) e = 0.7 + 0.3 * smooth((t - chargeEnd) / Math.max(0.05, impact - chargeEnd));
+    else if (hold) e = (0.3 + 0.7 * (1 - smooth((t - impact) / 0.8))) * (1 - smooth((t - (total - 1.2)) / 1.2));
     else e = 1 - smooth((t - impact) / Math.max(0.05, total - impact));
     return e;
   };
@@ -306,7 +372,7 @@ export function tornado(seed: number, chargeEnd: number, impact: number, total: 
       const e = level(t);
       const j = i - L0;
       const ln = j >= 0 && j < launch.length ? launch[j] * 0.55 : 0;
-      return whistle[i] * e * 0.35 + roar[i] * e * 0.35 + gust[i] * hit(t - impact, 0.03, 0.3) * 0.45 + ln;
+      return whistle[i] * e * 0.35 + roar[i] * e * 0.35 + (hold ? 0 : gust[i] * hit(t - impact, 0.03, 0.3) * 0.45) + ln;
     }),
     0.1,
   );
@@ -365,6 +431,48 @@ export function waterCharge(seed: number, dur: number): Float32Array {
       return (swirl[i] * 0.3 + whirl[i] * 0.22 * sw) * (0.15 + 0.85 * u) + sparkle[i] * 0.25 * u;
     }),
     0.08,
+  );
+}
+
+/**
+ * Meşe'nin dalgası: su kütlesi kabarıp yükselir (frekansı yükselen gürül), tepede akarken çalkantı, köpük
+ * hışırtısı ve kopan damlalar; çöküşte yere vuran su, yoğun sıçrama. Zamanlar showcase.ts:waveTimes ile aynı.
+ */
+export function waveSurge(seed: number, rise: number, hold: number, crash: number): Float32Array {
+  const r = rng(seed);
+  const n = white(r);
+  const tCrash = rise + hold;
+  const tHit = tCrash + crash * 0.5;
+  const dur = tCrash + crash + 0.6;
+  const bp = new Biquad('bandpass', 260, 0.8);
+  const surge = rmsTex(dur, (t, i) => {
+    if (i % 16 === 0) bp.set(240 + 800 * smooth(t / rise), 0.8);
+    return bp.process(n());
+  });
+  const churn = babble(r, dur, 300, 1500, 8);
+  const hp = new Biquad('highpass', 1800);
+  const lpF = new Biquad('lowpass', 7000);
+  const foam = rmsTex(dur, () => lpF.process(hp.process(n())));
+  const drops = droplets(r, dur, (t) => (t < tHit ? 25 + 45 * smooth(t / rise) : 1000 * Math.exp(-(t - tHit) / 0.25) + 30));
+  const lpC = new Biquad('lowpass', 1100);
+  const crashN = rmsTex(dur, () => lpC.process(n()));
+  return finish(
+    render(dur, (t, i) => {
+      const body = t < tCrash ? smooth(t / rise) : 1 - smooth((t - tCrash) / (crash + 0.4));
+      const swell = 0.8 + 0.2 * Math.sin(TAU * 0.35 * t);
+      // Tepede akarken kısılır: Meşe'nin repliği bu sırada
+      const surging = t < rise ? 1 : 0.22 + 0.78 * Math.exp(-(t - rise) / 0.5);
+      const slam = hit(t - tHit, 0.03, 0.45);
+      return (
+        surge[i] * body * surging * swell * 0.4 +
+        churn[i] * body * (t < rise ? 0.18 : 0.08) +
+        foam[i] * body * swell * 0.05 +
+        drops[i] * 0.3 +
+        crashN[i] * slam * 0.75 +
+        foam[i] * slam * 0.22
+      );
+    }),
+    0.2,
   );
 }
 
@@ -710,29 +818,92 @@ function cricket(r: () => number, L: Float32Array, R: Float32Array, amp: number,
 }
 
 /**
- * Döngülü orman ortamı (stereo): alçak rüzgâr, ara sıra yaprak hışırtısı, kuşlar (gece cırcır böcekleri).
- * Sonu başına çapraz geçişle bağlanır; döngü noktasında dikiş duyulmaz.
+ * Yavaş değişen tohumlu değer gürültüsü (0..1): hz sıklıkta rastgele düğümler, kosinüsle yumuşak geçiş.
+ * Rüzgârın esinti zarfı için birkaç oktavı toplanır.
  */
-export function ambience(seed: number, preset: AmbiencePreset, loop = 24): [Float32Array, Float32Array] {
+function valueNoise(r: () => number, hz: number, dur: number): (t: number) => number {
+  const knots = Array.from({ length: Math.ceil(dur * hz) + 2 }, () => r());
+  return (t) => {
+    const x = t * hz;
+    const i = Math.floor(x);
+    const k = (1 - Math.cos(Math.PI * (x - i))) / 2;
+    return lerp(knots[i], knots[i + 1], k);
+  };
+}
+
+/**
+ * Gerçekçi rüzgâr (mono kanal): esinti zarfı (0.07/0.19/0.5 Hz değer gürültüsü) her şeyi sürer.
+ * - gövde: yumuşatılmış beyaz gürültü, merkezi esintiyle 350 → 1450 Hz kayan bant geçiren ("vuuuş" kabarması)
+ * - ıslık: dar bant (Q 12), yalnızca sert esintilerde, frekansı yavaşça kayar (güçlü rüzgârda)
+ * - yaprak hışırtısı: 2.5–5 kHz sürekli doku, esintiyle kabarır (ağaçlar esintide hışırdar)
+ * wind: 0 = rüzgâr kapalı sahne (hafif esinti), 0.5 = varsayılan, 1 = sert.
+ */
+function windLayer(r: () => number, dur: number, wind: number): Float32Array {
+  const g1 = valueNoise(r, 0.07, dur);
+  const g2 = valueNoise(r, 0.19, dur);
+  const g3 = valueNoise(r, 0.5, dur);
+  const strength = 0.4 + 1.2 * wind;
+  // Esinti zarfı kontrol hızında (32 örnekte bir) önceden hesaplanır; her örnekte üç kosinüs pahalıydı
+  const CTRL = 32;
+  const env = new Float32Array(Math.ceil((dur * SR) / CTRL) + 2);
+  for (let k = 0; k < env.length; k++) {
+    const t = (k * CTRL) / SR;
+    // Esinti ancak yavaş gürültü ortalamasını belirgin aşınca eser: zamanın yaklaşık yarısı sakin, esintiler birkaç
+    // saniyede kabarıp söner (eşik ortalamanın altındayken rüzgâr hiç dinmiyor, sürekli uğulduyordu)
+    const v = 0.55 * g1(t) + 0.3 * g2(t) + 0.15 * g3(t);
+    env[k] = clamp01(smooth((v - 0.45) / 0.22) * strength);
+  }
+  const gust = (t: number) => {
+    const x = (t * SR) / CTRL;
+    const k = Math.floor(x);
+    return env[k] + (env[k + 1] - env[k]) * (x - k);
+  };
+  const n = white(r);
+  // Gövde: yumuşatılmış beyaz gürültü, merkezi esintiyle 350 → 1450 Hz kayan bant. Kahverengi gürültü ve ayrı alçak
+  // uğultu katmanı yok: enerjileri 30 Hz altında toplanıp arka planda sürekli uğultu/basınç gibi duyuluyordu
+  const soft = new OnePole(2500);
+  const bodyBp = new Biquad('bandpass', 400, 0.9);
+  let gNow = 0;
+  const body = rmsTex(dur, (t, i) => {
+    if (i % 32 === 0) {
+      gNow = gust(t);
+      bodyBp.set(350 + 1100 * Math.pow(gNow, 1.3), 0.9);
+    }
+    return bodyBp.process(soft.process(n()));
+  });
+  const drift = valueNoise(r, 0.11, dur);
+  const whistleBp = new Biquad('bandpass', 800, 12);
+  const whistle = rmsTex(dur, (t, i) => {
+    if (i % 32 === 0) whistleBp.set(620 + 380 * drift(t) + 220 * gust(t), 12);
+    return whistleBp.process(n());
+  });
+  // Yaprak hışırtısı: tanesiz, sürekli gürültü dokusu (2.5–5 kHz); yaprakların titreşimi gibi hafif dalgalanır.
+  // Tek tek taneler (taneli sentez) seyrekken film boyunca "çıtı çıtı" tıkırtı gibi duyuluyordu
+  const leafBp = new Biquad('bandpass', 3600, 0.6);
+  const flutterA = valueNoise(r, 7, dur);
+  const flutterB = valueNoise(r, 13, dur);
+  const leavesN = rmsTex(dur, (t) => leafBp.process(n()) * (0.7 + 0.2 * flutterA(t) + 0.1 * flutterB(t)));
+  // Gerçek orman ortamında 200 Hz altında neredeyse ses yok: çıkış iki kat yüksek geçirenden (24 dB/oktav) geçer
+  const hp1 = new Biquad('highpass', 200);
+  const hp2 = new Biquad('highpass', 200);
+  return render(dur, (t, i) => {
+    const g = gust(t);
+    const whistleAmt = wind > 0.3 ? 0.18 * smooth((g - 0.6) / 0.35) : 0;
+    // Mutlak seviyeler (katmanlar RMS 1): tam esintide gövde ≈ −24 dBFS; sakin anda neredeyse sessiz
+    const x = body[i] * Math.pow(g, 1.8) * 0.07 + whistle[i] * whistleAmt * 0.025 + leavesN[i] * (0.003 + 0.03 * g);
+    return hp2.process(hp1.process(x));
+  });
+}
+
+/**
+ * Döngülü orman ortamı (stereo): gerçekçi rüzgâr (iki kanal ayrı tohumlu: geniş stereo), kuşlar (gece cırcır
+ * böcekleri). Sonu başına çapraz geçişle bağlanır; döngü noktasında dikiş duyulmaz.
+ */
+export function ambience(seed: number, preset: AmbiencePreset, wind = 0, loop = 24): [Float32Array, Float32Array] {
   const r = rng(seed);
   const xf = 3;
   const dur = loop + xf;
-  const chan = (s: number) => {
-    const rr = rng(s);
-    const b = brown(rr);
-    const lp = new Biquad('lowpass', 350);
-    const n = white(rr);
-    const hp = new Biquad('highpass', 2500);
-    const wind = rmsTex(dur, () => lp.process(b()));
-    const leaves = rmsTex(dur, () => hp.process(n()));
-    const gusts = Array.from({ length: Math.ceil(dur / 6) }, (_, k) => ({ at: k * 6 + rr() * 4, len: lerp(1.5, 3, rr()) }));
-    return render(dur, (t, i) => {
-      const slow = 0.7 + 0.3 * Math.sin(TAU * 0.07 * t + s) * Math.sin(TAU * 0.031 * t + 2 * s);
-      let g = 0;
-      for (const q of gusts) if (t > q.at && t < q.at + q.len) g = Math.max(g, Math.sin((Math.PI * (t - q.at)) / q.len) ** 2);
-      return wind[i] * slow * 0.25 + leaves[i] * g * 0.05;
-    });
-  };
+  const chan = (s: number) => windLayer(rng(s), dur, wind);
   const L = chan(seed * 7 + 1);
   const R = chan(seed * 7 + 2);
   if (preset === 'night') {
@@ -754,9 +925,10 @@ export function ambience(seed: number, preset: AmbiencePreset, loop = 24): [Floa
       out[c][i] = src[i] * Math.sin((k * Math.PI) / 2) + src[n + i] * Math.cos((k * Math.PI) / 2);
     }
   });
-  // İki kanal birlikte normalize: ortam sesinin tepesi 1 (seviye miksajda)
+  // Seviye mutlak (katman ağırlıklarından): tepeye göre ölçeklemek sakin sahneyi de rüzgârlı sahne kadar yükseltiyordu.
+  // Yalnızca taşmaya karşı güvenlik
   let peak = 0;
   for (const ch of out) for (let i = 0; i < ch.length; i++) peak = Math.max(peak, Math.abs(ch[i]));
-  for (const ch of out) for (let i = 0; i < ch.length; i++) ch[i] /= peak || 1;
+  if (peak > 0.95) for (const ch of out) for (let i = 0; i < ch.length; i++) ch[i] *= 0.95 / peak;
   return out;
 }

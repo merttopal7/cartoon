@@ -31,10 +31,9 @@ try {
     const { recipe } = reg.buildRecipe(reg.resolveAbility('yer_dikeni'), (n) => durs[n]);
     check('yer dikenleri zamanlaması', recipe.effectType === 'earth' && recipe.chargeEnd === 1.35 && recipe.impactOffset === 2.1 && recipe.totalDuration === 3.25,
       `${recipe.chargeEnd}/${recipe.impactOffset}/${recipe.totalDuration}`);
-    // Alev büyüsü Bölüm 2'deki karanlık büyünün yerine geçti: isabet anı aynı kalmalı (koreografi bozulmasın)
+    // Alev büyüsü: alev, Karabey'in sağ eli saldırıda en öne uzandığı an (attack_2'nin 0.55. sn'si) elinden çıkar
     const fire = reg.buildRecipe(reg.resolveAbility('alev_buyusu'), () => undefined).recipe;
-    const dark = reg.buildRecipe(reg.resolveAbility('karanlik_buyu'), () => undefined).recipe;
-    check('alev büyüsü isabeti karanlık büyüyle aynı', fire.chargeEnd === dark.chargeEnd && fire.impactOffset === dark.impactOffset, `${fire.impactOffset} / ${dark.impactOffset}`);
+    check('alev büyüsü sağ el en öndeyken fırlar (1.85 sn), isabet 2.47 sn', fire.chargeEnd === 1.85 && fire.impactOffset === 2.47, `${fire.chargeEnd} / ${fire.impactOffset}`);
 
     // 3) Element uyuşmazlığı uyarısı (yer tutucu karakterlerle hızlı sahne)
     const yaml = (who, ability) => `

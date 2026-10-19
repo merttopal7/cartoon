@@ -124,6 +124,26 @@ export const CANONICAL_ABILITY_ICONS: Record<string, AbilityIconMeta> = {
     ],
   },
 
+  agac_dikme: {
+    id: 'agac_dikme',
+    title: 'Ağaç Dikme',
+    characterName: 'Defne',
+    bgColor: '#0D9488',
+    accentColor: '#5EEAD4',
+    svg: `<svg class="ability-svg-icon" viewBox="0 0 24 24" width="28" height="28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2.5L17.5 11H14.5L18.5 16.5H5.5L9.5 11H6.5L12 2.5Z" fill="#FFFFFF" fill-opacity="0.25" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M12 16.5V20" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M3 21.5C6 19.5 9 19.5 12 21C15 22.5 18 22.5 21 20.5" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M3.5 8.5C2.5 6.5 3.5 4.5 5.5 4.2M20.5 8.5C21.5 6.5 20.5 4.5 18.5 4.2" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>`,
+    paths: [
+      { d: 'M12 2.5L17.5 11H14.5L18.5 16.5H5.5L9.5 11H6.5L12 2.5Z', stroke: true, strokeWidth: 2 },
+      { d: 'M12 16.5V20', stroke: true, strokeWidth: 2.4 },
+      { d: 'M3 21.5C6 19.5 9 19.5 12 21C15 22.5 18 22.5 21 20.5', stroke: true, strokeWidth: 1.8 },
+      { d: 'M3.5 8.5C2.5 6.5 3.5 4.5 5.5 4.2M20.5 8.5C21.5 6.5 20.5 4.5 18.5 4.2', stroke: true, strokeWidth: 1.6 },
+    ],
+  },
+
   agac_devirme: {
     id: 'agac_devirme',
     title: 'Ağaç Devirme',

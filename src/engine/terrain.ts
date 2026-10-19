@@ -31,13 +31,13 @@ export class Heightfield {
    * saydam olmayan mesh. Saydam/kesik dokulu malzemeler (ağaç, çalı, çimen kartları) elenir;
    * yoksa karakter çalıların tepesine basar.
    */
-  static fromObject(root: THREE.Object3D, cell = 0.25, names?: string[]): Heightfield | null {
+  static fromObject(root: THREE.Object3D, cell = 0.25, names?: string[], skip?: (mesh: THREE.Mesh) => boolean): Heightfield | null {
     root.updateMatrixWorld(true);
     if (names) return Heightfield.fromNamed(root, cell, names);
     const parts: Float32Array[] = [];
     root.traverse((o) => {
       const mesh = o as THREE.Mesh;
-      if (!mesh.isMesh || (mesh as THREE.SkinnedMesh).isSkinnedMesh) return;
+      if (!mesh.isMesh || (mesh as THREE.SkinnedMesh).isSkinnedMesh || skip?.(mesh)) return;
       const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       if (mats.some((m) => m && (m.alphaTest > 0 || m.transparent))) return;
       const isProp = /fence|wood_log|barrier/i.test(mesh.name) || mats.some((m) => m && /fence|wood_log|barrier/i.test(m.name));

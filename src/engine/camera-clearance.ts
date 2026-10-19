@@ -28,11 +28,8 @@ export const CLEARANCE_SAMPLE_STEP = 0.1;
 export interface ClearanceTree {
   id: string;
   node: THREE.Object3D;
-  /**
-   * Yetenekle devrilen ağaçlarda devrilmenin bittiği sahne zamanı. Böyle bir ağaç yalnızca bu andan
-   * sonra başlayan çekimlerde (yere yatmış son pozuyla) gizlenebilir; devrildiği çekimde hep görünür.
-   */
-  fallEnd?: number;
+  /** Hiç gizlenmez (yeteneklerin devirdiği/diktiği ağaçlar: hikâyenin parçası, kesmede kaybolmamalı). */
+  keep?: boolean;
 }
 
 export interface CameraSample {
@@ -64,8 +61,6 @@ export class CameraClearance {
     private readonly trees: ClearanceTree[],
     private readonly terrain: Heightfield | null,
     shadowCamera: THREE.Camera,
-    /** Devrilen ağaçları verilen sahne zamanındaki pozlarına getirir. */
-    private readonly poseTreesAt: (lt: number) => void = () => {},
   ) {
     shadowCamera.layers.enable(HIDDEN_LAYER);
   }
@@ -78,19 +73,11 @@ export class CameraClearance {
     return true;
   }
 
-  /**
-   * `key` (çekim + format) için engel ağaçları bir kez hesaplar ve gizler; öncekileri geri getirir.
-   * `shotStart` çekimin sahne zamanındaki başlangıcı, `lt` şu anki sahne zamanıdır.
-   */
-  apply(key: string, shotStart: number, lt: number, sample: () => CameraSample[]): number {
+  /** `key` (çekim + format) için engel ağaçları bir kez hesaplar ve gizler; öncekileri geri getirir. */
+  apply(key: string, sample: () => CameraSample[]): number {
     let next = this.cache.get(key);
     if (!next) {
-      const eligible = this.trees.filter((t) => t.fallEnd === undefined || t.fallEnd <= shotStart);
-      const fallen = eligible.some((t) => t.fallEnd !== undefined);
-      // Devrilmiş ağaçlar çekim boyunca son (yatık) pozlarında durur; o pozla test edilir
-      if (fallen) this.poseTreesAt(shotStart);
-      next = this.blockers(sample(), eligible.map(state));
-      if (fallen) this.poseTreesAt(lt);
+      next = this.blockers(sample(), this.trees.filter((t) => !t.keep).map(state));
       this.cache.set(key, next);
     }
     if (next !== this.hidden) {
@@ -109,9 +96,7 @@ export class CameraClearance {
       const steps = Math.max(1, Math.ceil(len / SIGHT_STEP));
       for (const st of trees) {
         if (out.has(st.tree)) continue;
-        // Dik ağaç tacının yarıçapı kadar, devrik ağaç ise boyu kadar yatay uzanır
-        const extent = st.tree.fallEnd === undefined ? TREE.canopyRadius : TREE.height;
-        const reach = extent * st.scale + 2 * CAMERA_MARGIN;
+        const reach = TREE.canopyRadius * st.scale + 2 * CAMERA_MARGIN;
         if (distanceToSegmentXZ(st.base, camera, aim) > reach) continue;
         if (inside(st, camera, CAMERA_MARGIN, 1)) {
           out.add(st.tree);

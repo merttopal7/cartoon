@@ -106,7 +106,10 @@ const action = z.discriminatedUnion('do', [
           if (!resolveAbility(n))
             ctx.addIssue({ code: 'custom', message: `Bilinmeyen yetenek "${n}". Geçerli adlar: ${abilityNames().join(', ')}` });
         }),
-      /** Hedef düşman karakter kimliği, çoklu hedef listesi veya harita ağacı adı (agac_devirme gibi çevre yeteneklerinde isteğe bağlıdır) */
+      /**
+       * Hedef düşman karakter kimliği, çoklu hedef listesi veya harita ağacı adı (agac_devirme gibi çevre yeteneklerinde
+       * isteğe bağlıdır; hortum_gosterisi gibi hedefsiz element gösterilerinde verilmez)
+       */
       target: z.union([z.string(), z.array(z.string()).min(1)]).optional(),
       /** İsteğe bağlı özel 1, 2 veya 3 animasyon zinciri (belirtilmezse yeteneğin kendi animasyonları kullanılır) */
       clips: z.array(z.string()).min(1).max(3).optional(),
@@ -364,6 +367,20 @@ const scene = z
     characters: z
       .array(z.object({ id: z.string(), asset: z.string(), at: vec3, facing: z.number().default(0) }).strict())
       .default([]),
+    /**
+     * Sahne başında devrik duran harita ağaçları (Realistic_Pine_*): kütüğünün yanında, `toward` [x, z] noktasına
+     * doğru yatar. Ağaç Dikme yeteneği (agac_dikme) bunları da diker. Devrilme sesi, sarsıntısı yoktur.
+     */
+    /**
+     * Haritadaki yer bitkilerini (çimen, kuru ot, çalı; ağaçlar değil) verilen [x, z] noktalarının `radius` metre
+     * çevresinde kaldırır: karakterlerin oynadığı yerde uzun otlar göz hizasındaki kamerayı kapatmasın.
+     */
+    clear_vegetation: z
+      .array(z.object({ at: z.tuple([z.number(), z.number()]), radius: z.number().positive().default(3) }).strict())
+      .default([]),
+    fallen_trees: z
+      .array(z.object({ tree: z.string(), toward: z.tuple([z.number(), z.number()]) }).strict())
+      .default([]),
     /** Senaryodan (karakter eylemlerinden) tamamen bağımsız kamera açıları ve geçişleri. */
     cameras: z.array(cameraCut).min(1).optional(),
     /** Kamera geçişlerinden bağımsız, sahne boyunca kesintisiz akan karakter eylemleri (senaryo akışı). */
@@ -380,6 +397,11 @@ export const scenarioSchema = z
     film: z
       .object({
         title: z.string().default('film'),
+        /**
+         * Bölümün başına eklenecek açılış klibi: public/scenarios/<kimlik>.yaml (ör. `acilis`). Sahneleri filmin başına
+         * eklenir; film ayarları (müzik, görünüm) bölümünkidir.
+         */
+        intro: z.string().optional(),
         fps: z.number().int().min(12).max(60).default(30),
         /** Başta siyahtan açılma ve sonda siyaha kararma süreleri (sn). */
         fade_in: z.number().min(0).default(0),
@@ -393,7 +415,8 @@ export const scenarioSchema = z
         /** Arkaplan müziği ayarları */
         music: z
           .object({
-            src: z.string().default('/audio/main-theme/jyproject-carousel-dreams-396029.mp3'),
+            /** Müzik dosyası ya da `procedural:main` (yordamsal, telifsiz ana tema; varsayılan) */
+            src: z.string().default('procedural:main'),
             volume: z.number().min(0).max(1).default(0.35),
             loop: z.boolean().default(true),
             ducking: z.number().min(0).max(1).default(0.25),
@@ -401,6 +424,19 @@ export const scenarioSchema = z
             fade_out: z.number().min(0).default(1.5),
             start: z.number().default(0),
             enabled: z.boolean().default(true),
+            /**
+             * Savaş müziği (yordamsal, telifsiz): yetenek kullanımlarından savaş aralığı bulunur; ana tema kısılır,
+             * hazırlık ölçüleri ilk yetenekle başlar, tam düzen ilk isabette girer, son isabetten sonra kapanış
+             * akoruyla biter ve ana tema geri gelir. Aralarında 8 sn'den uzun boşluk olan yetenekler ayrı savaştır.
+             */
+            battle: z
+              .object({
+                enabled: z.boolean().default(true),
+                volume: z.number().min(0).max(1).default(0.32),
+                bpm: z.number().min(90).max(180).default(140),
+              })
+              .strict()
+              .default({}),
           })
           .partial()
           .optional(),
@@ -509,6 +545,7 @@ export const SHARED_MIXAMO_ANIMATIONS: Record<string, string> = {
   // Dövüş, savunma, saldırı ve özel yetenek animasyonları
   hook_punch: 'models/animations/Hook Punch.fbx',
   hurricane_kick: 'models/animations/Hurricane Kick.fbx',
+  northern_soul_spin: 'models/animations/Northern Soul Spin.fbx',
   flying_kick: 'models/animations/Flying Kick.fbx',
   chapa_giratoria: 'models/animations/Chapa-Giratoria.fbx',
   macaco_side: 'models/animations/Macaco Side.fbx',
@@ -516,6 +553,16 @@ export const SHARED_MIXAMO_ANIMATIONS: Record<string, string> = {
   mma_kick: 'models/animations/Mma Kick.fbx',
   rifle_kick: 'models/animations/Rifle Turn And Kick.fbx',
   dodge_back: 'models/animations/Standing Dodge Backward.fbx',
+  /** Kolu uzatıp yakalar, havaya kaldırır (1.2 sn uzanış, 2–3 sn kaldırış, ~3.9 sn bırakış; 6.35 sn); Defne'nin ağaç dikmesi */
+  choke_lift: 'models/animations/Superhuman Choke Lift.fbx',
+  esquiva: 'models/animations/Esquiva 1.fbx',
+  leg_sweep: 'models/animations/Leg Sweep.fbx',
+  melee_combo: 'models/animations/Standing Melee Combo Attack Ver. 2.fbx',
+  melee_horizontal: 'models/animations/Standing Melee Attack Horizontal.fbx',
+  fist_fight: 'models/animations/Fist Fight A.fbx',
+  crescent_kick: 'models/animations/Inside Crescent Kick.fbx',
+  dive_roll: 'models/animations/Dive Roll.fbx',
+  backflip: 'models/animations/Backflip.fbx',
 
   // Dans, kutlama ve sahne şovu (yalnızca kutlama/dans sahnelerinde kullanılır, düşmana karşı kullanılmaz)
   dance: 'models/animations/Silly Dancing.fbx',
@@ -533,6 +580,10 @@ export const SHARED_MIXAMO_ANIMATIONS: Record<string, string> = {
   defeated: 'models/animations/Defeated.fbx',
   fall_flat: 'models/animations/Fall Flat.fbx',
   dying: 'models/animations/Dying.fbx',
+  dying_2: 'models/animations/Dying 2.fbx',
+  walking_to_dying: 'models/animations/Walking To Dying.fbx',
+  stunned: 'models/animations/Stunned.fbx',
+  getting_up: 'models/animations/Getting Up.fbx',
   death_left: 'models/animations/Standing Death Left 01.fbx',
 
   // Longbow (Okçu) hareket paketi
@@ -605,18 +656,19 @@ export const SWORD_AND_SHIELD_ANIMATIONS: Record<string, string> = {
 
 /** Erika (Pro Longbow Pack) yaylı okçu karakter paketindeki yerleşik Mixamo animasyon kataloğu */
 export const ERIKA_BOW_ANIMATIONS: Record<string, string> = {
-  idle: 'models/characters/Erika/standing idle 01.fbx',
+  // Sakin bekleme (Erika paketinin kendi kolsuz beklemesi; kalça salınımı ~0.2 cm). Happy Idle 2 sn'de 6.5 cm sallanıyordu.
+  idle: 'models/characters/Erika/unarmed idle 01.fbx',
   idle_2: 'models/characters/Erika/standing idle 02 looking.fbx',
   idle_3: 'models/characters/Erika/standing idle 03 examine.fbx',
   ready_idle: 'models/characters/Erika/standing idle 02 looking.fbx',
   inspect_bow: 'models/characters/Erika/standing idle 03 examine.fbx',
   unarmed_idle: 'models/characters/Erika/unarmed idle 01.fbx',
-  walk: 'models/characters/Erika/standing walk forward.fbx',
+  walk: 'models/animations/Walking.fbx',
   walk_back: 'models/characters/Erika/standing walk back.fbx',
   walk_left: 'models/characters/Erika/standing walk left.fbx',
   walk_right: 'models/characters/Erika/standing walk right.fbx',
-  run: 'models/characters/Erika/standing run forward.fbx',
-  jog: 'models/characters/Erika/standing run forward.fbx',
+  run: 'models/animations/Running.fbx',
+  jog: 'models/animations/Jogging.fbx',
   run_stop: 'models/characters/Erika/standing run forward stop.fbx',
   run_back: 'models/characters/Erika/standing run back.fbx',
   run_left: 'models/characters/Erika/standing run left.fbx',
@@ -662,9 +714,6 @@ const SWORD_AND_SHIELD_CORE_KEYS = [
 
 const ERIKA_BOW_CORE_KEYS = [
   'idle',
-  'walk',
-  'run',
-  'jog',
 ] as const;
 
 /** YAML veya JSON metnini ayrıştırır ve doğrular. JSON geçerli bir YAML olduğundan ikisi de kabul edilir. */
@@ -884,7 +933,7 @@ function checkReferences(s: Scenario): string[] {
           if (a.do === 'turn' && typeof a.to === 'string' && !ids.has(a.to)) errors.push(`${ap}: dönülecek "${a.to}" bu sahnede yok`);
           if (a.do === 'look_at' && typeof a.target === 'string' && a.target !== 'camera' && !ids.has(a.target))
             errors.push(`${ap}: bakılacak "${a.target}" bu sahnede yok (karakter kimliği veya "camera" olmalı)`);
-          if (a.do === 'ability' && resolveAbility(a.name)?.target !== 'map_tree') {
+          if (a.do === 'ability' && resolveAbility(a.name)?.target === 'character') {
             const tList = a.target ? (Array.isArray(a.target) ? a.target : [a.target]) : [];
             if (tList.length === 0) {
               errors.push(`${ap}: yetenek hedefi belirtilmeli`);
@@ -903,7 +952,7 @@ function checkReferences(s: Scenario): string[] {
       if (a.do === 'turn' && typeof a.to === 'string' && !ids.has(a.to)) errors.push(`${ap}: dönülecek "${a.to}" bu sahnede yok`);
       if (a.do === 'look_at' && typeof a.target === 'string' && a.target !== 'camera' && !ids.has(a.target))
         errors.push(`${ap}: bakılacak "${a.target}" bu sahnede yok (karakter kimliği veya "camera" olmalı)`);
-      if (a.do === 'ability' && resolveAbility(a.name)?.target !== 'map_tree') {
+      if (a.do === 'ability' && resolveAbility(a.name)?.target === 'character') {
         const tList = a.target ? (Array.isArray(a.target) ? a.target : [a.target]) : [];
         if (tList.length === 0) {
           errors.push(`${ap}: yetenek hedefi belirtilmeli`);

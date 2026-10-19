@@ -29,7 +29,7 @@ export class SettingsClient {
     volume: 1.0,
     viewport_mode: 'preview',
     music_enabled: true,
-    music_track: '/audio/main-theme/jyproject-carousel-dreams-396029.mp3',
+    music_track: 'procedural:main',
     music_volume: 0.35,
     music_ducking: 0.25,
     music_loop: true,
@@ -57,7 +57,8 @@ export class SettingsClient {
             volume: s.volume !== undefined ? Number(s.volume) : 1.0,
             viewport_mode: (s.viewport_mode === 'render' || s.viewport_mode === 'preview') ? s.viewport_mode : 'preview',
             music_enabled: s.music_enabled !== undefined ? s.music_enabled === 'true' || s.music_enabled === true : true,
-            music_track: s.music_track || '/audio/main-theme/jyproject-carousel-dreams-396029.mp3',
+            // Silinen hazır parçalar (/audio/main-theme/…) kayıtlıysa yordamsal temaya dön
+            music_track: s.music_track && !String(s.music_track).startsWith('/audio/main-theme/') ? s.music_track : 'procedural:main',
             music_volume: s.music_volume !== undefined ? Number(s.music_volume) : 0.35,
             music_ducking: s.music_ducking !== undefined ? Number(s.music_ducking) : 0.25,
             music_loop: s.music_loop !== undefined ? s.music_loop === 'true' || s.music_loop === true : true,

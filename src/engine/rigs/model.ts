@@ -57,14 +57,19 @@ function loopSeamError(clip: THREE.AnimationClip): number {
   return worst;
 }
 
-/** Prosedürel yürüyüş için gereken Mixamo kemikleri (ad sonekine göre aranır). */
+/** Prosedürel yürüyüş ve feminen duruş düzeltmesi için gereken Mixamo kemikleri (ad sonekine göre aranır). */
 const LIMBS = {
+  hips: /hips$/,
   upLegL: /leftupleg$/, upLegR: /rightupleg$/,
   legL: /leftleg$/, legR: /rightleg$/,
   footL: /leftfoot$/, footR: /rightfoot$/,
+  shoulderL: /leftshoulder$/, shoulderR: /rightshoulder$/,
   armL: /leftarm$/, armR: /rightarm$/,
   foreArmL: /leftforearm$/, foreArmR: /rightforearm$/,
-  spine: /spine1?$/,
+  spine: /spine$/,
+  spine1: /spine1$/,
+  spine2: /spine2$/,
+  neck: /neck$/,
 };
 type Limb = keyof typeof LIMBS;
 
@@ -167,6 +172,8 @@ export class ModelRig implements Rig {
   /** Ayak IK'sı için bacaklar (uyluk, baldır, ayak); arazi verilince FootIK kurulur. */
   private readonly legs: Leg[] = [];
   private footIK?: FootIK;
+  /** Karakterin üstünde durduğu yükseltinin yüksekliği (m); ayak IK zemini bununla yükselir */
+  private elevation = 0;
   /**
    * Yürüme/koşu kliplerinin adım ölçümü: yerinde (kök hareketi olmayan) kliplerde basan ayaktan ölçülen
    * doğal hız (m/sn) ve ayakların yere bastığı anlar (klip saniyesi; ayak sesleri için).
@@ -199,6 +206,10 @@ export class ModelRig implements Rig {
   private readonly bowArch1?: THREE.Bone;
   private readonly bowArch2?: THREE.Bone;
   private readonly rightStringFinger?: THREE.Bone;
+  /** Yay ve ok mesh'leri: yalnızca yay kullanılan animasyonlarda görünür tutulur. */
+  private readonly bowMeshes: THREE.Object3D[] = [];
+  /** Geniş kemikli okçu iskeletine (Meşe / Erika) zarif feminen duruş ve kapalı bacak hizalaması uygulanır mı? */
+  private readonly femininePosture: boolean;
 
   constructor(
     model: THREE.Object3D,
@@ -244,6 +255,7 @@ export class ModelRig implements Rig {
     let bowArch1: THREE.Bone | undefined;
     let bowArch2: THREE.Bone | undefined;
     let rightStringFinger: THREE.Bone | undefined;
+    let isErikaRig = false;
     model.traverse((o) => {
       if ((o as THREE.Bone).isBone) {
         if (!head && /head$/i.test(o.name)) head = o as THREE.Bone;
@@ -257,6 +269,10 @@ export class ModelRig implements Rig {
       }
       const mesh = o as THREE.Mesh;
       if (mesh.isMesh) {
+        if (/erika|mese_outfit/i.test(mesh.name)) isErikaRig = true;
+        if (/bow_mesh|arrow_mesh/i.test(mesh.name)) {
+          this.bowMeshes.push(mesh);
+        }
         if (!this.uvMouth && (/mouth/i.test(mesh.name) || /h_geo/i.test(mesh.name) || (mesh.material && /mouth/i.test((mesh.material as any).name ?? '')))) {
           const mat = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as THREE.MeshToonMaterial;
           if (mat && mat.map) {
@@ -395,6 +411,7 @@ export class ModelRig implements Rig {
     });
     this.bowArch2 = bowArch2;
     this.rightStringFinger = rightStringFinger;
+    this.femininePosture = Boolean(isErikaRig || bowArch1 || this.hairBones.back);
     if (eyelids) {
       const re = new RegExp(eyelids.bones, 'i');
       model.traverse((o) => {
@@ -529,7 +546,12 @@ export class ModelRig implements Rig {
   }
 
   setGround(ground: GroundFn) {
-    this.footIK = this.legs.length === 2 ? new FootIK(this.legs, this.height, ground) : undefined;
+    // Karakter bir yükseltinin (kaya) üstündeyse zemin o kadar yukarıda: ayaklar kayanın tepesine basar
+    const raised: GroundFn = (x, z) => {
+      const g = ground(x, z);
+      return g === null ? null : g + this.elevation;
+    };
+    this.footIK = this.legs.length === 2 ? new FootIK(this.legs, this.height, raised) : undefined;
   }
 
   prepareWarmup(): () => void {
@@ -644,6 +666,21 @@ export class ModelRig implements Rig {
     this.touchedPos.clear();
     this.mixer.update(0);
 
+    // Yay görünürlüğü ve feminen duruş/bacak hizalaması (Meşe / Erika)
+    let bowClipActive = false;
+    for (const c of p.clips) {
+      if (c.weight > 0.05 && /^(draw_arrow|aim_|equip_bow|disarm_bow|ready_idle|inspect_bow|bow_)/i.test(c.name)) {
+        bowClipActive = true;
+        break;
+      }
+    }
+    for (const bm of this.bowMeshes) {
+      bm.visible = bowClipActive;
+    }
+    if (this.femininePosture) {
+      this.applyFemininePosture(p.walkWeight, bowClipActive);
+    }
+
     // Saç fiziği: sırttaki saç ense hizasından, ön tutamlar omuz başlarından savrulur
     if (this.hairBones.back && (p.hairBack || p.hairSide)) {
       this.root.updateMatrixWorld(true);
@@ -695,6 +732,7 @@ export class ModelRig implements Rig {
 
     if (!hasWalk && p.walkWeight > 0) this.proceduralWalk(p);
     if (this.footIK) {
+      this.elevation = p.elevation;
       // Havadayken (zıplama, savrulma yayı) ayaklar araziye çekilmez
       const airborne = THREE.MathUtils.smoothstep(p.jumpLift, 0.02, 0.12) + (hasJump ? p.jumpWeight : 0);
       // Hızlı koşuda söner: ayak her karede ~20 cm ilerler, altındaki eğim sürekli değişir ve IK dizi
@@ -844,6 +882,152 @@ export class ModelRig implements Rig {
     if (L.foreArmR) rotateWorld(L.foreArmR, lateral, -0.25 * w);
   }
 
+  /**
+   * Geniş omuzlu/kalçalı okçu iskeletine (Meşe / Erika) zarif, dik ve feminen duruş kazandırır:
+   * 1. Kalça eklemleri ve köprücük kemikleri daraltılır.
+   * 2. Öne eğik/kambur gövde dikleştirilir, yan yatıklık dengelenir.
+   * 3. Açık duran bacaklar, dizler ve ayak bilekleri merkez eksene (birbirine yakın feminen duruşa) toplanır;
+   *    okçu duruşlarındaki aşırı ön-arka bacak ayrıklığı ve çömelme yumuşatılır.
+   * 4. Omuzlar rahatlatılır, dışa açık dirsekler ve kollar gövdeye yaklaştırılır.
+   */
+  private applyFemininePosture(walkWeight: number, bowClipActive: boolean) {
+    const L = this.limbs;
+    if (!L.upLegL || !L.upLegR || !L.footL || !L.footR) return;
+
+    for (const bone of Object.values(L)) {
+      if (bone) this.touch(bone);
+    }
+
+    // 1. Kalça soketlerini ve köprücük (omuz) genişliğini zarif kadın orantısına daralt
+    this.touchPos(L.upLegL);
+    this.touchPos(L.upLegR);
+    L.upLegL.position.x *= 0.72;
+    L.upLegR.position.x *= 0.72;
+    if (L.armL && L.armR) {
+      this.touchPos(L.armL);
+      this.touchPos(L.armR);
+      L.armL.position.multiplyScalar(0.9);
+      L.armR.position.multiplyScalar(0.9);
+    }
+
+    this.root.updateMatrixWorld(true);
+    const rq = this.root.getWorldQuaternion(new THREE.Quaternion());
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(rq);
+    const up = new THREE.Vector3(0, 1, 0);
+    const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(rq);
+
+    const toLocal = (b: THREE.Object3D) => this.inner.worldToLocal(b.getWorldPosition(new THREE.Vector3()));
+
+    // 2. Gövde dikleştirme, yan eğim dengeleme ve baş/çene bakış açısını ufuk hizasına indirme
+    if (L.hips && L.neck && (L.spine1 || L.spine2)) {
+      const hipsP = toLocal(L.hips);
+      const neckP = toLocal(L.neck);
+      const fwdLean = neckP.z - hipsP.z;
+      const sideLean = neckP.x - hipsP.x;
+      // Gövde aşırı öne eğikse geriye dikleştir, aşırı geriye kaykılmışsa hafif öne topla
+      const pitchSpine =
+        fwdLean > 0.015
+          ? -Math.min(0.24, (fwdLean - 0.015) * 0.85)
+          : fwdLean < -0.02
+            ? Math.min(0.14, (-0.02 - fwdLean) * 0.7)
+            : 0;
+      const rollCenter = Math.abs(sideLean) > 0.005 ? THREE.MathUtils.clamp(sideLean * 0.85, -0.22, 0.22) : 0;
+      const spBones = [L.spine, L.spine1, L.spine2].filter((b): b is THREE.Bone => !!b);
+      if (spBones.length > 0) {
+        const share = 1 / spBones.length;
+        for (const sb of spBones) {
+          if (pitchSpine) rotateWorld(sb, right, pitchSpine * share);
+          if (rollCenter) rotateWorld(sb, fwd, rollCenter * share);
+        }
+        // Çenenin yukarı kalkmasını önleyip zarifçe karşıya bakmasını sağla (+right ekseni başı öne/aşağı eğer)
+        const chinTuck = 0.11 * (1 - walkWeight * 0.6) - pitchSpine * 0.65;
+        rotateWorld(L.neck, right, chinTuck);
+        if (rollCenter) rotateWorld(L.neck, fwd, -rollCenter * 0.5);
+      }
+    }
+
+    // 3. Ayakta dururken (idle / okçu duruşları) aşırı ön-arka (Z) bacak açılmasını kapat
+    const standFactor = 1 - THREE.MathUtils.smoothstep(walkWeight, 0.05, 0.35);
+    if (standFactor > 0.01) {
+      const hipLP = toLocal(L.upLegL);
+      const hipRP = toLocal(L.upLegR);
+      const footLP = toLocal(L.footL);
+      const footRP = toLocal(L.footR);
+      const splitZ = footLP.z - footRP.z;
+      const maxSplitZ = 0.07;
+      if (Math.abs(splitZ) > maxSplitZ) {
+        const midZ = (footLP.z + footRP.z) * 0.5;
+        const targetLZ = midZ + Math.sign(splitZ) * maxSplitZ * 0.5;
+        const targetRZ = midZ - Math.sign(splitZ) * maxSplitZ * 0.5;
+        const excessLZ = (footLP.z - targetLZ) * 0.82 * standFactor;
+        const excessRZ = (footRP.z - targetRZ) * 0.82 * standFactor;
+        const dyL = Math.max(0.32, hipLP.y - footLP.y);
+        const dyR = Math.max(0.32, hipRP.y - footRP.y);
+        const angL = THREE.MathUtils.clamp(Math.atan2(excessLZ, dyL), -0.42, 0.42);
+        const angR = THREE.MathUtils.clamp(Math.atan2(excessRZ, dyR), -0.42, 0.42);
+        rotateWorld(L.upLegL, right, angL);
+        rotateWorld(L.upLegR, right, angR);
+        rotateWorld(L.footL, right, -angL * 0.7);
+        rotateWorld(L.footR, right, -angR * 0.7);
+      }
+    }
+
+    // 4. Bacakları, dizleri ve ayak bileklerini yan eksende (X) birbirine yaklaştır (feminen dar duruş ve yürüyüş)
+    const alignLegX = (upLeg: THREE.Bone, leg: THREE.Bone | undefined, foot: THREE.Bone, sgn: 1 | -1) => {
+      const hipP = toLocal(upLeg);
+      const footP = toLocal(foot);
+      const dy = Math.max(0.32, hipP.y - footP.y);
+      // İdeal feminen ayak açıklığı: dururken merkezden ±4.4 cm, yürürken/koşarken ±3.4 cm
+      const targetFootX = sgn * THREE.MathUtils.lerp(0.044, 0.034, walkWeight);
+      const excessX = footP.x - targetFootX;
+      if (sgn * excessX > -0.008) {
+        const shiftX = excessX * 0.86;
+        const adductAngle = -THREE.MathUtils.clamp(Math.atan2(shiftX, dy), -0.34, 0.34);
+        rotateWorld(upLeg, fwd, adductAngle);
+        // Diz kapağının dışa değil zarifçe karşıya/hafif içe bakması için uyluğu dikey eksende hafif içe çevir
+        rotateWorld(upLeg, up, -sgn * 0.055);
+        // Alt bacak (diz) hâlâ dışa açıksa baldırı da hafifçe içe topla
+        if (leg) {
+          const kneeP = toLocal(leg);
+          const footP2 = toLocal(foot);
+          const kneeExcess = kneeP.x - sgn * 0.042;
+          if (sgn * kneeExcess > 0.008) {
+            const calfDy = Math.max(0.18, kneeP.y - footP2.y);
+            const calfAng = THREE.MathUtils.clamp(Math.atan2(kneeExcess * 0.45, calfDy), -0.16, 0.16);
+            rotateWorld(upLeg, fwd, -calfAng);
+            rotateWorld(leg, fwd, calfAng * 0.85);
+          }
+        }
+        // Ayak tabanı yere tam paralel/düz bassın
+        rotateWorld(foot, fwd, -adductAngle * 0.88);
+      }
+    };
+    alignLegX(L.upLegL, L.legL, L.footL, 1);
+    alignLegX(L.upLegR, L.legR, L.footR, -1);
+
+    // 5. Omuzları rahatlat ve kolları etek/kalça yanlarında doğal feminen açıklıkta (±16.5 cm) tut
+    if (!bowClipActive && L.armL && L.armR) {
+      if (L.shoulderL) rotateWorld(L.shoulderL, fwd, -0.035);
+      if (L.shoulderR) rotateWorld(L.shoulderR, fwd, 0.035);
+
+      const alignArmX = (arm: THREE.Bone, foreArm: THREE.Bone | undefined, sgn: 1 | -1) => {
+        if (!foreArm) return;
+        const armP = toLocal(arm);
+        const foreP = toLocal(foreArm);
+        if (foreP.y >= armP.y - 0.03) return;
+        const dy = Math.max(0.18, armP.y - foreP.y);
+        const targetForeX = sgn * THREE.MathUtils.lerp(0.168, 0.155, walkWeight);
+        const diffX = foreP.x - targetForeX;
+        const ang = -THREE.MathUtils.clamp(Math.atan2(diffX * 0.75, dy), -0.22, 0.22);
+        rotateWorld(arm, fwd, ang);
+        rotateWorld(foreArm, fwd, -ang * 0.25);
+        rotateWorld(foreArm, right, -0.05 * (1 - walkWeight * 0.5));
+      };
+      alignArmX(L.armL, L.foreArmL, 1);
+      alignArmX(L.armR, L.foreArmR, -1);
+    }
+  }
+
   private touch(bone: THREE.Object3D) {
     if (!this.touched.has(bone)) this.touched.set(bone, bone.quaternion.clone());
   }
@@ -885,7 +1069,9 @@ function setupEyeBlink(model: THREE.Object3D): EyeBlink | undefined {
     if (!m.isMesh) return;
     if (/lash/i.test(m.name)) has3DLashes = true;
     if (/eye/i.test(m.name) && !/brow|lash|lid/i.test(m.name)) eyes ??= m;
-    if (!body || m.geometry.attributes.position.count > body.geometry.attributes.position.count) body = m;
+    if (!/sac|outfit/i.test(m.name) && (!body || m.geometry.attributes.position.count > body.geometry.attributes.position.count)) {
+      body = m;
+    }
   });
   if (!eyes || !body || eyes === body) return undefined;
   return { mesh: eyes, body, open: eyes.material, lashes: [], has3DLashes, ready: false };
@@ -925,16 +1111,22 @@ function initEyeBlink(e: EyeBlink) {
   tex.flipY = map.flipY;
   tex.colorSpace = THREE.SRGBColorSpace;
 
-  // Göz kartı kameraya yüzden daha dönük olduğundan daha çok ışık alır; ton biraz koyulaştırılır.
+  // Kapak teni gövde malzemesinin gördüğü renkle aynı olmalı: dokudan okunan ten, gövde malzemesinin renk çarpanıyla
+  // (parlaklık ayarı) çarpılır. Göz kartı kameraya yüzden daha dönük olduğundan daha çok ışık alır; biraz koyulaşır.
+  const bodyMat = (Array.isArray(e.body.material) ? e.body.material[0] : e.body.material) as THREE.MeshToonMaterial;
+  if (bodyMat?.color) skin.multiply(bodyMat.color);
   skin.multiplyScalar(0.9);
   const closed = toonMaterial(skin, { outline: false, map: tex });
   closed.name = 'eyelid';
   closed.alphaTest = 0.5;
   closed.side = open.side;
-  // Karakter ışığı (öz ışık) açık göze ne verildiyse kapalı göze de aynısı.
+  // Öz ışık (karakter dolgu ışığı) tenin aldığı kadar: açık gözünkini kopyalamak yanlıştı; göz akı parlak kalsın diye
+  // tam öz ışıklı olabilir (Toprak: 1) ve kapalı göz kapağı ten renginin iki katı parlak, açık renk görünüyordu.
   closed.emissive.copy(skin);
   closed.emissiveMap = tex;
-  closed.emissiveIntensity = open.emissiveIntensity ?? 0;
+  // Gövdede dolgu ışığı yoksa öz ışık rengi siyahtır (yoğunluk varsayılan 1 kalsa da etkisi yok)
+  const bodyEmissive = bodyMat?.emissive ? bodyMat.emissive.r + bodyMat.emissive.g + bodyMat.emissive.b : 0;
+  closed.emissiveIntensity = bodyEmissive > 0 ? (bodyMat.emissiveIntensity ?? 0) : 0;
 
   e.closed = closed;
   e.lashes = e.has3DLashes ? [] : buildLashes(e.mesh, { alpha, width: size, height: size, flipY: map.flipY });
@@ -1181,10 +1373,11 @@ function retargetClips(model: THREE.Object3D, clips: THREE.AnimationClip[], unit
         }
         const clonedHipsTrack = renamed ? hipsTrack : hipsTrack.clone();
         const values = clonedHipsTrack.values;
+        // Yatay: bağlama konumu + klipte korunan küçük salınım (stripRootMotion ilerlemeyi zaten çıkardı)
         for (let i = 0; i < values.length; i += 3) {
-          values[i] = hips.position.x;
+          values[i] = hips.position.x + values[i] * ratio;
           values[i + 1] *= ratio;
-          values[i + 2] = hips.position.z;
+          values[i + 2] = hips.position.z + values[i + 2] * ratio;
         }
         tracks[hipsTrackIdx] = clonedHipsTrack;
         hipsScaled = true;

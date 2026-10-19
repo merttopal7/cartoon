@@ -755,3 +755,107 @@ void main() {
 // ============================================================================
 // YETENEK GÖRSEL SİSTEMİ (MİNİMAL PARTİKÜL + MAKSİMUM 3B HACİMSEL AĞ GERÇEKÇİLİĞİ)
 // ============================================================================
+
+/**
+ * Meşe'nin dalgası (çizgi film suyu): tabanda koyu deniz mavisi, tepeye doğru açık turkuaz; boyunca akan parlak
+ * şeritler, iki kademeli (toon) güneş ışığı, kenarlarda fresnel parlaması, dudakta köpük (uFoamLo..uFoamHi) ve
+ * dudağın altındaki içbükey yüzde gölge. uv.x yan boyunca (uçlarda saydamlaşır), uv.y kesit boyunca (0 arka taban →
+ * 1 ön taban).
+ */
+export const WAVE_VERTEX = /* glsl */ `
+varying vec2 vUv;
+varying vec3 vNormalW;
+varying vec3 vViewW;
+void main() {
+  vUv = uv;
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vNormalW = normalize(mat3(modelMatrix) * normal);
+  vViewW = cameraPosition - wp.xyz;
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}
+`;
+
+export const WAVE_FRAGMENT = /* glsl */ `
+uniform float uTime;
+uniform float uOpacity;
+uniform float uFoamLo;
+uniform float uFoamHi;
+varying vec2 vUv;
+varying vec3 vNormalW;
+varying vec3 vViewW;
+
+${NOISE_GLSL}
+
+void main() {
+  if (uOpacity <= 0.003) discard;
+  vec3 n = normalize(vNormalW);
+  vec3 vdir = normalize(vViewW);
+  if (dot(n, vdir) < 0.0) n = -n;
+  float v = vUv.y;
+  float fres = pow(1.0 - clamp(dot(n, vdir), 0.0, 1.0), 2.2);
+
+  vec3 deep = vec3(0.02, 0.22, 0.46);
+  vec3 mid = vec3(0.07, 0.48, 0.78);
+  vec3 light = vec3(0.58, 0.90, 0.98);
+  vec3 col = mix(deep, mid, smoothstep(0.0, uFoamLo, v));
+  // Dudağın altındaki içbükey yüz: tüpün içi, gölgede
+  float inner = smoothstep(uFoamHi, uFoamHi + 0.1, v);
+  col = mix(col, deep * 0.85, inner);
+
+  // Yay boyunca akan su: gürültü şeritleri
+  float flow = fbm2D(vec2(vUv.x * 16.0 - uTime * 1.7, v * 4.5 - uTime * 0.9));
+  col = mix(col, light, smoothstep(0.60, 0.66, flow) * 0.55);
+  // Yüzeyden yukarı akan ince çizgiler (suyun tırmanışı)
+  float streak = smoothstep(0.55, 0.62, noise2D(vec2(vUv.x * 70.0, v * 3.0 - uTime * 1.4)));
+  col = mix(col, light, streak * 0.25 * smoothstep(0.1, 0.6, v));
+
+  // İki kademeli güneş ışığı (toon)
+  float diff = dot(n, normalize(vec3(0.35, 0.85, 0.25))) * 0.5 + 0.5;
+  col *= 0.78 + 0.32 * step(0.55, diff);
+  col += light * fres * 0.4;
+
+  // Köpük: kıvrık tepe ve dalgalı köpük sınırı
+  float edge = uFoamLo - 0.08 * fbm2D(vec2(vUv.x * 24.0 + uTime * 0.8, uTime * 0.4));
+  float foam = smoothstep(edge, edge + 0.035, v) * (1.0 - smoothstep(uFoamHi, uFoamHi + 0.04, v));
+  float flecks = step(0.74, noise2D(vec2(vUv.x * 60.0 - uTime * 2.0, v * 22.0))) * smoothstep(uFoamLo - 0.25, uFoamLo, v) * (1.0 - inner);
+  col = mix(col, vec3(0.95, 0.99, 1.0), max(foam, flecks * 0.8));
+
+  float a = 0.8 + 0.18 * fres + 0.3 * foam;
+  // Uçlar ve taban yumuşakça erir
+  a *= smoothstep(0.0, 0.07, vUv.x) * (1.0 - smoothstep(0.93, 1.0, vUv.x)) * smoothstep(0.0, 0.06, v);
+  a = max(a, inner * 0.9 * smoothstep(0.0, 0.07, vUv.x) * (1.0 - smoothstep(0.93, 1.0, vUv.x)));
+  a *= uOpacity;
+  if (a <= 0.004) discard;
+  gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
+}
+`;
+
+/** Meşe'nin ayağındaki su halkası: dışa yayılan halkalar, köpüklü kenar. Disk ölçekle büyür. */
+export const PUDDLE_VERTEX = /* glsl */ `
+varying vec2 vXY;
+void main() {
+  vXY = position.xz;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+export const PUDDLE_FRAGMENT = /* glsl */ `
+uniform float uTime;
+uniform float uOpacity;
+varying vec2 vXY;
+
+${NOISE_GLSL}
+
+void main() {
+  float r = length(vXY);
+  if (r > 1.0 || uOpacity <= 0.003) discard;
+  float ripple = sin(r * 26.0 - uTime * 6.5) * 0.5 + 0.5;
+  float wobble = 0.05 * (noise2D(vXY * 5.0 + uTime * 0.6) - 0.5);
+  float rim = smoothstep(0.84 + wobble, 0.93 + wobble, r) * (1.0 - smoothstep(0.95, 1.0, r));
+  vec3 col = mix(vec3(0.08, 0.42, 0.68), vec3(0.55, 0.88, 0.98), ripple * 0.2);
+  col = mix(col, vec3(0.95, 0.99, 1.0), rim);
+  float a = (0.3 + 0.08 * ripple + 0.55 * rim) * (1.0 - smoothstep(0.95, 1.0, r)) * uOpacity;
+  if (a <= 0.004) discard;
+  gl_FragColor = vec4(col, a);
+}
+`;

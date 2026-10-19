@@ -17,17 +17,18 @@ const abilitySchema = z
   .object({
     title: z.string().min(1),
     aliases: z.array(z.string().min(1)).default([]),
-    effect: z.enum(['fire', 'tornado', 'rain', 'shadow', 'tree_fall', 'earth']),
+    effect: z.enum(['fire', 'tornado', 'rain', 'shadow', 'tree_fall', 'tree_lift', 'earth', 'whirl', 'rock_rise', 'wave']),
     /** Element: karakterin elementiyle uyuşmazsa yüklemede uyarı verilir (gölge: elementsiz eski yetenekler) */
     element: z.enum(['ates', 'su', 'toprak', 'hava', 'golge']),
-    target: z.enum(['character', 'map_tree']).default('character'),
+    target: z.enum(['character', 'map_tree', 'self']).default('character'),
     icon: z.string().optional(),
     clips: z.array(clipSchema).min(1),
     release: z.object({ clip: z.string(), at: z.number().min(0) }).strict(),
     flight: z.number().positive(),
     linger: z.number().min(0),
-    knockback: z.object({ arc: z.number().min(0), duration: z.number().positive() }).strict(),
-    impact_clip: z.string().min(1),
+    /** Hedefsiz (self) gösteri yeteneklerinde gerekmez */
+    knockback: z.object({ arc: z.number().min(0), duration: z.number().positive() }).strict().default({ arc: 0, duration: 0.5 }),
+    impact_clip: z.string().min(1).default('impact_3'),
     target_clips: z.array(z.string().min(1)).default([]),
   })
   .strict()
@@ -81,6 +82,7 @@ export function casterClipNames(def: AbilityDef, customClips?: string[]): string
 
 /** Hedefin yükleyeceği tepki klipleri. */
 export function targetClipNames(def: AbilityDef): string[] {
+  if (def.target === 'self') return [];
   return [...new Set([def.impact_clip, ...def.target_clips])];
 }
 

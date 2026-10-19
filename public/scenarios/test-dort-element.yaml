@@ -38,7 +38,7 @@ film:
   fade_out: 1.5
   handheld: 0.16
   music:
-    src: /audio/main-theme/jyproject-carousel-dreams-396029.mp3
+    src: procedural:main   # yordamsal ana tema (telifsiz)
     volume: 0.35
     loop: true
     fade_in: 0.5
@@ -56,7 +56,7 @@ assets:
     saturation: 0.88
     element: hava
     animations:
-      idle: models/animations/Happy Idle.fbx   # neşeli, çevik bekleme (kişilik)
+      idle: models/animations/Neutral Idle.fbx   # sakin bekleme (Happy Idle çok sallanıyordu)
   mese:
     src: models/characters/Erika/character.fbx
     height: 1.72

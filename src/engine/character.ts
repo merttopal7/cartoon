@@ -167,9 +167,31 @@ const tmp = new THREE.Vector3();
  * Sahnedeki bir karakter: başlangıç konumu + zamanlanmış hareketler.
  * `computeBody` / `computeLook` yalnızca t'ye bağlıdır; aynı t her zaman aynı pozu verir.
  */
+/**
+ * Karakteri yerden kaldıran yükselti (Toprak'ın kayası): start→up arasında yükselir (yavaşlayarak), down→end arasında
+ * yumuşakça iner. Zamanlar sahne saniyesi.
+ */
+export interface Elevation {
+  start: number;
+  up: number;
+  down: number;
+  end: number;
+  height: number;
+}
+
+/** Yükseltinin t anındaki 0..1 oranı (kaya görseli de aynı eğriyi kullanır, karakter tepesinde kalır). */
+export function elevationFactor(e: Omit<Elevation, 'height'>, t: number): number {
+  if (t <= e.start || t >= e.end) return 0;
+  const rise = clamp((t - e.start) / Math.max(0.01, e.up - e.start));
+  const up = 1 - Math.pow(1 - rise, 3);
+  const sink = clamp((t - e.down) / Math.max(0.01, e.end - e.down));
+  return up * (1 - sink * sink * (3 - 2 * sink));
+}
+
 export class Character {
   readonly pose: Pose = createPose();
   private readonly timed: TimedAction[] = [];
+  private readonly elevations: Elevation[] = [];
   private readonly seed: number;
   private lastWalkEnd: THREE.Vector3;
 
@@ -201,6 +223,18 @@ export class Character {
     }
     this.lastWalkEnd.copy(posNow);
     return posNow;
+  }
+
+  /** Karakteri bir süre yerden kaldırır (ör. altından yükselen kaya); konumu, kamerası ve sesi bununla yükselir. */
+  scheduleElevation(e: Elevation) {
+    this.elevations.push(e);
+  }
+
+  /** t anında karakterin araziden yüksekliği (m). */
+  elevationAt(t: number): number {
+    let h = 0;
+    for (const e of this.elevations) h += e.height * elevationFactor(e, t);
+    return h;
   }
 
   /** Özel yetenek isabetinde düşmanı geriye doğru parabolik yay çizerek savurur (yüzü saldıran karaktere dönük kalır). */
@@ -333,6 +367,7 @@ export class Character {
       ta.walk.at(walkDistance(ta, t), out);
     }
     if (this.groundAt) out.y = this.groundAt(out.x, out.z) ?? out.y;
+    if (this.elevations.length) out.y += this.elevationAt(t);
     return out;
   }
 
@@ -423,6 +458,7 @@ export class Character {
     resetPose(p);
     p.time = t;
     this.positionAt(t, p.position);
+    p.elevation = this.elevations.length ? this.elevationAt(t) : 0;
     p.facing = this.facingAt(t, ctx);
 
     for (const ta of this.timed) {
@@ -517,11 +553,13 @@ export class Character {
             p.mouth = Math.max(p.mouth, clamp(flap, 0, 1) * env);
           }
 
-          // Konuşurken doğal baş hareketleri
+          // Konuşurken doğal baş hareketleri: küçük ve yavaş; vurgulu hecelerde (ses şiddeti) hafif baş sallama.
+          // Eskiden sabit 2 Hz'lik sinüsle 4-5° sallanıyordu (Meşe'de kafa sürekli oynuyormuş gibi görünüyordu).
           const vs = a.audio ? ctx.voiceState?.(this.id, t) : null;
           const headEnv = a.audio ? (vs?.active ? 1.0 : 0.0) : envelope(t, ta.start, dur, 0.1);
-          p.headPitch += Math.sin(local * TAU * 2.1 + 0.5) * 0.08 * headEnv;
-          p.headYaw += Math.sin(local * TAU * 1.05 + this.seed) * 0.05 * headEnv;
+          const emphasis = a.audio ? 0.4 + 0.6 * Math.min(1, (vs?.level ?? 0) * 1.5) : 0.7;
+          p.headPitch += Math.sin(local * TAU * 1.2 + 0.5) * 0.03 * emphasis * headEnv;
+          p.headYaw += Math.sin(local * TAU * 0.45 + this.seed) * 0.018 * headEnv;
           break;
         }
         case 'emote':
@@ -644,19 +682,28 @@ export class Character {
   computeLook(t: number, ctx: SceneContext) {
     const p = this.pose;
     const headY = p.position.y + p.jumpLift + this.rig.height * 0.8;
+    // Üst üste binen bakışların ağırlıklı ortalaması: bir kişiden diğerine bakış doğrudan geçer. Eskiden sırayla
+    // karıştırılıyordu; iki bakış arasında baş önce düze dönüp sonra yeni kişiye dönüyordu (ileri-geri sallanma).
+    let wSum = 0;
+    let yawSum = 0;
+    let pitchSum = 0;
     for (const ta of this.timed) {
       if (ta.action.do !== 'look_at' || t < ta.start || t > ta.end) continue;
       const a = ta.action;
       const env = envelope(t, ta.start, ta.end - ta.start, 0.5);
+      if (env <= 0) continue;
       const target =
         a.target === 'camera' ? ctx.cameraPosition : typeof a.target === 'string' ? ctx.headOf(a.target, t) : tmp.set(...a.target);
       const dx = target.x - p.position.x;
       const dz = target.z - p.position.z;
-      const yaw = clamp(wrapAngle(Math.atan2(dx, dz) - p.facing), -1.1, 1.1);
-      const pitch = clamp(Math.atan2(target.y - headY, Math.hypot(dx, dz)), -0.5, 0.5);
-      p.headYaw = lerp(p.headYaw, yaw, env);
-      p.headPitch = lerp(p.headPitch, -pitch, env);
+      yawSum += clamp(wrapAngle(Math.atan2(dx, dz) - p.facing), -1.1, 1.1) * env;
+      pitchSum += -clamp(Math.atan2(target.y - headY, Math.hypot(dx, dz)), -0.5, 0.5) * env;
+      wSum += env;
     }
+    if (wSum <= 0) return;
+    const w = Math.min(1, wSum);
+    p.headYaw = lerp(p.headYaw, yawSum / wSum, w);
+    p.headPitch = lerp(p.headPitch, pitchSum / wSum, w);
   }
 
   /** Düzensiz ama deterministik göz kırpma. */

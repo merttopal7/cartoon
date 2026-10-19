@@ -1,13 +1,17 @@
 import { defineConfig, Plugin } from 'vite';
-import { ScenarioDatabase } from './server/scenario-db';
+import { SettingsDatabase } from './server/settings-db';
+import { ScenarioFiles } from './server/scenario-files';
 
 function scenarioApiPlugin(): Plugin {
-  let db: ScenarioDatabase;
+  let db: SettingsDatabase;
+  let scenarios: ScenarioFiles;
 
   return {
     name: 'scenario-api-plugin',
     configureServer(server) {
-      db = new ScenarioDatabase();
+      db = new SettingsDatabase();
+      // Senaryolar her istekte diskteki YAML dosyalarından okunur (public/scenarios, özel: public/scenarios/ozel)
+      scenarios = new ScenarioFiles();
 
       server.middlewares.use(async (req, res, next) => {
         if (!req.url?.startsWith('/api/')) {
@@ -61,7 +65,7 @@ function scenarioApiPlugin(): Plugin {
         try {
           // GET /api/scenarios
           if (method === 'GET' && pathParts.length === 0) {
-            const list = db.getAll();
+            const list = scenarios.getAll();
             res.statusCode = 200;
             return res.end(JSON.stringify({ ok: true, scenarios: list }));
           }
@@ -69,20 +73,13 @@ function scenarioApiPlugin(): Plugin {
           // GET /api/scenarios/:id
           if (method === 'GET' && pathParts.length === 1) {
             const id = decodeURIComponent(pathParts[0]);
-            const item = db.getById(id);
+            const item = scenarios.getById(id);
             if (!item) {
               res.statusCode = 404;
               return res.end(JSON.stringify({ ok: false, error: 'Senaryo bulunamadı' }));
             }
             res.statusCode = 200;
             return res.end(JSON.stringify({ ok: true, scenario: item }));
-          }
-
-          // POST /api/scenarios/reset-builtin
-          if (method === 'POST' && pathParts[0] === 'reset-builtin') {
-            db.seedBuiltins();
-            res.statusCode = 200;
-            return res.end(JSON.stringify({ ok: true, message: 'Yerleşik senaryolar yenilendi' }));
           }
 
           // POST /api/scenarios (kaydet/güncelle)
@@ -93,7 +90,7 @@ function scenarioApiPlugin(): Plugin {
               res.statusCode = 400;
               return res.end(JSON.stringify({ ok: false, error: 'Başlık ve senaryo içeriği gereklidir' }));
             }
-            const saved = db.save(data);
+            const saved = scenarios.save(data);
             res.statusCode = 200;
             return res.end(JSON.stringify({ ok: true, scenario: saved }));
           }
@@ -101,7 +98,7 @@ function scenarioApiPlugin(): Plugin {
           // DELETE /api/scenarios/:id
           if (method === 'DELETE' && pathParts.length === 1) {
             const id = decodeURIComponent(pathParts[0]);
-            const success = db.delete(id);
+            const success = scenarios.delete(id);
             if (!success) {
               res.statusCode = 404;
               return res.end(JSON.stringify({ ok: false, error: 'Silinecek senaryo bulunamadı' }));

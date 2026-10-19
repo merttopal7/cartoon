@@ -1,6 +1,7 @@
 /**
- * SQLite Scenario Client Manager
- * Communicates with Vite SQLite API (/api/scenarios) with resilient client-side fallback.
+ * Senaryo istemcisi: /api/scenarios üzerinden diskteki YAML dosyalarını listeler, okur, kaydeder ve siler
+ * (yerleşik: public/scenarios/*.yaml, özel: public/scenarios/ozel/*.yaml). Sunucu yoksa (statik build) yerleşik
+ * dosyalar doğrudan, özel senaryolar tarayıcı deposundan okunur.
  */
 
 export interface ScenarioMeta {
@@ -11,6 +12,8 @@ export interface ScenarioMeta {
   tags: string;
   created_at: string;
   updated_at: string;
+  /** Proje köküne göre dosya yolu (sunucudan geldiyse) */
+  path?: string;
 }
 
 export interface ScenarioItem extends ScenarioMeta {
@@ -88,7 +91,7 @@ export class ScenarioClient {
   }
 
   /**
-   * Senaryoyu SQLite veritabanına kaydeder.
+   * Senaryoyu public/scenarios/ozel/ altına YAML dosyası olarak kaydeder.
    */
   async save(data: { id?: string; title: string; description?: string; content: string; tags?: string }): Promise<ScenarioItem> {
     try {
@@ -106,7 +109,7 @@ export class ScenarioClient {
         throw new Error(json.error || 'Kayıt başarısız');
       }
     } catch (err: unknown) {
-      // SQLite API hatası durumunda localStorage yedeği al
+      // Sunucu yoksa (statik build) tarayıcı deposuna yedekle
       console.warn('API kayıt hatası, localStorage kullanılıyor:', err);
     }
 
@@ -159,6 +162,7 @@ export class ScenarioClient {
       { id: 'bolum-1-ormanin-bekcileri', title: 'Bölüm 1: İlk Devriye', description: 'Ormanın Bekçileri açılış sahnesi: Toprak, Defne ve Meşe göreve çıkıyor.', category: 'builtin', tags: 'orman, bekçiler, toprak, defne, meşe', created_at: '', updated_at: '' },
       { id: 'bolum-2-karabeyin-golgesi', title: 'Bölüm 2: Karabey\'in Gölgesi', description: 'Toprak, Defne ve Meşe, Karanlık Muhafız Karabey\'e karşı mücadele veriyor.', category: 'builtin', tags: 'orman, bekçiler, karabey, aksiyon', created_at: '', updated_at: '' },
       { id: 'harita-toprak-yol', title: 'Orman Haritası (Toprak Yol)', description: 'Tam Türkçe seslendirmeli ve mimikli animasyon.', category: 'builtin', tags: 'seslendirme, orman', created_at: '', updated_at: '' },
+      { id: 'test-dort-element', title: 'Test: Dört Element', description: 'Seslendirmesiz test bölümü: her element yeteneği sırayla ve birlikte.', category: 'builtin', tags: 'test, element, yetenek', created_at: '', updated_at: '' },
     ];
     const custom = this.getLocalCustom().map(({ content: _, ...m }) => m);
     return [...builtin, ...custom];

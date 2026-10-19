@@ -12,6 +12,22 @@ import { PlaceholderRig, type CharacterKind } from './rigs/placeholder';
 import { ROOT_SPEED, SOURCE_HIPS_HEIGHT, SOURCE_SKELETON } from './clips';
 import { mergeStatic } from './merge';
 import { OUTLINE, toonMaterial, toonify } from './toon';
+import {
+  applySharedFemaleOutfit,
+  FEMALE_OUTFITS,
+  getCharacterOutfit,
+  setCharacterOutfit,
+  type FemaleCharacterId,
+  type FemaleOutfitId,
+} from './outfits';
+
+export {
+  FEMALE_OUTFITS,
+  getCharacterOutfit,
+  setCharacterOutfit,
+  type FemaleCharacterId,
+  type FemaleOutfitId,
+};
 
 type ModelAsset = Extract<AssetDef, { src: string }>;
 
@@ -99,6 +115,11 @@ export class AssetLibrary {
             await customizeErikaModel(m.scene);
           }
 
+          // Jackie (Defne): Hava elementine göre yeniden boyanmış kıyafet dokusu (gök mavisi / nane / turkuaz / bulut beyazı)
+          if (/jackie\/character(_beyaz_elbise|_ninja_elbise)?\.fbx/i.test(src)) {
+            await customizeJackieModel(m.scene);
+          }
+
           return m;
         },
         (e) => {
@@ -147,7 +168,17 @@ export class AssetLibrary {
     if ('placeholder' in def) return new PlaceholderRig(def.placeholder as CharacterKind, def.color);
     const [model, extra] = await Promise.all([this.load(def.src), this.loadAnimations(def)]);
     const scene = cloneSkinned(model.scene);
-    const size = prepareModel(scene, def, model.isFbx, OUTLINE.character);
+    scene.updateMatrixWorld(true);
+    const baseBox = new THREE.Box3().setFromObject(scene, true);
+    const femaleChar: FemaleCharacterId | undefined = /jackie/i.test(def.src)
+      ? 'defne'
+      : /erika/i.test(def.src)
+        ? 'mese'
+        : undefined;
+    if (femaleChar) {
+      await applySharedFemaleOutfit(scene, femaleChar);
+    }
+    const size = prepareModel(scene, def, model.isFbx, OUTLINE.character, baseBox);
     return new ModelRig(scene, size, [...model.animations, ...extra], def.clips, def.eyelids, def.mouth, def.face);
   }
 
@@ -402,7 +433,13 @@ function adjustColors(root: THREE.Object3D, brightness: number, saturation: numb
   });
 }
 
-function prepareModel(model: THREE.Object3D, def: ModelAsset, fbx: boolean, outline: number | false) {
+function prepareModel(
+  model: THREE.Object3D,
+  def: ModelAsset,
+  fbx: boolean,
+  outline: number | false,
+  baseBox?: THREE.Box3,
+) {
   const isMap = def.align === 'none';
   if (isMap) {
     preserveAndOptimizeMap(model);
@@ -418,26 +455,64 @@ function prepareModel(model: THREE.Object3D, def: ModelAsset, fbx: boolean, outl
   // Ölçü bir kez, ölçeklemeden önce alınır: ölçek sonrası kemik matrisleri bir sonraki
   // render'a kadar eski kalır ve skinned mesh'in kutusu yanlış çıkar.
   model.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(model, true);
+  const box = baseBox ?? new THREE.Box3().setFromObject(model, true);
   const size = box.getSize(new THREE.Vector3());
   // Mixamo/FBX santimetre kullanır; açık ölçek verilmediyse metreye çevir.
   const s = def.height ? def.height / Math.max(1e-6, size.y) : (def.scale ?? (fbx ? 0.01 : 1));
+  // Kalça kemiğinin bağlama pozundaki yatay yeri (ölçeklemeden önce, dünya uzayında). Bazı modellerde iskelet
+  // kökten uzakta yazılmış (Toprak'ın kid.fbx'inde kalça 1.2 m ileride): görünen karakter mantıksal konumundan ~1 m
+  // kayıyordu (kaya, kamera hedefi, bakış, isabetler yanlış yerde). Karakter kalçası köke hizalanır.
+  let hips: THREE.Vector3 | undefined;
+  if (!isMap) {
+    model.traverse((o) => {
+      if (!hips && (o as THREE.Bone).isBone && /hips$/i.test(o.name)) hips = o.getWorldPosition(new THREE.Vector3());
+    });
+  }
   model.scale.multiplyScalar(s);
   model.position.multiplyScalar(s);
+  if (hips) {
+    model.position.x -= hips.x * s;
+    model.position.z -= hips.z * s;
+  }
   if (def.align === 'feet') model.position.y -= box.min.y * s; // ayaklar yere
   return { height: size.y * s, width: Math.max(size.x, size.z) * s, scale: s };
 }
 
-/** Mixamo vb. kliplerdeki kalça ötelemesini (root motion) sıfırlar; konumu motor yönetir. */
+/** Yatay kalça salınımının korunabileceği en büyük genlik (kalça yüksekliğine oranla). */
+const SWAY_KEEP = 0.15;
+
+/**
+ * Mixamo vb. kliplerdeki kalça ötelemesini (root motion) kaldırır; konumu motor yönetir. Yalnızca baştan sona doğrusal
+ * ilerleme çıkarılır; kalan küçük yatay salınım (ağırlık aktarımı, bekleme sallanması, yürüyüşte yana yaylanma) korunur.
+ * Tamamen sıfırlanınca kalça sabit kalıyor, salınım ayaklara geçiyordu: Happy Idle'da Defne ayaklarından kayarak
+ * sallanıyordu. Kalan sapma büyükse (takla, yuvarlanma gibi yer değiştiren klipler) eskisi gibi sıfırlanır.
+ */
 function stripRootMotion(clip: THREE.AnimationClip) {
   for (const track of clip.tracks) {
     if (!/hips\.position$/i.test(track.name)) continue;
     const v = track.values;
+    const times = track.times;
     const n = v.length;
     if (n >= 6 && clip.duration > 0) ROOT_SPEED.set(clip, Math.hypot(v[n - 3] - v[0], v[n - 1] - v[2]) / clip.duration);
-    for (let i = 0; i < v.length; i += 3) {
-      v[i] = 0;
-      v[i + 2] = 0;
+    const x0 = v[0];
+    const z0 = v[2];
+    const dx = v[n - 3] - x0;
+    const dz = v[n - 1] - z0;
+    const t0 = times[0] ?? 0;
+    const span = Math.max(1e-6, (times[times.length - 1] ?? 0) - t0);
+    const limit = Math.abs(v[1]) * SWAY_KEEP;
+    let peak = 0;
+    for (let i = 0, k = 0; i < n; i += 3, k++) {
+      const u = (times[k] - t0) / span;
+      v[i] -= x0 + dx * u;
+      v[i + 2] -= z0 + dz * u;
+      peak = Math.max(peak, Math.hypot(v[i], v[i + 2]));
+    }
+    if (!(peak <= limit)) {
+      for (let i = 0; i < n; i += 3) {
+        v[i] = 0;
+        v[i + 2] = 0;
+      }
     }
   }
 }
@@ -473,6 +548,32 @@ async function customizeErikaModel(root: THREE.Object3D) {
           if (std && 'map' in std) {
             std.map = bodyTex;
             std.needsUpdate = true;
+          }
+        }
+        // Body_Mesh: omuz/gövde genişliğini ve kalın okçu kollarını zarif kadın orantılarına incelt
+        if (/body_mesh/i.test(skinned.name)) {
+          const bPos = skinned.geometry.attributes.position as THREE.BufferAttribute | undefined;
+          if (bPos) {
+            for (let i = 0; i < bPos.count; i++) {
+              let vx = bPos.getX(i);
+              let vy = bPos.getY(i);
+              let vz = bPos.getZ(i);
+              const ax = Math.abs(vx);
+              // Gövde ve omuz başlarını (boyun altı y < 149.2) yatayda incelt
+              if (vy < 149.2 && ax < 20.0) {
+                const kTorso = 1 - THREE.MathUtils.smoothstep(vy, 145.5, 149.2);
+                vx *= 1 - 0.16 * kTorso;
+              }
+              // Kolların kalınlığını (pazu/önkol) kol ekseni (y=141.7, z=-3.5) etrafında incelt
+              if (ax >= 16.0 && ax <= 62.0 && vy >= 132.0 && vy <= 150.0) {
+                const kArm = THREE.MathUtils.smoothstep(ax, 16.0, 22.0) * (1 - THREE.MathUtils.smoothstep(ax, 54.0, 62.0));
+                vy = 141.7 + (vy - 141.7) * (1 - 0.22 * kArm);
+                vz = -3.5 + (vz + 3.5) * (1 - 0.22 * kArm);
+              }
+              bPos.setXYZ(i, vx, vy, vz);
+            }
+            bPos.needsUpdate = true;
+            skinned.geometry.computeVertexNormals();
           }
         }
       } else if (/clothes_mesh/i.test(skinned.name)) {
@@ -530,11 +631,17 @@ async function customizeErikaModel(root: THREE.Object3D) {
           for (const idx of [i0, i1, i2]) {
             let vx = pos.getX(idx);
             let vy = pos.getY(idx);
-            const vz = pos.getZ(idx);
+            let vz = pos.getZ(idx);
             if (isHoodIsland && vy > 151.5) {
               vy = 151.5;
               if (vx > 5.2) vx = 5.2 + (vx - 5.2) * 0.4;
               if (vx < -5.2) vx = -5.2 + (vx + 5.2) * 0.4;
+            }
+            // Varsayılan kostümde bel, göğüs ve omuz genişliğini zarif kadın silüetine incelt
+            const ax = Math.abs(vx);
+            if (vy >= 88.0 && vy <= 150.5 && ax < 22.0) {
+              const kWaist = Math.sin(THREE.MathUtils.clamp((vy - 88.0) / (150.5 - 88.0), 0, 1) * Math.PI);
+              vx *= 1 - (0.14 + 0.05 * kWaist);
             }
             newPos.push(vx, vy, vz);
             newNorm.push(norm.getX(idx), norm.getY(idx), norm.getZ(idx));
@@ -558,6 +665,36 @@ async function customizeErikaModel(root: THREE.Object3D) {
     await attachErikaHair(root);
   } catch (err) {
     console.warn('Erika model özelleştirmesi uygulanamadı:', err);
+  }
+}
+
+/**
+ * Jackie (Defne) karakterinin kıyafetlerini Hava elementine uygun dokuyla değiştirir.
+ * Doku `tools/customize_defne_hava.py` ile üretilir (orijinal FBX'e gömülü atlas değiştirilmez):
+ * pantolon pudra gök mavisi + rüzgâr çizgileri, kollar nane-aqua, biyeler turkuaz, göğüste rüzgâr girdabı
+ * amblemi, çorap/ayakkabı bulut beyazı. Pembe/periwinkle saç (kimlik rengi) korunur.
+ */
+async function customizeJackieModel(root: THREE.Object3D) {
+  try {
+    const tex = await new THREE.TextureLoader().loadAsync('/models/characters/Jackie/Ch29_1001_Diffuse_hava.jpg');
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.flipY = true;
+    root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      for (const mat of mats) {
+        const std = mat as THREE.MeshPhongMaterial | THREE.MeshStandardMaterial;
+        // Yalnızca gövde atlası (Ch29_Body); gözlük camı ve beyaz elbise/taç/kanat materyalleri olduğu gibi kalır
+        if (!std || !('map' in std) || !std.map || !/ch29_body/i.test(std.name)) continue;
+        tex.wrapS = std.map.wrapS;
+        tex.wrapT = std.map.wrapT;
+        std.map = tex;
+        std.needsUpdate = true;
+      }
+    });
+  } catch (err) {
+    console.warn('Jackie (Defne) hava kıyafeti uygulanamadı:', err);
   }
 }
 

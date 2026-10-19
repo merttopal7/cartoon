@@ -42,6 +42,8 @@ export interface CoverageWorld {
   /** Yüzün o anki pozdaki gerçek yönü (radyan); dövüş/yay duruşunda kök yönünden farklı olabilir */
   bodyFacing(id: string, t: number): number;
   height(id: string): number;
+  /** (x, z) noktası t anında kameranın giremeyeceği bir engelin (devrik ağaç tacı) içinde mi */
+  blocked?(x: number, z: number, t: number): boolean;
 }
 
 /** Konuşanın çekimi replikten bu kadar önce başlar (nefes alışı, ağız hazırlığı görünsün). */
@@ -101,9 +103,19 @@ export function expandCoverage(
   const t1 = entry.start + entry.duration;
   // Her öğe [a, b, kamera]; sonradan kısa ara parçalar komşuya katılır
   const pieces: { a: number; b: number; camera: CameraDef | null }[] = [];
+  // Girişin kamerası belirgin yüksekten bakıyorsa (8°'den fazla; ör. yol kenarı uzun otlu yer) kapsama çekimleri de
+  // en az o kadar yüksekten çeker: göz hizasındaki omuz üstü çekimde otlar kadrajı kapatıyordu
+  const baseElev = entry.camera.elevation;
+  const minElev = typeof baseElev === 'number' ? baseElev : baseElev && typeof baseElev === 'object' ? Math.min(baseElev.from, baseElev.to) : 0;
+  const floor = minElev > 8 ? minElev : 0;
   const push = (a: number, b: number, camera: CameraDef | null) => {
     a = Math.max(a, t0);
     b = Math.min(b, t1);
+    if (camera && floor > 0) {
+      const e = camera.elevation;
+      if (typeof e === 'number' || e === undefined) camera = { ...camera, elevation: Math.max(e ?? 6, floor) };
+      else camera = { ...camera, elevation: { from: Math.max(e.from, floor), to: Math.max(e.to, floor) } };
+    }
     if (b - a > 0.05) pieces.push({ a, b, camera });
   };
 
@@ -121,8 +133,23 @@ export function expandCoverage(
         // Kameraya konuşma: orta plan, uzunsa yakın plana kesme (açı değişir ki kesme sıçrama gibi görünmesin)
         const h = world.height(l.who);
         const mid = l.toCamera && b - a > 3.2 ? a + (b - a) * 0.5 : b;
-        push(a, mid, { target: l.who, size: 1.05 * scaleFor(h), angle: { from: -10, to: -4 }, elevation: 4.5, relative: true, ease: 'inOut' });
-        if (mid < b) push(mid, b, { target: l.who, size: 0.62 * scaleFor(h), angle: { from: 18, to: 14 }, elevation: 3.5, relative: true, ease: 'inOut' });
+        // Önden açı; kamera bir engelin (devrik ağaç tacı) içine düşüyorsa yana kayar
+        const p = world.pos(l.who, l.start);
+        const face = deg(world.facing(l.who, l.start));
+        const freeAngle = (base: number, size: number) => {
+          const dist = camDist(size * h);
+          for (const d of [0, 25, -25, 45, -45, 70, -70, 95, -95, 120, -120]) {
+            const az = ((face + base + d) * Math.PI) / 180;
+            if (!world.blocked?.(p.x + Math.sin(az) * dist, p.z + Math.cos(az) * dist, l.start)) return base + d;
+          }
+          return base;
+        };
+        const a1 = freeAngle(-7, 0.66 * scaleFor(h));
+        push(a, mid, { target: l.who, size: 0.66 * scaleFor(h), angle: { from: a1 - 3, to: a1 + 3 }, elevation: 4.5, relative: true, ease: 'inOut' });
+        if (mid < b) {
+          const a2 = freeAngle(16, 0.52 * scaleFor(h));
+          push(mid, b, { target: l.who, size: 0.52 * scaleFor(h), angle: { from: a2 + 2, to: a2 - 2 }, elevation: 3.5, relative: true, ease: 'inOut' });
+        }
         return;
       }
       const sp = world.pos(l.who, l.start);
@@ -136,7 +163,8 @@ export function expandCoverage(
       const { side: lineSide, off } = pickAngle(l, toListener, side, sizeK * h, world);
       const speakerCam = (from: number): CameraDef => ({
         target: l.who,
-        size: { from: 1.1 * scaleFor(h), to: 1.0 * scaleFor(h) },
+        // Konuşana yakın plan (göğüs üstü; omuz üstünden dinleyenin omzu kadraj kenarında)
+        size: { from: 0.74 * scaleFor(h), to: 0.66 * scaleFor(h) },
         angle: { from: toListener + lineSide * off, to: toListener + lineSide * (off - 4) },
         elevation: 4.8,
         relative: false,
@@ -148,7 +176,7 @@ export function expandCoverage(
         const lh = Math.max(...listeners.map((id) => world.height(id)));
         return {
           target: group ? listeners : listeners[0],
-          size: group ? 1.5 * scaleFor(lh) : 1.0 * scaleFor(lh),
+          size: group ? 1.3 * scaleFor(lh) : 0.74 * scaleFor(lh),
           // Ters açı: konuşanın tarafından, aynı yanda (180° kuralı)
           angle: back - lineSide * OTS,
           elevation: 5,
@@ -271,8 +299,8 @@ function pickAngle(l: CoverageLine, toListener: number, prefer: number, frameHei
       const az = (camAz * Math.PI) / 180;
       const c = { x: p.x + Math.sin(az) * dist, z: p.z + Math.cos(az) * dist };
       const toSub = azimuth(c, p);
-      // En yakın engelin görüş eksenine açısı (büyük = temiz)
-      let clear = 90;
+      // En yakın engelin görüş eksenine açısı (büyük = temiz); kamera bir engelin içindeyse hiç temiz değil
+      let clear = world.blocked?.(c.x, c.z, t) ? 0 : 90;
       for (const id of world.ids) {
         if (id === l.who) continue;
         const q = world.pos(id, t);

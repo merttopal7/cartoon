@@ -242,7 +242,7 @@ film:
   fade_out: 1.5
   handheld: 0.14
   music:
-    src: /audio/main-theme/jyproject-carousel-dreams-396029.mp3
+    src: procedural:main   # yordamsal ana tema (telifsiz)
     volume: 0.35
     ducking: 0.25
     loop: true

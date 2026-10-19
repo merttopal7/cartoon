@@ -9,6 +9,11 @@
 import * as THREE from 'three';
 import type { Film } from '../film';
 import { tornadoCenter } from '../ability-fx/tornado';
+import { rockLiftTimes, waveTimes } from '../ability-fx/showcase';
+
+/** Birlikte yürüyüşte iki ayak sesi arasındaki en kısa süre (sn): daha yakın düşen (uzaktaki karakterin) adımı çalmaz. */
+const STEP_GAP = 0.2;
+const STEP_GAP_RUN = 0.12;
 import { SR } from './dsp';
 import * as S from './sounds';
 
@@ -95,6 +100,8 @@ export async function buildSfx(
   film: Film,
   presets: S.AmbiencePreset[],
   cfg: SfxConfig,
+  /** Sahne başına rüzgâr gücü (0 = rüzgâr kapalı, hafif esinti; 0.5 varsayılan; 1 sert) */
+  winds: number[] = [],
 ): Promise<{ cues: SfxCue[]; ambience: AmbienceCue[] }> {
   const pending: { cue: Omit<SfxCue, 'buffer'>; key: string; make: Make }[] = [];
   const pendingAmb: { cue: Omit<AmbienceCue, 'buffer'>; key: string; make: Make }[] = [];
@@ -117,7 +124,7 @@ export async function buildSfx(
     const d = Math.max(0.5, rel.length());
     const x = rel.dot(l.right);
     const z = rel.dot(l.forward);
-    let gain = mode === 'near' ? THREE.MathUtils.clamp(6 / d, 0.06, 1) : THREE.MathUtils.clamp(Math.sqrt(9 / d), 0.35, 1);
+    let gain = mode === 'near' ? THREE.MathUtils.clamp(4 / d, 0.03, 1) : THREE.MathUtils.clamp(Math.sqrt(9 / d), 0.35, 1);
     let pan = THREE.MathUtils.clamp(x / (Math.max(z, 0.5) * l.tanHalf), -1, 1) * 0.6;
     if (z < 0) {
       gain *= 0.5;
@@ -153,31 +160,50 @@ export async function buildSfx(
     // --- Ortam sesi: sahne boyunca döngülü
     if (cfg.ambience > 0) {
       const preset = presets[si] ?? 'day';
+      // Rüzgâr gücü 0.1 adımlarla (aynı güçteki sahneler aynı sesi paylaşır); güçlü rüzgâr biraz daha yüksek
+      const wind = Math.round(THREE.MathUtils.clamp(winds[si] ?? 0, 0, 1) * 10) / 10;
       pendingAmb.push({
-        cue: { start: sc.start, end: sc.start + sc.duration, gain: cfg.ambience * cfg.volume },
-        key: `amb|${preset}`,
-        make: () => S.ambience(7, preset),
+        cue: { start: sc.start, end: sc.start + sc.duration, gain: cfg.ambience * cfg.volume * (0.85 + 0.4 * wind) },
+        key: `amb|${preset}|${wind}`,
+        make: () => S.ambience(7, preset, wind),
       });
     }
 
     // --- Ayak sesleri ve düşüşler
+    // Ayak sesi arka planda kalmalı: konuşma sırasında yarıya iner. Birlikte yürüyen karakterlerin adımları (üç kişide
+    // saniyede ~5 adım) takırtıya dönüyordu: kameraya en yakın yürüyen tam seste, diğerleri belirgin kısık; bir adıma
+    // STEP_GAP'ten yakın düşen adım hiç çalmaz (önce yakındakiler yerleşir, uzaktakiler aralara girebilirse girer).
+    const steps: { t: number; pos: THREE.Vector3; id: string; run: boolean; weight: number; dist: number }[] = [];
     for (const [id, ch] of sc.characters) {
       for (const ev of ch.motionEvents()) {
         const t = filmT(ev.time);
         const pos = ch.positionAt(ev.time, new THREE.Vector3());
         if (ev.kind === 'step') {
           if (!cfg.footsteps) continue;
-          const v = variant(t + id.length, 4);
-          at(t, pos, 'near', `step|${ev.run ? 1 : 0}|${v}`, () => S.step(100 + v, ev.run), (ev.run ? 0.32 : 0.22) * ev.weight);
+          steps.push({ t, pos, id, run: !!ev.run, weight: ev.weight, dist: pos.distanceTo(listener(t).position) });
         } else {
           const v = variant(t, 2);
           at(t, pos, 'wide', `land|${v}`, () => S.bodyLand(200 + v), 0.6 * ev.weight);
         }
       }
     }
+    const kept: number[] = [];
+    for (const st of [...steps].sort((x, y) => x.dist - y.dist)) {
+      if (kept.some((k) => Math.abs(k - st.t) < (st.run ? STEP_GAP_RUN : STEP_GAP))) continue;
+      kept.push(st.t);
+      // O anda adım atan diğer karakterler (±0.45 sn): biri kameraya daha yakınsa bu adım arka plandadır
+      const others = steps.filter((o) => o.id !== st.id && Math.abs(o.t - st.t) < 0.45);
+      const lead = others.every((o) => o.dist >= st.dist);
+      const crowd = others.length === 0 ? 1 : lead ? 0.85 : 0.4;
+      const v = variant(st.t + st.id.length, 4);
+      const duck = (film.audio.isVoiceActive(st.t) ? 0.5 : 1) * crowd;
+      at(st.t, st.pos, 'near', `step|${st.run ? 1 : 0}|${v}`, () => S.step(100 + v, st.run), (st.run ? 0.17 : 0.12) * st.weight * duck);
+    }
 
     // --- Yetenekler (çoklu hedefte güç toplama ve fırlatma bir kez, isabet her hedefte)
     for (const a of sc.abilities?.allUses() ?? []) {
+      // Sahne başından beri devrik duran ağacın devrilme sesi yok
+      if (a.prefallen) continue;
       const r = a.recipe;
       const first = (a.groupIndex ?? 0) === 0;
       // Çoklu hedefte isabetler aynı anda; her kol başka varyant ve birkaç ms kayık çalar, yoksa aynı dalgalar
@@ -293,6 +319,49 @@ export async function buildSfx(
           // devrilmeyi, çarpmayı (impactOffset) ve sürüklenmeyi tek parça taşır
           const fall = Math.round((r.impactOffset - r.chargeEnd) * 100) / 100;
           at(filmT(a.start + r.chargeEnd - TREE_SOUND_LEAD), target, 'wide', `tree|${seed % 2}|${fall}`, () => S.treeFell(71 + (seed % 2), fall), 0.95);
+          // Devrik gövde itilip sürüklendikçe toprakta sürtünme
+          for (const p of a.treePushes ?? []) {
+            const k = variant(p.time, 2);
+            at(filmT(p.time), target, 'wide', `treeDrag|${k}`, () => S.whoosh(77 + k, 0.75, 90, 420, 0.7), 0.45);
+          }
+          break;
+        }
+        case 'whirl': {
+          // Gösteri hortumu: Defne'nin içinde büyür, yanına süzülüp orada döner (yerinde; Doppler yok), sonda söner
+          const c = Math.round(r.chargeEnd * 100) / 100;
+          const i = Math.round(r.impactOffset * 100) / 100;
+          const total = Math.round(r.totalDuration * 100) / 100;
+          at(t0, target, 'wide', `whirl|${c}|${i}|${total}`, () => S.tornado(42, c, i, total, undefined, AUTO_HZ, true), 0.3);
+          break;
+        }
+        case 'rock_rise': {
+          // Güç toplama gümbürtüsü, kaya yükselişi (çatırtı → sürtünme → tepeye oturma), sonda kısık batış
+          const lt = rockLiftTimes(r);
+          const rise = Math.round((lt.riseEnd - lt.riseStart) * 100) / 100;
+          const sink = Math.round((lt.sinkEnd - lt.sinkStart) * 100) / 100;
+          at(t0, caster, 'wide', `earthC|${cd}`, () => S.earthCharge(21, cd), 0.25);
+          at(filmT(a.start + lt.riseStart), target, 'wide', `rockUp|${rise}`, () => S.rockRise(24, rise), 0.35);
+          at(filmT(a.start + lt.sinkStart), target, 'wide', `rockDown|${sink}`, () => S.rockRise(25, sink, true), 0.2);
+          break;
+        }
+        case 'wave': {
+          // Su toplama, sonra dalga: kabarma, akış (replik boyunca kısık), çöküş
+          const wt = waveTimes(r);
+          const rise = Math.round((wt.riseEnd - wt.riseStart) * 100) / 100;
+          const hold = Math.round((wt.crashStart - wt.riseEnd) * 100) / 100;
+          const crash = Math.round((wt.end - wt.crashStart) * 100) / 100;
+          at(t0, caster, 'wide', `waterC|${cd}`, () => S.waterCharge(51, cd), 0.35);
+          at(filmT(a.start + wt.riseStart), target, 'wide', `wave|${rise}|${hold}|${crash}`, () => S.waveSurge(55, rise, hold, crash), 0.38);
+          break;
+        }
+        case 'tree_lift': {
+          // Rüzgâr toplanır (dönüş), ağaç havalanırken yükselen uğultu; kütüğe oturunca tok gümleme ve şifa çınlaması
+          const charge = Math.round(r.chargeEnd * 10) / 10;
+          const lift = Math.round((r.impactOffset - r.chargeEnd) * 10) / 10;
+          at(t0, caster, 'wide', `liftC|${charge}`, () => S.whoosh(75, charge + 0.4, 160, 900, 0.8), 0.4);
+          at(tRelease, target, 'wide', `liftU|${lift}`, () => S.whoosh(76, lift + 0.3, 220, 1800, 0.9), 0.5);
+          at(tImpact, target, 'wide', 'liftL', () => S.bodyLand(205), 0.55);
+          at(tImpact + 0.08, target, 'wide', 'liftChime', () => S.chime(88), 0.3);
           break;
         }
       }

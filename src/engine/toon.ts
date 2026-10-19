@@ -178,6 +178,7 @@ export function toonify(root: THREE.Object3D, outline: number | false) {
       if (smoothMap) smoothMap.anisotropy = 1;
 
       // Çizgi film renk uyumu
+      const isDoubleSidedCloth = /defne_(elbise|ninja)/i.test(s.name);
       let baseColor: THREE.ColorRepresentation = s.color ?? 0xffffff;
       if (isMapTerrain) {
         const lower = (s.name + ' ' + mesh.name).toLowerCase();
@@ -206,8 +207,8 @@ export function toonify(root: THREE.Object3D, outline: number | false) {
       const isFoliage = /leaf|bush/i.test(s.name) || /leaf|bush/i.test(mesh.name);
       const alphaCut = isFoliage ? 0.20 : 0.5;
       m.alphaTest = cutout ? (s.alphaTest > 0 ? Math.min(s.alphaTest, alphaCut) : alphaCut) : s.alphaTest;
-      m.side = isFoliage ? THREE.DoubleSide : s.side;
-      m.shadowSide = isFoliage ? THREE.DoubleSide : THREE.FrontSide;
+      m.side = isFoliage || isDoubleSidedCloth ? THREE.DoubleSide : s.side;
+      m.shadowSide = isFoliage || isDoubleSidedCloth ? THREE.DoubleSide : THREE.FrontSide;
       return m;
     };
     mesh.material = Array.isArray(mesh.material) ? mesh.material.map(convert) : convert(mesh.material);

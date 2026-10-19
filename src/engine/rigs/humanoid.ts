@@ -165,6 +165,8 @@ export function retargetHumanoid(
   const times = new Float32Array(n);
   const quatValues = pairs.map(() => new Float32Array(n * 4));
   const hipsPos = new Float32Array(n * 3);
+  const swayLocal = new THREE.Vector3();
+  const swayM3 = new THREE.Matrix3();
 
   const desired = new THREE.Quaternion();
   const parentQ = new THREE.Quaternion();
@@ -185,10 +187,13 @@ export function retargetHumanoid(
       p.tgt.quaternion.toArray(quatValues[j], i * 4);
     });
 
-    // Kalça: yalnızca dikey (Y) yaylanmayı aktar; yatay (X/Z) konumu motor yönettiği için sıfırla (ışınlanmayı önler)
+    // Kalça: dikey yaylanma ve klipte korunan küçük yatay salınım aktarılır (ilerleme stripRootMotion'da çıkarıldı;
+    // yatay konumu motor yönetir). Salınım kaynak kalçanın yerel x/z değeridir; dünya eksenine çevrilir.
     const delta = worldP(hips.src).sub(srcHipsRestWorld).multiplyScalar(ratio);
-    delta.x = 0;
-    delta.z = 0;
+    swayLocal.set(hips.src.position.x, 0, hips.src.position.z);
+    if (hips.src.parent) swayLocal.applyMatrix3(swayM3.setFromMatrix4(hips.src.parent.matrixWorld));
+    delta.x = swayLocal.x * ratio;
+    delta.z = swayLocal.z * ratio;
     const worldPos = tgtHipsRestWorld.clone().add(delta);
     if (hips.tgt.parent) {
       hips.tgt.parent.updateMatrixWorld(true);

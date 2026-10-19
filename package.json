@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "convert": "node tools/convert-model.mjs",
+    "render:parallel": "node tools/render-parallel.mjs",
     "tts": "node tools/elevenlabs-tts.mjs"
   },
   "dependencies": {

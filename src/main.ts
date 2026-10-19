@@ -1,7 +1,15 @@
 import './style.css';
 import * as THREE from 'three';
-import { AssetLibrary } from './engine/assets';
+import {
+  AssetLibrary,
+  FEMALE_OUTFITS,
+  getCharacterOutfit,
+  setCharacterOutfit,
+  type FemaleCharacterId,
+  type FemaleOutfitId,
+} from './engine/assets';
 import { buildFilm, type Film } from './engine/film';
+import { withIntro } from './engine/intro';
 import { loadOverlayFonts } from './engine/motion-graphics';
 import { exportMp4, webCodecsSupported } from './export/mp4';
 import { FORMATS, type FormatPreset } from './formats';
@@ -68,7 +76,7 @@ const ui = {
   toolJumpStart: $<HTMLButtonElement>('#tool-jump-start'),
   toolJumpSpeech: $<HTMLButtonElement>('#tool-jump-speech'),
 
-  // SQLite Senaryo Kütüphanesi Modalı
+  // Senaryo Kütüphanesi Modalı (dosyalar public/scenarios)
   scenarioModal: $('#scenario-modal'),
   modalClose: $<HTMLButtonElement>('#modal-close'),
   modalSearch: $<HTMLInputElement>('#modal-search'),
@@ -84,9 +92,12 @@ const ui = {
   settingsBtnModeRender: $<HTMLButtonElement>('#settings-btn-mode-render'),
   toolToggleMode: $<HTMLButtonElement>('#tool-toggle-mode'),
   toolToggleModeText: $<HTMLSpanElement>('#tool-toggle-mode-text'),
+  toolDefneOutfit: document.querySelector<HTMLSelectElement>('#tool-defne-outfit'),
+  toolMeseOutfit: document.querySelector<HTMLSelectElement>('#tool-mese-outfit'),
 
   // Sahne ve Dışa Aktarma
   format: $<HTMLSelectElement>('#format'),
+  exportFps: $<HTMLSelectElement>('#export-fps'),
   safeToggle: $<HTMLInputElement>('#safe-toggle'),
   exportOne: $<HTMLButtonElement>('#export'),
   exportAudio: $<HTMLButtonElement>('#export-audio'),
@@ -205,6 +216,10 @@ const library = new AssetLibrary();
 let film: Film | null = null;
 let format: FormatPreset = FORMATS[0];
 let time = 0;
+/** Son karede çizilen zaman: farklıysa zaman dışarıdan değişmiştir (arama). */
+let tickTime = 0;
+/** Oynatırken film zamanının bağlı olduğu ses saati noktası (film sn ↔ ses bağlamı sn). */
+let audioAnchor: { film: number; audio: number } | null = null;
 let playing = false;
 let exporting = false;
 /** Shader ısıtması sürerken önizleme döngüsü sahneyi çizmez (ısıtma görünürlükleri geçici olarak değiştirir). */
@@ -324,11 +339,16 @@ async function applySource() {
   ui.apply.disabled = true;
 
   try {
-    const { film: next, warnings } = await buildFilm(parsed.scenario, library, (status, percent) => {
+    // Bölüm açılış klibi istiyorsa (film.intro) sahneleri başa eklenir
+    const introWarnings: string[] = [];
+    const scenario = await withIntro(parsed.scenario, (m) => introWarnings.push(m));
+    if (token !== buildToken) return;
+    const { film: next, warnings: buildWarnings } = await buildFilm(scenario, library, (status, percent) => {
       if (token !== buildToken) return;
       ui.loadingStatus.textContent = status;
       ui.loadingBarFill.style.width = `${Math.round(percent * 100)}%`;
     });
+    const warnings = [...introWarnings, ...buildWarnings];
     if (token !== buildToken) {
       next.dispose();
       return;
@@ -408,7 +428,7 @@ function createScenarioCard(s: ScenarioMeta, isToolbox = false): HTMLElement {
 
   const badge = document.createElement('span');
   badge.className = `badge ${s.category}`;
-  badge.textContent = s.category === 'builtin' ? 'Bölüm' : 'SQLite';
+  badge.textContent = s.category === 'builtin' ? 'Bölüm' : 'Özel';
 
   header.appendChild(title);
   header.appendChild(badge);
@@ -757,7 +777,7 @@ function debounceSaveMusicSettings() {
 
 async function saveMusicSettingsToSQLite() {
   try {
-    const src = ui.musicTrackSelect?.value || '/audio/main-theme/jyproject-carousel-dreams-396029.mp3';
+    const src = ui.musicTrackSelect?.value || 'procedural:main';
     const volume = Number(ui.musicVolumeSlider?.value ?? 0.35);
     const ducking = Number(ui.musicDuckingSlider?.value ?? 0.25);
     const loop = ui.musicLoopToggle?.checked ?? true;
@@ -788,7 +808,7 @@ async function saveMusicSettingsToSQLite() {
 
 function applyMusicSettingsToYAML() {
   let text = getEditorSource();
-  const src = ui.musicTrackSelect?.value || '/audio/main-theme/jyproject-carousel-dreams-396029.mp3';
+  const src = ui.musicTrackSelect?.value || 'procedural:main';
   const volume = Number(ui.musicVolumeSlider?.value ?? 0.35);
   const ducking = Number(ui.musicDuckingSlider?.value ?? 0.25);
   const loop = ui.musicLoopToggle?.checked ?? true;
@@ -1250,6 +1270,7 @@ let lastDrawnKey = '';
 
 function setPlaying(v: boolean) {
   playing = v;
+  audioAnchor = null;
   ui.play.innerHTML = v ? SVG_ICONS.pause : SVG_ICONS.play;
   lastTickTime = performance.now();
   if (!v) {
@@ -1259,7 +1280,8 @@ function setPlaying(v: boolean) {
 
 // ---------------------------------------------------------------- yetenek (skill) ikonları ve HUD
 function updateAbilityHUD() {
-  const activeList = film?.currentActiveAbilities ?? [];
+  // Element gösterileri (açılış) savaş yeteneği değil: "güç toplanıyor" bandı çıkmaz
+  const activeList = (film?.currentActiveAbilities ?? []).filter((a) => a.recipe.targetKind !== 'self');
   const banner = ui.abilityActiveBanner;
 
   if (activeList.length === 0) {
@@ -1313,12 +1335,25 @@ function updateAbilityHUD() {
 
 function tick(now: number) {
   if (film && !exporting && !warmingUp) {
+    // Zaman dışarıdan değiştiyse (arama çubuğu, zaman çizelgesi, senaryo yükleme): saat bağı ve sesler yeniden kurulur
+    if (time !== tickTime) {
+      audioAnchor = null;
+      film.audio.seek();
+    }
     if (playing) {
-      // Delta time clamp: GPU veya sekme gecikmelerinde zamanın 66ms'den
-      // fazla aniden zıplayıp dudak açılış payını (lead-in) atlamasını önler
+      // Film zamanı ses saatine bağlı: görüntü yavaş çizildiğinde (render modu) kareler atlanır ama ses ile görüntü
+      // hep aynı yerdedir. Eskiden kare adımı 66 ms ile sınırlanıyordu; yavaş karelerde film saati sesin gerisinde
+      // kalıyor, biten replikler yeniden başlıyor (tekrar ediyor), müzik ve efektler görüntüden kayıyordu.
       const dt = (now - lastTickTime) / 1000;
-      const clampedDt = Math.min(0.066, Math.max(0, dt));
-      time += clampedDt;
+      const clock = film.audio.clock();
+      if (clock !== null && audioAnchor && dt < 0.5) {
+        time = audioAnchor.film + (clock - audioAnchor.audio);
+      } else {
+        // Oynatmanın ilk karesi ya da uzun ara (sekme arka planda kaldı): kısa adım, saat yeniden bağlanır
+        time += Math.min(0.066, Math.max(0, dt));
+        if (audioAnchor && dt >= 0.5) film.audio.seek();
+        audioAnchor = clock !== null ? { film: time, audio: clock } : null;
+      }
       if (time >= film.duration) {
         time = 0;
         setPlaying(false);
@@ -1342,6 +1377,7 @@ function tick(now: number) {
     ui.where.textContent = `${scene.id} · çekim ${shot.index + 1}/${scene.shots.length}`;
     updateTimelinePlayhead(time);
     updateAbilityHUD();
+    tickTime = time;
   } else {
     lastTickTime = now;
   }
@@ -1397,14 +1433,16 @@ async function runExport(formats: FormatPreset[]) {
       ui.exportLabel.textContent = `${f.label} (${f.width}×${f.height})${formats.length > 1 ? ` · ${i + 1}/${formats.length}` : ''}`;
       layout();
       const started = performance.now();
+      const exportFps = ui.exportFps.value ? Number(ui.exportFps.value) : current.fps;
       const blob = await exportMp4({
         film: current,
         viewport,
         format: f,
+        fps: exportFps,
         signal: abort.signal,
         onProgress: (n, total) => (ui.exportProgress.value = n / total),
       });
-      const name = `${current.title}-${f.id}.mp4`;
+      const name = `${current.title}-${f.id}${exportFps !== 30 ? `-${exportFps}fps` : ''}.mp4`;
       download(blob, name);
       done.push(`${name} · ${(blob.size / 1e6).toFixed(1)} MB · ${((performance.now() - started) / 1000).toFixed(1)} sn`);
     }
@@ -1441,6 +1479,38 @@ ui.format.addEventListener('change', () => {
   format = FORMATS.find((f) => f.id === ui.format.value) ?? FORMATS[0];
   layout();
 });
+
+function initFemaleOutfitSelects() {
+  for (const toolEl of [ui.toolDefneOutfit, ui.toolMeseOutfit]) {
+    if (!toolEl) continue;
+    toolEl.replaceChildren();
+    for (const o of FEMALE_OUTFITS) toolEl.add(new Option(o.label, o.id));
+  }
+}
+
+function syncCharacterOutfitUI(charId: FemaleCharacterId, outfit: FemaleOutfitId, rebuild = false) {
+  setCharacterOutfit(charId, outfit);
+  const toolEl = charId === 'defne' ? ui.toolDefneOutfit : ui.toolMeseOutfit;
+  if (toolEl) toolEl.value = outfit;
+  if (rebuild) {
+    const charName = charId === 'defne' ? 'Defne' : 'Meşe';
+    const meta = FEMALE_OUTFITS.find((o) => o.id === outfit);
+    showMessages([{ level: 'ok', text: `${charName} kostümü değiştirildi: ${meta?.label ?? outfit}` }]);
+    void applySource();
+  }
+}
+
+initFemaleOutfitSelects();
+syncCharacterOutfitUI('defne', getCharacterOutfit('defne'), false);
+syncCharacterOutfitUI('mese', getCharacterOutfit('mese'), false);
+
+ui.toolDefneOutfit?.addEventListener('change', () => {
+  syncCharacterOutfitUI('defne', ui.toolDefneOutfit!.value as FemaleOutfitId, true);
+});
+ui.toolMeseOutfit?.addEventListener('change', () => {
+  syncCharacterOutfitUI('mese', ui.toolMeseOutfit!.value as FemaleOutfitId, true);
+});
+
 ui.safeToggle.addEventListener('change', layout);
 new ResizeObserver(layout).observe(ui.stage);
 
@@ -1511,7 +1581,7 @@ async function handleSaveScenario(titleInput: HTMLInputElement, descInput: HTMLI
       description: desc,
       content: getEditorSource(),
     });
-    showMessages([{ level: 'ok', text: `Senaryo SQLite veritabanına kaydedildi: ${savedItem.title}` }]);
+    showMessages([{ level: 'ok', text: `Senaryo dosyaya kaydedildi: ${savedItem.path ?? savedItem.title}` }]);
     titleInput.value = '';
     descInput.value = '';
     await refreshScenarios();
@@ -1748,11 +1818,9 @@ if (ui.btnSettingsResetSync) {
 if (ui.btnSettingsResetBuiltins) {
   ui.btnSettingsResetBuiltins.addEventListener('click', async () => {
     try {
-      const res = await fetch('/api/scenarios/reset-builtin', { method: 'POST' });
-      if (res.ok) {
-        await refreshScenarios();
-        showMessages([{ level: 'ok', text: 'Yerleşik senaryolar dosyalardan SQLite veritabanına yeniden aktarıldı.' }]);
-      }
+      // Senaryolar her zaman diskten okunur; yenileme listeyi yeniden çeker
+      await refreshScenarios();
+      showMessages([{ level: 'ok', text: 'Senaryo listesi diskteki dosyalardan yeniden okundu.' }]);
     } catch (err) {
       showMessages([{ level: 'error', text: `Yenileme hatası: ${err}` }]);
     }
@@ -1890,6 +1958,16 @@ try {
   /* yok say */
 }
 if (saved) {
+  // Silinen hazır müzik parçalarını (/audio/main-theme/…) isteyen kayıtlı senaryo yordamsal ana temaya geçirilir
+  const migrated = saved.replace(/src:\s*\/audio\/main-theme\/[^\s#]+\.mp3/g, 'src: procedural:main   # yordamsal ana tema (telifsiz)');
+  if (migrated !== saved) {
+    saved = migrated;
+    try {
+      localStorage.setItem(STORAGE_KEY, saved);
+    } catch {
+      /* yok say */
+    }
+  }
   setEditorSource(saved);
   applySource();
 } else {
@@ -1928,5 +2006,8 @@ Object.assign(window, {
     renderTimeline,
     updateTimelinePlayhead,
     seekTo,
+    FEMALE_OUTFITS,
+    getCharacterOutfit,
+    setCharacterOutfit: syncCharacterOutfitUI,
   },
 });

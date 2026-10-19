@@ -16,6 +16,8 @@ public/models/
 # Çalışma anında yazılan veritabanı (senaryo kütüphanesi ve ayarlar)
 scenarios.db
 scenarios.db-*
+settings.db
+settings.db-*
 
 # Büyük ikili dosyalar: kurulumlar, arşivler, dışa aktarılmış videolar, Blender yedekleri
 *.msi

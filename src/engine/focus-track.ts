@@ -46,6 +46,10 @@ export class FocusTrack {
     let sideSum = 0;
     let lineX = 0;
     let lineZ = 0;
+    // Bakış yönü: ağırlık Gauss ile, yön birim vektörlerle ortalanır
+    let viewSum = 0;
+    let viewX = 0;
+    let viewZ = 0;
     for (let i = i0 - ZOOM_RADIUS; i <= i0 + ZOOM_RADIUS; i++) {
       const g = gauss(i * STEP - t, ZOOM_SIGMA);
       zSum += g * this.closedAt(i);
@@ -57,6 +61,11 @@ export class FocusTrack {
         sideSum += g * f.sideWeight;
         lineX += g * f.sideWeight * Math.cos(2 * f.lineAngle);
         lineZ += g * f.sideWeight * Math.sin(2 * f.lineAngle);
+      }
+      if (f?.viewWeight && f.viewAngle !== undefined) {
+        viewSum += g * f.viewWeight;
+        viewX += g * f.viewWeight * Math.sin(f.viewAngle);
+        viewZ += g * f.viewWeight * Math.cos(f.viewAngle);
       }
     }
     const zoomWeight = zSum / zNorm;
@@ -98,6 +107,8 @@ export class FocusTrack {
       elevationOverride: elevation,
       sideWeight: sideSum / zNorm > 1e-3 ? sideSum / zNorm : undefined,
       lineAngle: sideSum > 0 ? Math.atan2(lineZ, lineX) / 2 : undefined,
+      viewWeight: viewSum / zNorm > 1e-3 ? viewSum / zNorm : undefined,
+      viewAngle: viewSum > 0 ? Math.atan2(viewX, viewZ) : undefined,
     };
   }
 

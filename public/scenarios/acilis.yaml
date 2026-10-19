@@ -1,0 +1,271 @@
+# senaryo: Açılış Klibi
+# açıklama: Her bölümün başındaki açılış: orman gezintisi, bekçilerin elementlerini göstererek kendilerini tanıtması.
+# etiketler: açılış, jenerik, orman, bekçiler
+# =============================================================================
+# ORMANIN BEKÇİLERİ — AÇILIŞ KLİBİ (≈56 sn)
+# -----------------------------------------------------------------------------
+# Bir bölümün başına eklemek için o bölümün `film` bölümüne `intro: acilis` yazın; bu klibin sahnesi filmin
+# başına eklenir, bölüm ardından yumuşak bir geçişle başlar. Bu dosya tek başına da açılıp izlenebilir.
+#
+# Kurgu ana temanın ölçülerine oturur (116 BPM, 1 ölçü ≈ 2.07 sn): her kesme ölçü başında, çekimler 2–4 ölçü.
+# Bekçinin hareketi kesmeden hemen önce başlar (hareket üstünde kesme); replik, element yükselirken başlar.
+#
+# Akış:
+#   1. Orman (0.0–20.7 sn, 5 × 2 ölçü): yolda alçaktan takip → gökyüzüne karşı çam tepeleri → büyük çamın
+#      çevresinde dönüş → ormanın üstünde kuş uçuşu → açıklıktaki üç bekçiye iniş.
+#   2. Bekçiler (20.7–39.3 sn, 3 × 3 ölçü): her biri elementinin üstüne çıkarken adını söyler:
+#      Toprak yere dokunur, altından yükselen kaya kulesinden konuşur (kaya_yukselisi);
+#      Defne Northern Soul Spin dönerken hortum oluşturur, hortumun tepesinde konuşur (hortum_gosterisi);
+#      Meşe su toplar, altından kabaran dalganın tepesinde konuşur (dalga_gosterisi).
+#   3. Sevinç (39.3–43.5 sn), koşu (43.5–47.6 sn).
+#   4. Kapanış (47.6–55.9 sn): "Birlikte, Ormanın Bekçileriyiz!", sevinçle zıplarlar, başlık.
+# =============================================================================
+
+imports:
+  animations:
+    idle: models/animations/Neutral Idle.fbx
+    run: models/animations/Running.fbx
+    point: models/animations/Kneeling Pointing.fbx
+    jump_joy: models/animations/Joyful Jump.fbx
+    taunt: models/animations/Taunt.fbx
+    fight_idle: models/animations/Action Idle To Fight Idle.fbx
+
+film:
+  title: acilis
+  look:
+    grade: soft
+  fps: 30
+  fade_in: 0.6
+  fade_out: 1.2
+  handheld: 0.1
+  music:
+    src: procedural:main   # yordamsal ana tema (telifsiz)
+    volume: 0.35
+    ducking: 0.3
+    loop: true
+    fade_in: 0.4
+    fade_out: 1.2
+
+assets:
+  toprak:
+    src: models/characters/main-character/kid.fbx
+    height: 1.4
+    voice: xDppd78rqTGY8ICN7M4n
+    element: toprak
+  defne:
+    src: models/characters/Jackie/character.fbx
+    height: 1.68
+    brightness: 0.3
+    saturation: 0.88
+    voice: KbaseEXyT9EE0CQLEfbB
+    element: hava
+    animations:
+      idle: models/animations/Neutral Idle.fbx   # sakin bekleme (Happy Idle çok sallanıyordu)
+  mese:
+    src: models/characters/Erika/character.fbx
+    height: 1.72
+    voice: KAGDtM2gzDrjWlUp2KNe
+    element: su
+    fill: 0.3
+    face: { mesh: Body_Mesh, seam: 159.0, hinge: [161.5, 0.5], width: 5.3, corner: [2.3, 10.1], front: 11.45 }
+  harita:
+    src: models/maps/dirt-road.glb
+    align: none
+    road: roads/dirt-road.json
+
+scenes:
+  - id: acilis
+    environment:
+      preset: day
+      ground_plane: false
+      fog_near: 120
+      fog_far: 450
+      wind:
+        enabled: true      # salınan ağaçlar ve uçuşan yapraklar
+    props:
+      - asset: harita
+        at: [0, 0, 0]
+        terrain: [Dirt_Road, Dirt_Road_Bare, Dirt_Road_Trails, Road_Edge_Gravel_Dusty, Cobblestone, Grass_Close, Ground_Dirt, Aerial_Grass, Sloped_Rock, Broken_Rocks, Mud_Pile]
+    # Ormanın içindeki açıklık (yolun batı kesimi): bekçiler doğuya, kameranın geldiği yöne bakar
+    characters:
+      - { id: toprak, asset: toprak, at: [21.0, 0, 42.5], facing: 90 }
+      - { id: defne, asset: defne, at: [21.0, 0, 40.7], facing: 90 }
+      # Meşe Toprak'tan 2.5 m uzakta: dalga yanlara 1.6 m uzanıyor
+      - { id: mese, asset: mese, at: [21.0, 0, 45.0], facing: 90 }
+
+    cameras:
+      # 1. Ormanın içinden geçen yol (0.0–4.1 sn): doğudan batıya, yolun üstünde alçaktan takip
+      - at: 0.0
+        duration: 4.14
+        camera:
+          target:
+            - [80.0, 12.5, 39.4]
+            - [67.0, 16.0, 41.1]
+            - [56.0, 17.4, 40.6]
+            - [46.0, 18.8, 40.6]
+          size: { from: 3.4, to: 3.0 }
+          angle: { from: 100, to: 82 }
+          elevation: { from: 9, to: 7 }
+          ease: inOut
+          relative: false
+
+      # 2. Çam tepeleri (4.1–8.3 sn): yoldan yukarıya, gökyüzüne karşı salınan çam tepeleri; yana kayar
+      - at: 4.14
+        duration: 4.14
+        transition: cut
+        camera:
+          target:
+            - [44.0, 24.5, 34.0]
+            - [38.5, 25.0, 34.0]
+          size: { from: 6.5, to: 6.0 }
+          angle: { from: 20, to: 50 }
+          elevation: { from: -26, to: -18 }
+          ease: inOut
+          relative: false
+
+      # 3. Büyük çamın çevresinde (8.3–12.4 sn): gövdeye yakın, alçaktan dönerek; bakış dallara yükselir
+      - at: 8.28
+        duration: 4.14
+        transition: cut
+        camera:
+          target:
+            - [46.4, 20.0, 49.2]
+            - [46.4, 23.0, 49.2]
+          size: { from: 5.5, to: 6.5 }
+          angle: { from: 220, to: 290 }
+          elevation: { from: -6, to: 6 }
+          ease: inOut
+          relative: false
+
+      # 4. Ormanın üstünde kuş uçuşu (12.4–16.6 sn): yüksekten, doğudan açıklığa doğru süzülür ve alçalır
+      - at: 12.41
+        duration: 4.14
+        transition: cut
+        camera:
+          target:
+            - [71.0, 15.0, 36.0]
+            - [56.0, 16.0, 42.5]
+            - [40.0, 16.8, 43.0]
+          size: { from: 26, to: 15 }
+          angle: { from: 118, to: 100 }
+          elevation: { from: 45, to: 32 }
+          ease: in
+          relative: false
+
+      # 5. Açıklığa iniş (16.6–20.7 sn): kuş uçuşunun bittiği açıdan kesintisiz üç bekçiye alçalır
+      - at: 16.55
+        duration: 4.14
+        transition: cut
+        camera:
+          target: [toprak, defne, mese]
+          size: { from: 15.0, to: 3.4 }
+          angle: { from: 100, to: 94 }
+          elevation: { from: 32, to: 10 }
+          ease: out
+          relative: false
+
+      # 6. Toprak (20.7–26.9 sn): kaya onu kaldırırken kamera da yükselir (hedef Toprak), orta plana yaklaşır
+      - at: 20.69
+        duration: 6.21
+        transition: cut
+        camera: { target: toprak, size: { from: 2.8, to: 2.0 }, angle: { from: -14, to: 6 }, elevation: { from: 12, to: 5 }, relative: true, ease: inOut }
+
+      # 7. Defne (26.9–33.1 sn): dönerken altında hortum yükselir; kamera onunla yükselir
+      - at: 26.9
+        duration: 6.21
+        transition: cut
+        camera: { target: defne, size: { from: 2.8, to: 2.4 }, angle: { from: -16, to: -4 }, elevation: { from: 8, to: 5 }, relative: true, ease: inOut }
+
+      # 8. Meşe (33.1–39.3 sn): dalganın tepesinde; yana yakın açıdan, öne kıvrılan dudak okunsun
+      - at: 33.1
+        duration: 6.21
+        transition: cut
+        camera: { target: mese, size: { from: 3.0, to: 2.7 }, angle: { from: -68, to: -58 }, elevation: { from: 18, to: 10 }, relative: true, ease: inOut }
+
+      # 9. Sevinç (39.3–43.5 sn): alçaktan, gökyüzüne karşı, grubun önünde yarım daire çizerek (kahraman çekimi);
+      #    Defne ve Meşe Toprak'ın yanına gelir, kadraj sıkı
+      - at: 39.31
+        duration: 4.14
+        transition: cut
+        camera: { target: [toprak, defne, mese], size: { from: 1.7, to: 2.0 }, angle: { from: 38, to: -30 }, elevation: { from: -6, to: 1 }, relative: true, ease: inOut }
+
+      # 10. Koşu (43.5–47.6 sn): üçü yol boyunca kameraya doğru koşar, kamera önlerinde geri geri gider
+      - at: 43.45
+        duration: 4.14
+        transition: cut
+        camera:
+          target: [toprak, defne, mese]
+          size: { from: 3.0, to: 3.4 }
+          angle: { from: 96, to: 86 }
+          elevation: { from: 6, to: 8 }
+          ease: inOut
+          relative: false
+
+      # 11. Kapanış (47.6–55.9 sn): üçü bir arada, kamera geri ve yukarı açılır
+      - at: 47.59
+        duration: 8.28
+        transition: cut
+        camera:
+          target: [toprak, defne, mese]
+          size: { from: 2.4, to: 3.4 }
+          angle: { from: 8, to: -6 }
+          elevation: { from: 6, to: 11 }
+          relative: true
+          ease: inOut
+
+    overlays:
+      - { type: lower_third, at: 22.0, duration: 3.9, name: "TOPRAK", role: "Toprak Elementi · Meraklı Kaşif", tag: "Toprak bizi her zaman korur!", accent: "#16a34a", align: left }
+      - { type: lower_third, at: 28.8, duration: 2.6, name: "DEFNE", role: "Hava Elementi · Ormanın Gözcüsü", tag: "Rüzgâr benim kanadım!", accent: "#db2777", align: right }
+      - { type: lower_third, at: 34.35, duration: 2.7, name: "MEŞE", role: "Su Elementi · Ormanın Bilgesi", tag: "Su her zaman yolunu bulur!", accent: "#0284c7", align: left }
+      - type: title_card
+        at: 51.49
+        duration: 4.32
+        badge: "AÇILIŞ"
+        title: "ORMANIN BEKÇİLERİ"
+        subtitle: "Toprak · Hava · Su — Ormanı birlikte koruyoruz!"
+        accent: "#16a34a"
+        position: top
+
+    actions:
+      # Toprak: kollarını gerip yere dokunur; kaya yükselirken kameraya döner ve kendini tanıtır
+      - { who: toprak, do: ability, name: kaya_yukselisi, at: 20.75 }
+      - { who: toprak, do: look_at, target: camera, at: 21.75, duration: 5.15 }
+      - { who: toprak, do: talk, at: 21.95, duration: 3.95, text: "Ben Toprak! Toprak bizi her zaman korur!", audio: audio/acilis/toprak_acilis.mp3 }
+
+      # Defne: dönüş kesmeden hemen önce başlar; altında hortum yükselirken kendini tanıtır
+      - { who: defne, do: ability, name: hortum_gosterisi, at: 26.75 }
+      - { who: defne, do: clip, name: fight_idle, at: 29.35, duration: 3.75, loop: true, fade: 0.3 }
+      - { who: defne, do: look_at, target: camera, at: 28.55, duration: 4.55 }
+      - { who: defne, do: talk, at: 28.75, duration: 1.88, text: "Ben Defne! Rüzgâr benim kanadım!", audio: audio/acilis/defne_acilis.mp3 }
+
+      # Meşe: el kaldırıp su toplar; altından kabaran dalganın tepesinde kendini tanıtır
+      - { who: mese, do: ability, name: dalga_gosterisi, at: 33.0 }
+      - { who: mese, do: look_at, target: camera, at: 34.0, duration: 5.31 }
+      - { who: mese, do: talk, at: 34.3, duration: 2.69, text: "Ben Meşe! Su her zaman yolunu bulur!", audio: audio/acilis/mese_acilis.mp3 }
+
+      # Sevinç: Defne ve Meşe Toprak'ın yanına koşar (gösterilerden sonra aralarında 4 m vardı), Defne gururla poz
+      # verir, Toprak ve Meşe zıplar
+      - { who: defne, do: walk_to, to: [21.4, 41.5], speed: 2.2, clip: run, at: 39.31 }
+      - { who: mese, do: walk_to, to: [21.4, 43.6], speed: 2.2, clip: run, at: 39.31 }
+      - { who: defne, do: turn, to: 90, at: 39.75, duration: 0.3 }
+      - { who: mese, do: turn, to: 90, at: 40.0, duration: 0.3 }
+      - { who: toprak, do: look_at, target: camera, at: 39.31, duration: 4.14 }
+      - { who: defne, do: look_at, target: camera, at: 39.8, duration: 3.65 }
+      - { who: mese, do: look_at, target: camera, at: 40.05, duration: 3.4 }
+      - { who: toprak, do: clip, name: jump_joy, at: 39.41, duration: 3.6, loop: true, fade: 0.3 }
+      - { who: defne, do: clip, name: taunt, at: 39.85, duration: 3.5, loop: true, fade: 0.3 }
+      - { who: mese, do: clip, name: jump_joy, at: 40.1, duration: 3.2, loop: true, fade: 0.3 }
+
+      # Koşu: yol boyunca doğuya, kameraya doğru
+      - { who: toprak, do: walk_to, to: [31.0, 42.3], speed: 2.6, clip: run, at: 43.5 }
+      - { who: defne, do: walk_to, to: [32.0, 40.8], speed: 2.6, clip: run, at: 43.55 }
+      - { who: mese, do: walk_to, to: [32.0, 44.0], speed: 2.6, clip: run, at: 43.6 }
+
+      # Kapanış: üçü kameraya bakar, Toprak hepsi adına söyler, sonra sevinçle zıplarlar
+      - { who: toprak, do: look_at, target: camera, at: 47.59, duration: 8.27 }
+      - { who: defne, do: look_at, target: camera, at: 47.59, duration: 8.27 }
+      - { who: mese, do: look_at, target: camera, at: 47.59, duration: 8.27 }
+      - { who: toprak, do: talk, at: 47.89, duration: 3.62, text: "Birlikte, Ormanın Bekçileriyiz! Haydi maceraya!", audio: audio/bolum-1-ormanin-bekcileri/toprak_shot4_4.mp3 }
+      - { who: toprak, do: clip, name: jump_joy, at: 51.59, duration: 2.6, loop: true, fade: 0.3 }
+      - { who: defne, do: clip, name: jump_joy, at: 51.59, duration: 2.6, loop: true, fade: 0.3 }
+      - { who: mese, do: clip, name: jump_joy, at: 51.69, duration: 2.5, loop: true, fade: 0.3 }

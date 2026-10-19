@@ -7,11 +7,13 @@
 # Alanlar:
 #   title         Ekranda görünen ad
 #   aliases       Senaryoda aynı yeteneği çağıran diğer adlar
-#   effect        Görsel efekt: fire | tornado | rain | shadow | tree_fall | earth (kodu src/engine/ability-fx/)
+#   effect        Görsel efekt: fire | tornado | rain | shadow | tree_fall | tree_lift | earth, element gösterileri
+#                 whirl | rock_rise | wave (kodu src/engine/ability-fx/)
 #   element       ates | su | toprak | hava (golge: elementsiz eski yetenekler). Karakter varlığında `element`
 #                 tanımlıysa ve yeteneğinkiyle uyuşmuyorsa yüklemede uyarı verilir.
 #                 Ormanın Bekçileri: Karabey ateş, Meşe su, Toprak toprak, Defne hava.
-#   target        character (varsayılan) | map_tree (haritadaki Realistic_Pine_* ağacı; hedef karakter gerekmez)
+#   target        character (varsayılan) | map_tree (haritadaki Realistic_Pine_* ağacı; hedef karakter gerekmez) |
+#                 self (hedefsiz element gösterisi: efekt kullananın çevresinde; savrulma, vuruş hissi, savaş müziği yok)
 #   icon          HUD ikonu (src/ui/ability-icons.ts içindeki anahtar); verilmezse yeteneğin kendi adı
 #   clips         Kullananın sırayla oynattığı klipler:
 #                   name      klip adı
@@ -22,7 +24,7 @@
 #   release       Efektin hedefe fırladığı an: { clip: <klip adı>, at: <o klibin başından saniye> }
 #   flight        Fırlatmadan isabete uçuş süresi (sn)
 #   linger        İsabetten sonra efektin sönmesi (sn)
-#   knockback     Hedefin savrulması: arc = en çok yay yüksekliği (m; asıl yükseklik mesafeyle ölçeklenir),
+#   knockback     (self'te gerekmez) Hedefin savrulması: arc = en çok yay yüksekliği (m; asıl yükseklik mesafeyle ölçeklenir),
 #                 duration = savrulma süresi (sn). Mesafeyi senaryo verir (knockback: 0.4).
 #   impact_clip   Hedefin varsayılan tepki klibi (senaryoda impact_clip ile ezilir)
 #   target_clips  Hedefe ayrıca yüklenecek tepki klipleri
@@ -33,7 +35,9 @@
 
 # --- ATEŞ ---------------------------------------------------------------------
 
-# Karabey: büyü toplar (casting), kılıcıyla saldırırken ateş topunu fırlatır. Çoklu hedefte her hedefe bir top.
+# Karabey: büyü toplar (casting; alev havaya kaldırdığı sağ elinde büyür), kılıcıyla saldırırken sağ eli en öne
+# uzandığı an (attack_2'nin 0.55. sn'si, el ~8 m/sn) ateş topunu elinden fırlatır. Çoklu hedefte tek top toplanır,
+# fırlatmada her hedefe bir alev dağılır.
 alev_buyusu:
   title: Alev Büyüsü
   aliases: [ates_buyusu, ates_firtinasi, fire_spell]
@@ -43,7 +47,7 @@ alev_buyusu:
   clips:
     - { name: casting, duration: 1.30 }
     - { name: attack_2 }
-  release: { clip: attack_2, at: 0.82 }
+  release: { clip: attack_2, at: 0.55 }
   flight: 0.62
   linger: 1.30
   knockback: { arc: 1.0, duration: 0.85 }
@@ -173,6 +177,24 @@ karanlik_buyu:
 
 # Karabey: güç toplar, kızgın yatay kılıç darbesiyle haritadaki çamı keser (release = kesik); ağaç devrilip
 # yere çarpar (isabet). Kesik, devrilme ve sürüklenme efekti kesik anına göre zamanlanır.
+# Defne: Karabey'in devirdiği ağacı rüzgârla kaldırıp kütüğüne geri diker (hasar vermez). Superhuman Choke Lift:
+# kolunu ağaca uzatırken rüzgâr toplanır, "yakaladığı" an (1.3 sn) ağaç havalanır, kol kalkarken havada dikilir,
+# kol indiğinde (≈3.85 sn) kütüğüne oturur ve kesik kaynaşır.
+# Hedef verilmezse kullanana en yakın devrik ağaç dikilir.
+agac_dikme:
+  title: Ağaç Dikme
+  aliases: [agac_kaldirma, agac_duzeltme, tree_lift, tree_raise]
+  effect: tree_lift
+  element: hava
+  target: map_tree
+  clips:
+    - { name: choke_lift, duration: 4.30 }
+  release: { clip: choke_lift, at: 1.30 }
+  flight: 2.55
+  linger: 1.40
+  knockback: { arc: 0.0, duration: 0.5 }
+  impact_clip: fall_flat
+
 agac_devirme:
   title: Ağaç Devirme
   aliases: [tree_fall]
@@ -188,3 +210,54 @@ agac_devirme:
   knockback: { arc: 0.95, duration: 0.85 }
   impact_clip: fall_flat
   target_clips: [fall_flat, dodge_back]
+
+# --- ELEMENT GÖSTERİLERİ (açılış klibi; hedefsiz) ----------------------------------------------------------
+# Bekçiler kendini tanıtırken elementini gösterir. Gösteri chargeEnd'de (release) doğar, impactOffset'te tam boyuna
+# ulaşır, linger boyunca (replik süresince) durur ve son saniyelerde söner.
+
+# Defne: Northern Soul Spin dönerken (dönüşün ilk 2.6 sn'si) ayağının dibinde rüzgâr toplanır; 1.4. sn'de (release)
+# altında kısa bir hortum (saldırı hortumunun ~%25'i, 0.85 m) yükselip onu dönerken kaldırır; tepesinde konuşur, sonda
+# iner ve hortum dağılır. Hazırlık kısa: açılışta replik yükseliş biter bitmez başlar.
+hortum_gosterisi:
+  title: Rüzgâr Hortumu
+  aliases: [whirl_show]
+  effect: whirl
+  element: hava
+  target: self
+  icon: ruzgar_hortumu
+  clips:
+    - { name: northern_soul_spin, duration: 2.60 }
+  release: { clip: northern_soul_spin, at: 1.40 }
+  flight: 0.80
+  linger: 3.75
+
+# Toprak: kısaca kollarını gerer, diz çöküp yere dokunur (release); altından düz tepeli kaya sütunu yükselip onu
+# ~0.9 m kaldırır, çevresinde kaya dikenler fışkırır. Kaya yükselirken konuşmaya başlar; son 1.1 sn'de kaya batar.
+kaya_yukselisi:
+  title: Kaya Kulesi
+  aliases: [rock_rise_show]
+  effect: rock_rise
+  element: toprak
+  target: self
+  icon: yer_dikeni
+  clips:
+    - { name: stretch, duration: 0.6 }
+    - { name: point, duration: 1.5, fade: 0.2 }
+  release: { clip: point, at: 0.30 }
+  flight: 0.80
+  linger: 4.85
+
+# Meşe: elini kaldırıp su toplar (ayağının çevresinde su halkası, yükselen damlalar); altından dalga kabarıp onu
+# tepesinde 1.25 m kaldırır, köpüklü dudağı önünde kıvrılır; o konuşurken akar, son 1.4 sn'de çöker ve Meşe iner.
+dalga_gosterisi:
+  title: Su Dalgası
+  aliases: [wave_show]
+  effect: wave
+  element: su
+  target: self
+  icon: firtina_oku
+  clips:
+    - { name: casting, duration: 1.40 }
+  release: { clip: casting, at: 0.80 }
+  flight: 0.80
+  linger: 3.90

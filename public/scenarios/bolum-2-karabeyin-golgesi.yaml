@@ -6,9 +6,11 @@
 # Akış Planı:
 #   1. Giriş Sahnesi (0.0s - 10.0s): Orman Bekçileri patikada ilerler, Karabey pusudan çıkar.
 #   2. Karşılıklı Konuşma ve Meydan Okuma (10.0s - 31.0s): Savaş öncesi diyaloglar (Karabey, Toprak, Defne, Meşe).
-#   3. Uzun Soluklu Kesintisiz Sıralı Savaş (31.0s - 76.0s): Karakterler hiç beklemeden,
-#      bir yetenek biter bitmez maksimum 0.6 - 0.8 saniye (< 1 sn) arayla sırayla 14 yetenek kullanır!
-#   4. Zafer Kutlaması (76.0s - 88.0s): Capoeira (yalnızca dans kategorisinde), Hip-Hop ve Grup Dansı.
+#   3. Uzun Soluklu Kesintisiz Sıralı Savaş (31.0s - 82.4s): Karakterler hiç beklemeden,
+#      bir yetenek biter bitmez maksimum 0.6 - 0.8 saniye (< 1 sn) arayla sırayla 16 yetenek kullanır!
+#      Karabey iki kez çam devirip devrik ağacın içinden saldırır; her seferinde Defne ağacı rüzgârla yeniden
+#      diker (Karabey açığa çıkar) ve hemen hortumla saldırır.
+#   4. Zafer Kutlaması (82.4s - 94.4s): Capoeira, Hip-Hop, Breakdance, Flair ve Grup Dansı.
 # =============================================================================
 
 imports:
@@ -43,6 +45,7 @@ imports:
 
 film:
   title: bolum-2-karabeyin-golgesi
+  intro: acilis        # açılış klibi (public/scenarios/acilis.yaml) bölümün başına eklenir
   look:
     grade: battle      # savaş: sıcak, kontrastlı, vinyet
   fps: 30
@@ -50,7 +53,7 @@ film:
   fade_out: 1.5
   handheld: 0.16
   music:
-    src: /audio/main-theme/jyproject-carousel-dreams-396029.mp3
+    src: procedural:main   # yordamsal ana tema (telifsiz)
     volume: 0.35
     ducking: 0.25
     loop: true
@@ -68,10 +71,10 @@ assets:
     height: 1.68
     brightness: 0.3    # pastel dokusu aynı ışıkta diğerlerinden fırlıyordu
     saturation: 0.88
-    voice: o9DOmAyPjfFu8AfoFAnM
+    voice: KbaseEXyT9EE0CQLEfbB
     element: hava
     animations:
-      idle: models/animations/Happy Idle.fbx   # neşeli, çevik bekleme (kişilik)
+      idle: models/animations/Neutral Idle.fbx   # sakin bekleme (Happy Idle çok sallanıyordu)
   mese:
     src: models/characters/Erika/character.fbx
     height: 1.72
@@ -198,11 +201,11 @@ scenes:
           ease: inOut
           relative: true
 
-      # Kamera 4 (31.0s - 76.0s): SAVAŞ SAHNESİ (45.0 Saniye)
+      # Kamera 4 (31.0s - 82.4s): SAVAŞ SAHNESİ (51.4 Saniye)
       # Ana kamera savaş alanını ve yetenek kullananları yumuşak geçişlerle takip eder; her isabetten hemen
       # sonra vurulanın ~1 sn'lik yakın planına kesilir (coverage: fight), sonra ana kameraya dönülür.
       - at: 31.0
-        duration: 45.0
+        duration: 51.4
         transition: cut
         coverage: fight
         camera:
@@ -223,8 +226,8 @@ scenes:
           ease: inOut
           relative: false
 
-      # Kamera 5 (76.0s - 88.0s): BÜYÜK ZAFER KUTLAMASI — Capoeira, Breakdance, Hip-Hop ve Grup Dansı
-      - at: 76.0
+      # Kamera 5 (82.4s - 94.4s): BÜYÜK ZAFER KUTLAMASI — Capoeira, Hip-Hop, Breakdance ve Grup Dansı
+      - at: 82.4
         duration: 12.0
         transition: iris
         camera:
@@ -302,7 +305,7 @@ scenes:
         position: top-right
 
       - type: comic_pop
-        at: 46.3
+        at: 50.5
         duration: 4.5
         text: "TOPRAK VE HAVA ZİNCİRİ!"
         subtext: "YER DİKENLERİNİN ARDINDAN ANINDA HORTUM!"
@@ -310,7 +313,7 @@ scenes:
         position: top-left
 
       - type: comic_pop
-        at: 67.6
+        at: 75.6
         duration: 5.0
         text: "FİNAL ELEMENT KOMBOSU!"
         subtext: "SAĞANAK OKU VE YER DİKENLERİ!"
@@ -318,7 +321,7 @@ scenes:
         position: top-center
 
       - type: comic_pop
-        at: 76.4
+        at: 82.8
         duration: 10.5
         text: "BÜYÜK ZAFER DANSI!"
         subtext: "CAPOEIRA VE HIP-HOP KUTLAMASI!"
@@ -475,46 +478,22 @@ scenes:
         audio: audio/bolum-1-ormanin-bekcileri/mese_shot3_4.mp3
 
       # -----------------------------------------------------------------------
-      # 3. TEK SAHNELİ KESİNTİSİZ SIRALI SAVAŞ (31.0s - 76.0s)
+      # 3. TEK SAHNELİ KESİNTİSİZ SIRALI SAVAŞ (31.0s - 82.4s)
       # Savaş boyunca hiçbir kesme veya karakter ışınlanması olmaz; her yetenek
       # biter bitmez maksimum 0.55s - 0.70s (< 1.0 sn) içinde sıradaki yetenek başlar!
       # -----------------------------------------------------------------------
 
-      # 1. Hamle (31.2s): Karabey Ağaç Devirme — Haritadaki çam ağacını (Realistic_Pine_057) kesip devirir (hasar vermez, ağaç yerde kalır)
+      # Her devirmede aynı taktik: Karabey çamı devirip devrik ağacın içine siper alır ve içinden saldırır;
+      # Defne ağacı rüzgârla kaldırıp kütüğüne geri diker (Karabey açığa çıkar) ve hemen saldırır.
+
+      # 1. Hamle (31.2s): Karabey Ağaç Devirme — çam (Realistic_Pine_057) yanına devrilir, Karabey dallarının içinde kalır (vuruş: 33.58s)
       - who: karabey
         do: ability
         name: agac_devirme
         target: Realistic_Pine_057
         at: 31.2
 
-      # 2. Hamle (34.6s — 0.58s sonra): Toprak Yer Dikenleri (vuruş: 36.70s)
-      - who: toprak
-        do: ability
-        name: yer_dikeni
-        target: karabey
-        at: 34.6
-        knockback: 0.35
-        impact_clip: impact_3
-
-      # 3. Hamle (36.8s — Toprak'tan 0.70s sonra): Defne Rüzgar Hortumu (Hurricane Kick ile içinde oluşur, vuruş: 39.85s)
-      - who: defne
-        do: ability
-        name: ruzgar_hortumu
-        target: karabey
-        at: 36.8
-        knockback: 0.40
-        impact_clip: impact_2
-
-      # 4. Hamle (40.5s — Defne'den 0.65s sonra): Meşe (Erika) Sağanak Oku (sol elden 42.65s'de çıkar, 43.30s'de çarpınca sağanak yağar)
-      - who: mese
-        do: ability
-        name: firtina_oku
-        target: karabey
-        at: 40.5
-        knockback: 0.35
-        impact_clip: impact_3
-
-      # 5. Hamle (43.9s — Meşe'den 0.60s sonra): Karabey Alev Büyüsü — Üç hedefe de aynı anda ateş topu (vuruş: 46.64s)
+      # 2. Hamle (34.6s — ağaç yere oturunca): Karabey devrik çamın içinden Alev Büyüsü — üç hedefe ateş topu (vuruş: 37.34s)
       - who: karabey
         do: ability
         name: alev_buyusu
@@ -522,63 +501,70 @@ scenes:
           - toprak
           - defne
           - mese
-        at: 43.9
+        at: 34.6
         knockback: 0.25
         impact_clip: dodge_back
 
-      # 6. Hamle (47.2s — Karabey'den 0.56s sonra): Toprak Yer Dikenleri (vuruş: 49.30s)
-      - who: toprak
+      # 3. Hamle (38.3s — Defne ateşten sıyrılınca): Defne Ağaç Dikme — çamı kaldırır (yakalama 39.6s), kütüğüne diker (42.15s); Karabey açığa çıkar
+      - who: defne
         do: ability
-        name: yer_dikeni
-        target: karabey
-        at: 47.2
-        knockback: 0.40
-        impact_clip: impact_3
+        name: agac_dikme
+        target: Realistic_Pine_057
+        at: 38.3
 
-      # 7. Hamle (49.8s — Toprak'tan sonra): Defne Rüzgar Hortumu (vuruş: 52.85s)
+      # 4. Hamle (42.7s — ağaç oturur oturmaz): Defne Rüzgar Hortumu (vuruş: 45.75s)
       - who: defne
         do: ability
         name: ruzgar_hortumu
         target: karabey
-        at: 49.8
+        at: 42.7
         knockback: 0.40
         impact_clip: impact_2
 
-      # 8. Hamle (53.4s — Defne'den 0.55s sonra): Karabey Ağaç Devirme — Haritadaki ikinci çam ağacını (Realistic_Pine_022) kesip devirir (hasar vermez, ağaç yerde kalır)
+      # 5. Hamle (45.8s — hortum çarparken): Toprak Yer Dikenleri (vuruş: 47.90s)
+      - who: toprak
+        do: ability
+        name: yer_dikeni
+        target: karabey
+        at: 45.8
+        knockback: 0.35
+        impact_clip: impact_3
+
+      # 6. Hamle (48.0s — Toprak'tan hemen sonra): Meşe (Erika) Sağanak Oku (sol elden 50.15s'de çıkar, 50.80s'de çarpınca sağanak yağar)
+      - who: mese
+        do: ability
+        name: firtina_oku
+        target: karabey
+        at: 48.0
+        knockback: 0.35
+        impact_clip: impact_3
+
+      # 7. Hamle (50.9s — ok çarpar çarpmaz): Toprak Yer Dikenleri (vuruş: 53.00s)
+      - who: toprak
+        do: ability
+        name: yer_dikeni
+        target: karabey
+        at: 50.9
+        knockback: 0.40
+        impact_clip: impact_3
+
+      # 8. Hamle (53.1s — dikenlerin ardından anında): Defne Rüzgar Hortumu (vuruş: 56.15s)
+      - who: defne
+        do: ability
+        name: ruzgar_hortumu
+        target: karabey
+        at: 53.1
+        knockback: 0.40
+        impact_clip: impact_2
+
+      # 9. Hamle (56.2s — hortum çarparken): Karabey Ağaç Devirme — ikinci çam (Realistic_Pine_022) yanına devrilir, yine içine siper alır (vuruş: 58.58s)
       - who: karabey
         do: ability
         name: agac_devirme
         target: Realistic_Pine_022
-        at: 53.4
+        at: 56.2
 
-      # 9. Hamle (56.8s — Karabey'den 0.58s sonra): Meşe (Erika) Sağanak Oku (sol elden 58.95s'de çıkar, 59.60s'de çarpınca sağanak yağar)
-      - who: mese
-        do: ability
-        name: firtina_oku
-        target: karabey
-        at: 56.8
-        knockback: 0.35
-        impact_clip: impact_3
-
-      # 10. Hamle (60.2s — Meşe'den 0.60s sonra): Toprak Yer Dikenleri (vuruş: 62.30s)
-      - who: toprak
-        do: ability
-        name: yer_dikeni
-        target: karabey
-        at: 60.2
-        knockback: 0.40
-        impact_clip: impact_3
-
-      # 11. Hamle (62.3s — Toprak'tan 0.60s sonra): Defne Rüzgar Hortumu (vuruş: 65.35s)
-      - who: defne
-        do: ability
-        name: ruzgar_hortumu
-        target: karabey
-        at: 62.3
-        knockback: 0.45
-        impact_clip: impact_2
-
-      # 12. Hamle (65.9s — Defne'den 0.55s sonra): Karabey Alev Büyüsü — Üç hedefe de aynı anda ateş topu (vuruş: 68.64s)
+      # 10. Hamle (59.7s — ağaç yere oturunca): Karabey devrik çamın içinden Alev Büyüsü (vuruş: 62.44s)
       - who: karabey
         do: ability
         name: alev_buyusu
@@ -586,25 +572,59 @@ scenes:
           - toprak
           - defne
           - mese
-        at: 65.9
+        at: 59.7
         knockback: 0.25
         impact_clip: dodge_back
 
-      # 13. Hamle (69.2s — Karabey'den 0.56s sonra): Meşe (Erika) Sağanak Oku (sol elden 71.35s'de çıkar, 72.00s'de çarpınca sağanak yağar)
+      # 11. Hamle (63.4s — Defne ateşten sıyrılınca): Defne Ağaç Dikme — ikinci çamı kaldırır (yakalama 64.7s), kütüğüne diker (67.25s)
+      - who: defne
+        do: ability
+        name: agac_dikme
+        target: Realistic_Pine_022
+        at: 63.4
+
+      # 12. Hamle (67.8s — ağaç oturur oturmaz): Defne Rüzgar Hortumu (vuruş: 70.85s)
+      - who: defne
+        do: ability
+        name: ruzgar_hortumu
+        target: karabey
+        at: 67.8
+        knockback: 0.45
+        impact_clip: impact_2
+
+      # 13. Hamle (70.9s — hortum çarparken): Meşe (Erika) Sağanak Oku (sol elden 73.05s'de çıkar, 73.70s'de çarpınca sağanak yağar)
       - who: mese
         do: ability
         name: firtina_oku
         target: karabey
-        at: 69.2
-        knockback: 0.40
+        at: 70.9
+        knockback: 0.35
         impact_clip: impact_3
 
-      # 14. Hamle — BÜYÜK FİNAL (72.5s — Meşe'den 0.50s sonra): Toprak Yer Dikenleri ile Karabey'i yere serer (vuruş: 74.60s)
+      # 14. Hamle (73.8s — ok çarpar çarpmaz): Toprak Yer Dikenleri (vuruş: 75.90s)
       - who: toprak
         do: ability
         name: yer_dikeni
         target: karabey
-        at: 72.5
+        at: 73.8
+        knockback: 0.40
+        impact_clip: impact_3
+
+      # 15. Hamle (76.0s — dikenlerin ardından): Meşe (Erika) Sağanak Oku (sol elden 78.15s'de çıkar, 78.80s'de çarpınca sağanak yağar)
+      - who: mese
+        do: ability
+        name: firtina_oku
+        target: karabey
+        at: 76.0
+        knockback: 0.40
+        impact_clip: impact_3
+
+      # 16. Hamle — BÜYÜK FİNAL (78.9s — ok çarpar çarpmaz): Toprak Yer Dikenleri ile Karabey'i yere serer (vuruş: 81.00s)
+      - who: toprak
+        do: ability
+        name: yer_dikeni
+        target: karabey
+        at: 78.9
         knockback: 2.8
         impact_clip: death
 
@@ -612,7 +632,7 @@ scenes:
       - who: karabey
         do: clip
         name: crouch_to_stand
-        at: 75.4
+        at: 81.8
         duration: 1.1
         loop: false
         fade: 0.25
@@ -623,65 +643,65 @@ scenes:
           - [1.5, 42.5]
         speed: 3.1
         clip: run_2
-        at: 76.5
+        at: 82.9
 
       # -----------------------------------------------------------------------
-      # 4. BÜYÜK ZAFER KUTLAMASI (76.0s - 88.0s): Capoeira, Hip-Hop, Breakdance ve Grup Dansı
+      # 4. BÜYÜK ZAFER KUTLAMASI (82.4s - 94.4s): Capoeira, Hip-Hop, Breakdance ve Grup Dansı
       # -----------------------------------------------------------------------
       - who: toprak
         do: walk_to
         to: [14.5, 42.5]
         speed: 2.1
         clip: run
-        at: 76.0
+        at: 82.4
       - who: defne
         do: walk_to
         to: [15.2, 40.9]
         speed: 2.1
         clip: run
-        at: 76.1
+        at: 82.5
       - who: mese
         do: walk_to
         to: [15.2, 44.1]
         speed: 2.0
         clip: jog
-        at: 76.2
+        at: 82.6
 
       - who: toprak
         do: turn
         to: 90
-        at: 77.2
+        at: 83.6
         duration: 0.4
       - who: defne
         do: turn
         to: 90
-        at: 77.2
+        at: 83.6
         duration: 0.4
       - who: mese
         do: turn
         to: 90
-        at: 77.2
+        at: 83.6
         duration: 0.4
 
       # Zafer Dansı 1: Toprak Capoeira şovu (yalnızca dans kategorisinde), Defne Hip-Hop, Meşe Neşeli Zıplama
       - who: toprak
         do: clip
         name: capoeira
-        at: 77.6
+        at: 84.0
         duration: 3.6
         loop: true
         fade: 0.35
       - who: defne
         do: clip
         name: hip_hop
-        at: 77.6
+        at: 84.0
         duration: 3.6
         loop: true
         fade: 0.35
       - who: mese
         do: clip
         name: jump_joy
-        at: 77.6
+        at: 84.0
         duration: 3.6
         loop: true
         fade: 0.35
@@ -690,21 +710,21 @@ scenes:
       - who: toprak
         do: clip
         name: breakdance
-        at: 81.2
+        at: 87.6
         duration: 3.4
         loop: true
         fade: 0.35
       - who: defne
         do: clip
         name: flair
-        at: 81.2
+        at: 87.6
         duration: 3.4
         loop: true
         fade: 0.35
       - who: mese
         do: clip
         name: singing
-        at: 81.2
+        at: 87.6
         duration: 3.4
         loop: true
         fade: 0.35
@@ -713,21 +733,21 @@ scenes:
       - who: toprak
         do: clip
         name: dance
-        at: 84.6
+        at: 91.0
         duration: 3.4
         loop: true
         fade: 0.35
       - who: defne
         do: clip
         name: dance
-        at: 84.6
+        at: 91.0
         duration: 3.4
         loop: true
         fade: 0.35
       - who: mese
         do: clip
         name: dance
-        at: 84.6
+        at: 91.0
         duration: 3.4
         loop: true
         fade: 0.35

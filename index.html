@@ -18,7 +18,7 @@
             <svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             <span>Senaryo</span>
           </button>
-          <button class="toolbox-tab" data-tab="scenarios" id="tab-scenarios" title="Senaryolar Kütüphanesi (SQLite)">
+          <button class="toolbox-tab" data-tab="scenarios" id="tab-scenarios" title="Senaryolar Kütüphanesi (public/scenarios)">
             <svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
             <span>Senaryolar</span>
           </button>
@@ -39,7 +39,7 @@
         <!-- PANEL 1: SENARYO EDİTÖRÜ -->
         <div class="toolbox-panel active" id="panel-scenario">
           <header class="bar" id="editor-bar">
-            <button id="btn-save-scenario" class="btn has-icon" title="Mevcut senaryoyu SQLite veritabanına kaydet">
+            <button id="btn-save-scenario" class="btn has-icon" title="Mevcut senaryoyu dosya olarak kaydet (public/scenarios/ozel)">
               <svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
               <span>Kaydet</span>
             </button>
@@ -66,7 +66,7 @@
             <div class="toolbox-header-title">
               <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
               <strong>Senaryolar Kütüphanesi</strong>
-              <span class="badge sqlite">SQLite</span>
+              <span class="badge sqlite">Dosya</span>
             </div>
             <button id="toolbox-btn-reload-scenarios" class="btn icon" title="Senaryoları Yenile">
               <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
@@ -78,7 +78,7 @@
             <div class="filter-pills" id="toolbox-filter-pills">
               <button class="pill active" data-filter="all">Tümü</button>
               <button class="pill" data-filter="builtin">Bölümler</button>
-              <button class="pill" data-filter="custom">Özel (SQLite)</button>
+              <button class="pill" data-filter="custom">Özel</button>
             </div>
           </div>
 
@@ -87,7 +87,7 @@
           <div class="toolbox-save-footer">
             <strong style="display: flex; align-items: center; gap: 6px;">
               <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-              Editördeki Kodu SQLite'a Kaydet
+              Editördeki Kodu Dosyaya Kaydet
             </strong>
             <div class="save-inputs">
               <input id="toolbox-save-title" type="text" placeholder="Yeni Senaryo Başlığı" />
@@ -122,10 +122,7 @@
               <div class="setting-field">
                 <label for="music-track-select">Müzik Parçası:</label>
                 <select id="music-track-select" class="select-music-track">
-                  <option value="/audio/main-theme/jyproject-carousel-dreams-396029.mp3">Carousel Dreams (Atlıkarınca Düşleri - Ana Tema)</option>
-                  <option value="/audio/main-theme/audiocoffee-kid-131153.mp3">Kid Playful (Neşeli Çocuk Teması)</option>
-                  <option value="/audio/main-theme/litesaturation-funny-music-kid-525452.mp3">Funny Cartoons (Çizgi Film Komedi)</option>
-                  <option value="/audio/main-theme/serenomusic-vlog-funny-613872.mp3">Vlog Fun (Neşeli & Komik Günlük)</option>
+                  <option value="procedural:main">Orman Bekçileri Ana Teması (yordamsal, telifsiz)</option>
                 </select>
               </div>
 
@@ -345,13 +342,13 @@
                 <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
                 <div class="settings-section-title">
                   <strong>SQLite Veritabanı Durumu</strong>
-                  <span class="settings-storage-hint">scenarios.db</span>
+                  <span class="settings-storage-hint">settings.db (yalnızca ayarlar)</span>
                 </div>
               </div>
               <div class="db-info-list">
                 <div class="db-info-item">
                   <span class="muted">Dosya Yolu:</span>
-                  <span class="mono">scenarios.db</span>
+                  <span class="mono">settings.db</span>
                 </div>
                 <div class="db-info-item">
                   <span class="muted">Motor:</span>
@@ -359,13 +356,13 @@
                 </div>
                 <div class="db-info-item">
                   <span class="muted">Kayıtlı Tablolar:</span>
-                  <span class="mono">scenarios, settings</span>
+                  <span class="mono">settings (senaryolar: public/scenarios/*.yaml)</span>
                 </div>
               </div>
               <div class="setting-actions">
-                <button id="btn-settings-reset-builtins" class="btn" title="Yerleşik senaryoları dosyadan veritabanına yeniden yükle">
+                <button id="btn-settings-reset-builtins" class="btn" title="Senaryo listesini diskteki dosyalardan yeniden oku">
                   <svg class="icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                  <span>Yerleşik Senaryoları Yeniden Yükle</span>
+                  <span>Senaryo Listesini Yenile</span>
                 </button>
               </div>
             </div>
@@ -427,6 +424,25 @@
               </div>
             </div>
 
+            <!-- Ortak Kadın Karakter Kıyafet Sistemi (Defne & Meşe) -->
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>
+                <div class="settings-section-title">
+                  <strong>Kadın Karakter Kıyafet Sistemi</strong>
+                  <span class="settings-storage-hint">Defne & Meşe Ortak Kostüm Havuzu</span>
+                </div>
+              </div>
+              <div class="setting-field">
+                <label for="tool-defne-outfit">Defne (Hava) Kostümü:</label>
+                <select id="tool-defne-outfit" class="select-music-track" title="Defne'nin sahnedeki kostümünü seçin"></select>
+              </div>
+              <div class="setting-field">
+                <label for="tool-mese-outfit">Meşe (Su) Kostümü:</label>
+                <select id="tool-mese-outfit" class="select-music-track" title="Meşe'nin sahnedeki kostümünü seçin"></select>
+              </div>
+            </div>
+
             <!-- Görünüm Modu Araçları -->
             <div class="settings-section">
               <div class="settings-section-header">
@@ -447,14 +463,14 @@
         </div>
       </aside>
 
-      <!-- SQLite Senaryo Kütüphanesi Modalı (Tam Ekran İnceleme İçin) -->
+      <!-- Senaryo Kütüphanesi Modalı (Tam Ekran İnceleme İçin; dosyalar public/scenarios) -->
       <div id="scenario-modal" class="modal-backdrop" hidden>
         <div class="modal-dialog">
           <div class="modal-header">
             <div class="modal-title-group">
               <svg class="icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
               <h3>Senaryo Kütüphanesi</h3>
-              <span class="badge sqlite">SQLite</span>
+              <span class="badge sqlite">Dosya</span>
             </div>
             <button id="modal-close" class="btn icon close-btn" title="Kapat">
               <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -466,7 +482,7 @@
             <div class="filter-pills">
               <button class="pill active" data-filter="all">Tümü</button>
               <button class="pill" data-filter="builtin">Bölümler</button>
-              <button class="pill" data-filter="custom">Özel (SQLite)</button>
+              <button class="pill" data-filter="custom">Özel</button>
             </div>
           </div>
 
@@ -476,7 +492,7 @@
             <div class="save-box">
               <strong style="display: flex; align-items: center; gap: 6px;">
                 <svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                Mevcut Senaryoyu SQLite'a Kaydet
+                Mevcut Senaryoyu Dosyaya Kaydet
               </strong>
               <div class="save-inputs">
                 <input id="save-title" type="text" placeholder="Senaryo Başlığı (ör: Benim Macera Çekimim)" />
@@ -501,6 +517,11 @@
             </button>
           </div>
           <select id="format"></select>
+          <select id="export-fps" title="MP4 kare hızı (60 fps dosya boyutunu ve render süresini yaklaşık 2 katına çıkarır)">
+            <option value="">Senaryo fps</option>
+            <option value="30">30 fps</option>
+            <option value="60">60 fps</option>
+          </select>
           <label class="check"><input id="safe-toggle" type="checkbox" checked /> Güvenli alan</label>
           <span class="spacer"></span>
           <button id="export" class="btn primary" title="Filmi MP4 olarak dışa aktar (video + ses)">MP4 indir</button>

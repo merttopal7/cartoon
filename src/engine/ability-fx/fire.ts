@@ -3,8 +3,46 @@ import type { Character } from '../character';
 import { clamp } from '../math';
 import { DETAIL_COUNT, SMOKE_COUNT, type AbilityVisual } from './visual';
 
+const handBones = new WeakMap<THREE.Object3D, { hand?: THREE.Object3D; fore?: THREE.Object3D }>();
+
 /**
- * 2. TOPRAK'IN GERÇEKÇİ ATEŞ TOPU YETENEĞİ (3B Magma Çekirdeği + 3B Alev Koronası/Kuyruğu + Minimal Kıvılcım)
+ * Kullananın sağ avucunun dünya konumu (bilekten avuca 8 cm ileri): alev bu noktada büyür ve buradan fırlar.
+ * Sağ el kemiği yoksa null.
+ */
+export function handPoint(caster: Character, out: THREE.Vector3): THREE.Vector3 | null {
+  const root = caster.rig.root;
+  let b = handBones.get(root);
+  if (!b) {
+    b = {};
+    root.traverse((o) => {
+      if (!b!.hand && /righthand$/i.test(o.name)) b!.hand = o;
+      else if (!b!.fore && /rightforearm$/i.test(o.name)) b!.fore = o;
+    });
+    handBones.set(root, b);
+  }
+  if (!b.hand) return null;
+  b.hand.updateWorldMatrix(true, false);
+  b.hand.getWorldPosition(out);
+  if (b.fore) {
+    const fore = b.fore.getWorldPosition(new THREE.Vector3());
+    const dir = out.clone().sub(fore);
+    if (dir.lengthSq() > 1e-6) out.addScaledVector(dir.normalize(), 0.08);
+  }
+  return out;
+}
+
+const smooth = (x: number) => {
+  const k = clamp(x, 0, 1);
+  return k * k * (3 - 2 * k);
+};
+
+/**
+ * KARABEY'İN ALEV BÜYÜSÜ / ATEŞ TOPU (3B magma çekirdeği + alev koronası/kuyruğu + kıvılcım ve duman)
+ * - Güç toplama: alev, kullananın sağ avucunda (büyüde havaya kaldırdığı elde) küçük bir korla başlar, büyür ve
+ *   savuruş boyunca eli izler. Çoklu hedefte tek top toplanır (yalnız ilk kol çizer; üç top üst üste parlamasın).
+ * - Fırlatma: el en öne uzandığı an (launchPos: fırlatma anındaki avuç) kısa bir alev patlaması; her hedefe bir
+ *   alev dağılır. Alevler küçük çıkıp ilk 0.15 sn'de büyür, uzun ve titreyen bir alev kuyruğuyla uçar.
+ * - İsabet: patlama, yayılan duman ve sıçrayan kıvılcımlar.
  */
 export function updateFireball(
   v: AbilityVisual,
@@ -32,28 +70,42 @@ export function updateFireball(
   tmpDir.divideScalar(totalDist);
   const tmpRight = new THREE.Vector3().crossVectors(tmpDir, new THREE.Vector3(0, 1, 0)).normalize();
 
-  const handOrigin = startPoint.clone().addScaledVector(tmpDir, 0.58).addScaledVector(tmpRight, 0.26);
+  // El kemiği yoksa eski tahmini nokta (göğüs önü, sağ)
+  const fallbackHand = startPoint.clone().addScaledVector(tmpDir, 0.58).addScaledVector(tmpRight, 0.26);
   const ballPos = new THREE.Vector3();
+  const firstArm = (v.ability.groupIndex ?? 0) === 0;
 
   if (local < chargeEnd) {
+    // Çoklu hedefte yalnız ilk kol toplar
+    if (!firstArm) {
+      v.fireCoreMesh.visible = false;
+      v.fireCoronaMesh.visible = false;
+      v.light.intensity = 0;
+      for (let i = 0; i < SMOKE_COUNT; i++) v.smokeAlphas[i] = 0;
+      for (let i = 0; i < DETAIL_COUNT; i++) v.detailAlphas[i] = 0;
+      return;
+    }
     const u = clamp(local / chargeEnd, 0, 1);
-    const swingForward = u < 0.72 ? -0.30 * Math.sin((u / 0.72) * Math.PI * 0.5) : ((u - 0.72) / 0.28) * 0.62;
-    ballPos.copy(handOrigin).addScaledVector(tmpDir, swingForward);
+    // Avucun hemen üstünde (havaya kaldırılmış elde alev yukarı tüter)
+    if (!handPoint(caster, ballPos)) ballPos.copy(fallbackHand);
+    ballPos.y += 0.06 + 0.08 * u;
 
-    const coreScale = 0.22 + Math.pow(u, 1.3) * 0.85;
+    const coreScale = 0.12 + Math.pow(u, 1.2) * 0.7;
+    const flicker = 1 + Math.sin(local * 41) * 0.05 + Math.sin(local * 67) * 0.03;
     v.fireCoreMesh.visible = true;
     v.fireCoreMesh.position.copy(ballPos);
-    v.fireCoreMesh.scale.setScalar(coreScale);
-    v.fireCoreMat.uniforms.uOpacity.value = clamp(u * 1.3, 0, 1);
+    v.fireCoreMesh.scale.setScalar(coreScale * flicker);
+    v.fireCoreMat.uniforms.uOpacity.value = clamp(u * 1.6, 0, 1);
 
+    // Korona yukarı doğru uzun bir alev dili (kor elde yanıyor)
     v.fireCoronaMesh.visible = true;
-    v.fireCoronaMesh.position.copy(ballPos);
-    v.fireCoronaMesh.rotation.set(0, 0, 0);
-    v.fireCoronaMesh.scale.setScalar(coreScale * 1.15);
-    v.fireCoronaMat.uniforms.uOpacity.value = clamp(u * 1.1, 0, 1);
+    v.fireCoronaMesh.position.copy(ballPos).add(new THREE.Vector3(0, coreScale * 0.25, 0));
+    v.fireCoronaMesh.quaternion.identity();
+    v.fireCoronaMesh.scale.set(coreScale * 1.1, coreScale * (1.5 + 0.2 * Math.sin(local * 23)), coreScale * 1.1);
+    v.fireCoronaMat.uniforms.uOpacity.value = clamp(u * 1.3, 0, 1);
 
     v.light.position.copy(ballPos);
-    v.light.intensity = 2.5 + u * 7.0;
+    v.light.intensity = 2.0 + u * 6.5;
 
     for (let i = 0; i < SMOKE_COUNT; i++) {
       const s0 = v.seeds[i * 4 + 0];
@@ -104,25 +156,34 @@ export function updateFireball(
   } else if (local < impactOffset) {
     const u = clamp((local - chargeEnd) / (impactOffset - chargeEnd), 0, 1);
     const eased = 1 - Math.pow(1 - u, 1.55);
-    ballPos.lerpVectors(handOrigin, endPoint, eased);
+    // Alev fırlatma anındaki avuçtan çıkar (yükleme sırasında hesaplandı; kare atlansa da yol aynı)
+    const launch = v.ability.launchPos ?? fallbackHand;
+    ballPos.lerpVectors(launch, endPoint, eased);
     ballPos.y += Math.sin(u * Math.PI) * 0.22;
+    tmpDir.subVectors(endPoint, launch).normalize();
+    tmpRight.crossVectors(tmpDir, new THREE.Vector3(0, 1, 0)).normalize();
 
+    // Küçük çıkıp ilk 0.15 sn'de büyür: üç alev elden dağılırken üst üste binip patlama gibi görünmesin
+    const grow = 0.45 + 0.55 * smooth((local - chargeEnd) / 0.15);
+    const flicker = 1 + Math.sin(local * 38) * 0.05 + Math.sin(local * 71) * 0.03;
     v.fireCoreMesh.visible = true;
     v.fireCoreMesh.position.copy(ballPos);
-    v.fireCoreMesh.scale.setScalar(1.18 + Math.sin(local * 38) * 0.06);
+    v.fireCoreMesh.scale.setScalar(0.9 * grow * flicker);
     v.fireCoreMat.uniforms.uOpacity.value = 1.0;
 
-    // 3B Alev Koronası uçuş yönünün tersine doğru damla/kuyruklu yıldız gibi uzar
+    // Alev koronası uçuş yönünün tersine uzun, titreyen bir alev kuyruğu
     v.fireCoronaMesh.visible = true;
-    v.fireCoronaMesh.position.copy(ballPos).addScaledVector(tmpDir, -0.28);
-    v.fireCoronaMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tmpDir);
-    v.fireCoronaMesh.scale.set(1.15, 2.15, 1.15);
+    v.fireCoronaMesh.position.copy(ballPos).addScaledVector(tmpDir, -0.42 * grow);
+    v.fireCoronaMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), tmpDir);
+    v.fireCoronaMesh.scale.set(0.95 * grow, (2.7 + 0.35 * Math.sin(local * 29)) * grow, 0.95 * grow);
     v.fireCoronaMat.uniforms.uOpacity.value = 0.95;
 
+    // Fırlatma anında elde kısa bir alev parlaması (ışık), sonra uçan alevle gider
+    const flash = firstArm ? Math.max(0, 1 - (local - chargeEnd) / 0.18) : 0;
     v.light.position.copy(ballPos);
-    v.light.intensity = 9.5 + Math.sin(local * 45) * 1.5;
+    v.light.intensity = 8.5 + Math.sin(local * 45) * 1.5 + flash * 9;
 
-    const trailMaxLen = Math.min(3.2, totalDist * eased + 0.35);
+    const trailMaxLen = Math.min(3.6, totalDist * eased + 0.3);
 
     for (let i = 0; i < SMOKE_COUNT; i++) {
       const s0 = v.seeds[i * 4 + 0];

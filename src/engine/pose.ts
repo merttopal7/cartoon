@@ -23,6 +23,11 @@ export interface Pose {
   bob: number;
   /** Zıplama yüksekliği (m) ve squash/stretch (0 = normal, + uzama, - basılma). */
   jumpLift: number;
+  /**
+   * Karakterin üstünde durduğu yükseltinin araziden yüksekliği (m; Toprak'ı kaldıran kaya). position.y bunu zaten
+   * içerir; rig ayak IK'sında zemini o kadar yukarıda arar ki ayaklar araziye uzanmasın.
+   */
+  elevation: number;
   squash: number;
   breathe: number;
   sway: number;
@@ -62,6 +67,7 @@ export function createPose(): Pose {
     facing: 0,
     bob: 0,
     jumpLift: 0,
+    elevation: 0,
     squash: 0,
     breathe: 0,
     sway: 0,
@@ -90,7 +96,7 @@ export function createPose(): Pose {
 }
 
 export function resetPose(p: Pose) {
-  p.bob = p.jumpLift = p.squash = p.breathe = p.sway = 0;
+  p.bob = p.jumpLift = p.elevation = p.squash = p.breathe = p.sway = 0;
   p.walkWeight = p.walkTime = p.walkSpeed = p.legSwing = p.legSwingVelocity = p.armSwing = 0;
   p.raise.left = p.raise.right = p.wave.left = p.wave.right = 0;
   p.waveWeight = p.waveTime = p.jumpWeight = p.jumpTime = 0;

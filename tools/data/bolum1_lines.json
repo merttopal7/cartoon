@@ -1,0 +1,1237 @@
+{
+ "audio_dir": "audio/bolum-1-ormanin-bekcileri",
+ "lines": [
+  {
+   "file": "toprak_ac3ce857db.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Defne nerede kaldı? Güneş çoktan doğdu!",
+   "has_audio": true,
+   "duration": 2.25
+  },
+  {
+   "file": "mese_640bac1de4.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Sabırlı ol Toprak. Rüzgâr nereye eserse, Defne de oradan gelir.",
+   "has_audio": true,
+   "duration": 4.44
+  },
+  {
+   "file": "toprak_3283e49f63.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Ya rüzgâr bugün ters eserse?",
+   "has_audio": true,
+   "duration": 2.19
+  },
+  {
+   "file": "defne_c229cf79d4.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Geldim geldim! Yetiştim!",
+   "has_audio": true,
+   "duration": 1.54
+  },
+  {
+   "file": "toprak_54944e3c7c.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Sonunda! Az kalsın sensiz gidiyorduk.",
+   "has_audio": true,
+   "duration": 2.72
+  },
+  {
+   "file": "defne_4c2af43109.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Bensiz mi? Ormanın gözcüsü benim, unuttun mu?",
+   "has_audio": true,
+   "duration": 2.8
+  },
+  {
+   "file": "mese_f3e25bdfea.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Günaydın Defne. Bugün kuzey patikasını dolaşacağız.",
+   "has_audio": true,
+   "duration": 3.81
+  },
+  {
+   "file": "defne_b81776efcc.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Kuzey mi? Harika! Orası en uzun yol.",
+   "has_audio": true,
+   "duration": 2.48
+  },
+  {
+   "file": "toprak_16807d15bb.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "En uzun yol, en çok macera demek!",
+   "has_audio": true,
+   "duration": 2.25
+  },
+  {
+   "file": "mese_74232843c2.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "En çok dikkat demek. Gözümüzü dört açalım.",
+   "has_audio": true,
+   "duration": 2.85
+  },
+  {
+   "file": "defne_77e7015de1.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Benim gözlerim zaten dört! Hadi, yürüyelim!",
+   "has_audio": true,
+   "duration": 2.38
+  },
+  {
+   "file": "toprak_deae1535d7.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Bu sabah toprak çok yumuşak. Gece çiğ düşmüş.",
+   "has_audio": true,
+   "duration": 3.19
+  },
+  {
+   "file": "mese_1451ee2ee4.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Ağaçlar suyunu içmiş. Yapraklarına bak, nasıl parlıyorlar.",
+   "has_audio": true,
+   "duration": 4.15
+  },
+  {
+   "file": "defne_11d00bfe9d.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Bence en güzeli rüzgâr. Bugün tam uçurtma havası!",
+   "has_audio": true,
+   "duration": 2.95
+  },
+  {
+   "file": "toprak_62794395d4.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Senin için her gün uçurtma havası.",
+   "has_audio": true,
+   "duration": 2.53
+  },
+  {
+   "file": "defne_5ab9ee848a.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Çünkü ben her gün uçarım!",
+   "has_audio": true,
+   "duration": 1.28
+  },
+  {
+   "file": "mese_4878ae699f.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Toprak, geçen hafta diktiğin fidanlar nasıl?",
+   "has_audio": true,
+   "duration": 2.56
+  },
+  {
+   "file": "toprak_a01fd6b6af.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Büyüyorlar! Biri neredeyse dizime geldi.",
+   "has_audio": true,
+   "duration": 2.61
+  },
+  {
+   "file": "defne_4211934ab7.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Dizine mi? O zaman yakında benden uzun olur!",
+   "has_audio": true,
+   "duration": 2.3
+  },
+  {
+   "file": "toprak_4cf3e012ba.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Hey! Ben de büyüyorum ama!",
+   "has_audio": true,
+   "duration": 2.01
+  },
+  {
+   "file": "mese_5fdd5980fc.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Her şey zamanında büyür. Orman acele etmez.",
+   "has_audio": true,
+   "duration": 3.19
+  },
+  {
+   "file": "defne_ab19041a96.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Ama ben acele ederim. Kim önce kıvrıma varır?",
+   "has_audio": true,
+   "duration": 2.35
+  },
+  {
+   "file": "toprak_30110b1784.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Yarış yok! Devriyedeyiz, unuttun mu?",
+   "has_audio": true,
+   "duration": 3.19
+  },
+  {
+   "file": "defne_03d0375a6a.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Peki peki... Sıkıcı bekçi Toprak.",
+   "has_audio": true,
+   "duration": 2.19
+  },
+  {
+   "file": "toprak_d0781fd59c.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Sıkıcı değil, dikkatli!",
+   "has_audio": true,
+   "duration": 1.72
+  },
+  {
+   "file": "defne_af3f35a44e.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Sıkıldım ama. Hadi bilmece oynayalım!",
+   "has_audio": true,
+   "duration": 2.06
+  },
+  {
+   "file": "mese_1d9ffc1a40.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Peki. Ağzı var, dili yok. Durmadan akar, hiç yorulmaz. Nedir?",
+   "has_audio": true,
+   "duration": 4.23
+  },
+  {
+   "file": "toprak_f135d3af2a.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Kolay! Dere!",
+   "has_audio": true,
+   "duration": 1.52
+  },
+  {
+   "file": "mese_50c8dc8847.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Bildin Toprak.",
+   "has_audio": true,
+   "duration": 1.36
+  },
+  {
+   "file": "toprak_2e8b1d8b7d.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Şimdi benim sıram. Kökü var ama ağaç değil. Taşları tutar, yağmuru içer. Nedir?",
+   "has_audio": true,
+   "duration": 6.61
+  },
+  {
+   "file": "defne_15e0054745.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Hmm... Dağ mı?",
+   "has_audio": true,
+   "duration": 1.36
+  },
+  {
+   "file": "toprak_9f355f5b53.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Toprak! Benim adım!",
+   "has_audio": true,
+   "duration": 1.52
+  },
+  {
+   "file": "defne_b1742b3420.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Bu haksızlık! Kendi adını sordun!",
+   "has_audio": true,
+   "duration": 2.19
+  },
+  {
+   "file": "mese_49ebd3163b.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Bence gayet adil bir bilmeceydi.",
+   "has_audio": true,
+   "duration": 2.19
+  },
+  {
+   "file": "defne_34f3252632.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Tamam, son bilmece benden. Görünmem ama saçlarını dağıtırım. Kimim ben?",
+   "has_audio": true,
+   "duration": 3.74
+  },
+  {
+   "file": "toprak_0fb4f0ea93.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Sensin! Defne!",
+   "has_audio": true,
+   "duration": 1.41
+  },
+  {
+   "file": "defne_87dc4c42a6.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Rüzgâr diyecektin ama... Olsun, kabul!",
+   "has_audio": true,
+   "duration": 2.38
+  },
+  {
+   "file": "toprak_690e8b671e.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Durun! Şuraya bakın.",
+   "has_audio": true,
+   "duration": 1.46
+  },
+  {
+   "file": "mese_c92e5f2317.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Ne buldun?",
+   "has_audio": true,
+   "duration": 1.12
+  },
+  {
+   "file": "toprak_d61e8a815d.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Ayak izleri. Bunlar geyik izi... hem de bir sürü.",
+   "has_audio": true,
+   "duration": 3.37
+  },
+  {
+   "file": "defne_a663031acb.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Geyikler sabah yürüyüşüne çıkmış, ne var bunda?",
+   "has_audio": true,
+   "duration": 2.56
+  },
+  {
+   "file": "toprak_831acf3787.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Ama izler derin. Koşarak geçmişler. Hem de güneye doğru.",
+   "has_audio": true,
+   "duration": 4.39
+  },
+  {
+   "file": "mese_246d69b5f8.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Çamur hâlâ ıslak. Bu izler bu sabah olmuş.",
+   "has_audio": true,
+   "duration": 2.72
+  },
+  {
+   "file": "mese_f3bd0f403a.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Geyikler sabahları sakin sakin otlar. Neden koşsunlar ki?",
+   "has_audio": true,
+   "duration": 3.81
+  },
+  {
+   "file": "defne_b7b5b76b3e.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Belki onlar da yarışıyordur!",
+   "has_audio": true,
+   "duration": 1.52
+  },
+  {
+   "file": "toprak_faee49f787.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Bence bir şeyden kaçıyorlardı.",
+   "has_audio": true,
+   "duration": 2.38
+  },
+  {
+   "file": "mese_cc54a73106.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Kuzeyden... Bizim gittiğimiz yönden.",
+   "has_audio": true,
+   "duration": 2.35
+  },
+  {
+   "file": "defne_1943e86233.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Hmm. Tamam, bu biraz garip.",
+   "has_audio": true,
+   "duration": 1.54
+  },
+  {
+   "file": "mese_e4353fa2a0.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Acele etmeden ama dikkatle devam edelim.",
+   "has_audio": true,
+   "duration": 2.43
+  },
+  {
+   "file": "defne_9346179d6a.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Belki bir ayı gördüler. Koca, tüylü bir ayı!",
+   "has_audio": true,
+   "duration": 2.38
+  },
+  {
+   "file": "toprak_8fb5c770e9.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Bu ormanda ayı yok ki.",
+   "has_audio": true,
+   "duration": 1.78
+  },
+  {
+   "file": "defne_94d6c6c4a6.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Belki yeni taşınmıştır!",
+   "has_audio": true,
+   "duration": 1.31
+  },
+  {
+   "file": "mese_480a984b16.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Defne, ayılar öyle ev değiştirmez.",
+   "has_audio": true,
+   "duration": 2.38
+  },
+  {
+   "file": "defne_bc94b5a0c0.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Nereden biliyorsun? Hiç sordun mu?",
+   "has_audio": true,
+   "duration": 1.88
+  },
+  {
+   "file": "toprak_f0483a7d4e.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Ayıya mı soracak?",
+   "has_audio": true,
+   "duration": 1.72
+  },
+  {
+   "file": "mese_8482f6397f.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Ormanı dinlemek, sormaktan iyidir.",
+   "has_audio": true,
+   "duration": 2.3
+  },
+  {
+   "file": "defne_c1dec33d6a.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Ayı çıkarsa diye hazırlıklı olalım. Hadi biraz antrenman yapalım!",
+   "has_audio": true,
+   "duration": 3.68
+  },
+  {
+   "file": "toprak_7b3778c32b.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Antrenman mı? Hazırım! Bu sefer beni yenemezsin.",
+   "has_audio": true,
+   "duration": 2.77
+  },
+  {
+   "file": "mese_e7578db498.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Dikkatli olun. Kimse yaralanmasın.",
+   "has_audio": true,
+   "duration": 2.61
+  },
+  {
+   "file": "toprak_9804bb201d.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Yakaladım!",
+   "has_audio": true,
+   "duration": 1.28
+  },
+  {
+   "file": "defne_ef15c4682b.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Bu sefer şanslıydın!",
+   "has_audio": true,
+   "duration": 1.54
+  },
+  {
+   "file": "mese_659e4d63dd.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "İkiniz de iyiydiniz. Hızlı da olmalı, dikkatli de.",
+   "has_audio": true,
+   "duration": 3.4
+  },
+  {
+   "file": "defne_ed061f1fa2.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Duydun mu? Hızlı!",
+   "has_audio": true,
+   "duration": 1.31
+  },
+  {
+   "file": "toprak_e7aee028c9.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Duydum. Dikkatli!",
+   "has_audio": true,
+   "duration": 1.65
+  },
+  {
+   "file": "toprak_4cb9d02549.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Meşe, sen ormanı nasıl dinliyorsun?",
+   "has_audio": true,
+   "duration": 2.48
+  },
+  {
+   "file": "mese_940650e941.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Su gibi. Sessizce akarsın, her sesi duyarsın.",
+   "has_audio": true,
+   "duration": 3.19
+  },
+  {
+   "file": "defne_033d7211f9.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Ben de rüzgâr gibi dinlerim. Her yere bir anda!",
+   "has_audio": true,
+   "duration": 2.66
+  },
+  {
+   "file": "toprak_8957165c8a.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Ben de toprak gibi. Ayağımın altında her adımı hissederim.",
+   "has_audio": true,
+   "duration": 4.52
+  },
+  {
+   "file": "mese_12d12b9afe.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "İşte bu yüzden birlikte güçlüyüz.",
+   "has_audio": true,
+   "duration": 2.35
+  },
+  {
+   "file": "defne_01199fa557.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Meşe, senin en sevdiğin ağaç hangisi?",
+   "has_audio": true,
+   "duration": 2.12
+  },
+  {
+   "file": "mese_20c885e092.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Adımı aldığım ağaç. Meşe. Yüz yıl yaşar, hep sabırlıdır.",
+   "has_audio": true,
+   "duration": 4.47
+  },
+  {
+   "file": "toprak_1f4ffc4c59.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Benimki çam. Kışın bile yeşil kalıyor!",
+   "has_audio": true,
+   "duration": 2.43
+  },
+  {
+   "file": "defne_a6f649c082.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Benimki en uzun olanı. Tepesinden bütün ormanı görürüm!",
+   "has_audio": true,
+   "duration": 3.08
+  },
+  {
+   "file": "mese_20e068c0a4.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Şşş. Durun bir saniye.",
+   "has_audio": true,
+   "duration": 1.52
+  },
+  {
+   "file": "toprak_4685980a06.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Ne oldu?",
+   "has_audio": true,
+   "duration": 0.89
+  },
+  {
+   "file": "mese_11bf96b446.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Dinleyin. Kuşlar... Hiç ses yok.",
+   "has_audio": true,
+   "duration": 2.43
+  },
+  {
+   "file": "defne_33b47847d1.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Gerçekten. Bu saatte burası cıvıl cıvıl olur.",
+   "has_audio": true,
+   "duration": 2.35
+  },
+  {
+   "file": "toprak_faa7a8b9fa.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Önce geyikler, şimdi de kuşlar... Burada bir tuhaflık var.",
+   "has_audio": true,
+   "duration": 4.21
+  },
+  {
+   "file": "defne_82e483647c.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Ben önden bakayım! Rüzgârdan hızlıyım!",
+   "has_audio": true,
+   "duration": 2.12
+  },
+  {
+   "file": "mese_563d5f1d56.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Defne, bekle! Uzaklaşma!",
+   "has_audio": true,
+   "duration": 2.12
+  },
+  {
+   "file": "defne_3f89dec777.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Merak etme, hemen dönerim!",
+   "has_audio": true,
+   "duration": 1.65
+  },
+  {
+   "file": "toprak_b70d02d999.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Hep böyle yapıyor.",
+   "has_audio": true,
+   "duration": 1.23
+  },
+  {
+   "file": "mese_b32314ba66.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Hadi, peşinden gidelim.",
+   "has_audio": true,
+   "duration": 1.72
+  },
+  {
+   "file": "defne_e96541abe5.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Toprak! Meşe! Çabuk gelin!",
+   "has_audio": true,
+   "duration": 1.72
+  },
+  {
+   "file": "toprak_ed1fc25b8c.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Ne oldu? Bir şey mi var?",
+   "has_audio": true,
+   "duration": 1.7
+  },
+  {
+   "file": "defne_e851f0879a.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Şuna bakın...",
+   "has_audio": true,
+   "duration": 0.89
+  },
+  {
+   "file": "toprak_2006a2be88.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Koca çam... devrilmiş!",
+   "has_audio": true,
+   "duration": 2.35
+  },
+  {
+   "file": "mese_2d63eb6aca.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Yolu tamamen kapatmış.",
+   "has_audio": true,
+   "duration": 1.65
+  },
+  {
+   "file": "defne_247d40cf8b.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Dün akşam buradan geçtim. Dimdikti!",
+   "has_audio": true,
+   "duration": 1.96
+  },
+  {
+   "file": "toprak_681494d114.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Bir gecede nasıl devrilir ki böyle bir ağaç?",
+   "has_audio": true,
+   "duration": 2.8
+  },
+  {
+   "file": "mese_d5ec8e97d1.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Yaklaşalım. Ama dikkatli olun.",
+   "has_audio": true,
+   "duration": 2.19
+  },
+  {
+   "file": "defne_ca404b34a6.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Belki fırtına olmuştur?",
+   "has_audio": true,
+   "duration": 1.31
+  },
+  {
+   "file": "mese_efe93c5d80.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Dün gece fırtına yoktu. Gökyüzü tertemizdi.",
+   "has_audio": true,
+   "duration": 2.66
+  },
+  {
+   "file": "defne_3b74e1583f.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Doğru. Rüzgâr olsaydı, ben bilirdim.",
+   "has_audio": true,
+   "duration": 2.01
+  },
+  {
+   "file": "toprak_ad58670e2f.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Bakın, kökleri sağlam. Toprağın altında hâlâ duruyorlar.",
+   "has_audio": true,
+   "duration": 4.21
+  },
+  {
+   "file": "mese_ce1db2508b.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Yani ağaç kökünden sökülmemiş.",
+   "has_audio": true,
+   "duration": 2.3
+  },
+  {
+   "file": "toprak_cc9fcf932a.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Hayır. Gövdesi... kesilmiş gibi.",
+   "has_audio": true,
+   "duration": 3.21
+  },
+  {
+   "file": "defne_d79dfb7457.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Kesilmiş mi? Kim keser ki koca bir çamı?",
+   "has_audio": true,
+   "duration": 2.3
+  },
+  {
+   "file": "toprak_45791dfc21.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Kesik çok düzgün. Bıçakla kesilmiş gibi pürüzsüz.",
+   "has_audio": true,
+   "duration": 2.95
+  },
+  {
+   "file": "mese_12650bd3e7.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Kenarları da kararmış. Sanki... yanmış.",
+   "has_audio": true,
+   "duration": 2.85
+  },
+  {
+   "file": "defne_60ed7c85b0.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Yanmış mı? Ama etrafta hiç yangın izi yok.",
+   "has_audio": true,
+   "duration": 2.25
+  },
+  {
+   "file": "toprak_47137412fe.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Bir koku var... Duman gibi.",
+   "has_audio": true,
+   "duration": 1.88
+  },
+  {
+   "file": "mese_a46107633f.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Evet, ben de alıyorum. Çok hafif.",
+   "has_audio": true,
+   "duration": 1.96
+  },
+  {
+   "file": "defne_b62049daff.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Yoksa bir yıldırım mı düştü?",
+   "has_audio": true,
+   "duration": 1.46
+  },
+  {
+   "file": "mese_4921c28ef4.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Yıldırım ağacı yarar, parçalar. Böyle düzgün kesmez.",
+   "has_audio": true,
+   "duration": 3.6
+  },
+  {
+   "file": "toprak_673a844389.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "O zaman bunu biri yaptı.",
+   "has_audio": true,
+   "duration": 1.46
+  },
+  {
+   "file": "defne_c37f3e392e.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Ama kim? Neden?",
+   "has_audio": true,
+   "duration": 1.1
+  },
+  {
+   "file": "defne_285e8d035b.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Ne o?! Arkada bir şey kıpırdadı!",
+   "has_audio": true,
+   "duration": 1.93
+  },
+  {
+   "file": "toprak_43246d60af.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Bir yaprak, Defne. Sadece bir yaprak.",
+   "has_audio": true,
+   "duration": 3.27
+  },
+  {
+   "file": "defne_4014b664bb.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Biliyordum... Seni denedim sadece.",
+   "has_audio": true,
+   "duration": 2.53
+  },
+  {
+   "file": "mese_9b15084306.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Korkmak ayıp değil. Ama aklımızı kullanalım.",
+   "has_audio": true,
+   "duration": 2.8
+  },
+  {
+   "file": "toprak_3e32a95a20.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Durun... Burada başka izler de var.",
+   "has_audio": true,
+   "duration": 2.3
+  },
+  {
+   "file": "defne_168212c160.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Geyik izi mi yine?",
+   "has_audio": true,
+   "duration": 1.28
+  },
+  {
+   "file": "toprak_64b210e5e9.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Hayır. Bunlar ayakkabı izi. Hem de çok büyük... Bir yetişkininki gibi.",
+   "has_audio": true,
+   "duration": 5.41
+  },
+  {
+   "file": "mese_f9da61097c.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Ve ağır basmış. Toprak iyice çökmüş.",
+   "has_audio": true,
+   "duration": 2.9
+  },
+  {
+   "file": "defne_d46d734758.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Ormanda bizden başka kim dolaşır ki?",
+   "has_audio": true,
+   "duration": 2.01
+  },
+  {
+   "file": "toprak_95ec6c58a3.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "İzler çalılığa doğru gidiyor... Sonra kayboluyor.",
+   "has_audio": true,
+   "duration": 3.4
+  },
+  {
+   "file": "defne_93780697c5.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Takip edelim! Hemen yakalarız!",
+   "has_audio": true,
+   "duration": 1.59
+  },
+  {
+   "file": "mese_4ed63259a8.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Hayır. Önce ağaç. O beklerse kurur, izler ise kaçmaz.",
+   "has_audio": true,
+   "duration": 4.15
+  },
+  {
+   "file": "toprak_de59ae0349.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Meşe haklı. Önce ağacı kurtaralım.",
+   "has_audio": true,
+   "duration": 2.98
+  },
+  {
+   "file": "defne_315ecb7bef.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Peki... Ama sonra o izlerin peşine düşüyoruz!",
+   "has_audio": true,
+   "duration": 2.85
+  },
+  {
+   "file": "mese_abd3d53dbe.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Bu ağaç hâlâ yaşıyor. Reçinesi taze, kökleri nemli.",
+   "has_audio": true,
+   "duration": 3.63
+  },
+  {
+   "file": "toprak_ec889cb6e2.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Yani kurtarabilir miyiz?",
+   "has_audio": true,
+   "duration": 1.36
+  },
+  {
+   "file": "mese_af29e08c49.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Hemen kökünün üstüne dikilirse, iyileşebilir.",
+   "has_audio": true,
+   "duration": 2.95
+  },
+  {
+   "file": "toprak_c7d1d0b8b2.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Ama bu ağaç çok ağır! Üçümüz bile kaldıramayız.",
+   "has_audio": true,
+   "duration": 3.19
+  },
+  {
+   "file": "defne_de6ba07189.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Siz kaldıramazsınız. Ama rüzgâr kaldırır!",
+   "has_audio": true,
+   "duration": 2.53
+  },
+  {
+   "file": "toprak_19c38c4705.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Ciddi misin? Bu koca çamı mı?",
+   "has_audio": true,
+   "duration": 2.12
+  },
+  {
+   "file": "defne_f98e433856.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Hiç bu kadar ciddi olmamıştım. Geri çekilin!",
+   "has_audio": true,
+   "duration": 2.35
+  },
+  {
+   "file": "mese_4b87674750.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Dikkatli ol Defne. Yavaşça, kökünün tam üstüne.",
+   "has_audio": true,
+   "duration": 3.37
+  },
+  {
+   "file": "defne_fe5d847ba1.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Rüzgâr, bana güç ver!",
+   "has_audio": true,
+   "duration": 1.31
+  },
+  {
+   "file": "toprak_3337db916b.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Vay canına! Yaptı!",
+   "has_audio": true,
+   "duration": 2.25
+  },
+  {
+   "file": "mese_440cbf44d8.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Tam yerine oturdu. Aferin Defne.",
+   "has_audio": true,
+   "duration": 2.3
+  },
+  {
+   "file": "defne_1d96b60ef8.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Söylemiştim! Rüzgâr benim kanadım!",
+   "has_audio": true,
+   "duration": 1.88
+  },
+  {
+   "file": "mese_081219c2bc.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Şimdi biraz su. Yarası kapansın.",
+   "has_audio": true,
+   "duration": 2.56
+  },
+  {
+   "file": "toprak_0f57f73ca2.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Ben de kökünü toprakla sarayım.",
+   "has_audio": true,
+   "duration": 2.06
+  },
+  {
+   "file": "defne_37065b075d.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Bak, şimdiden daha mutlu görünüyor!",
+   "has_audio": true,
+   "duration": 1.93
+  },
+  {
+   "file": "toprak_37030ea21f.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Ağaçlar mutlu olur mu?",
+   "has_audio": true,
+   "duration": 1.65
+  },
+  {
+   "file": "mese_68618da79d.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Elbette. Dinlersen, teşekkür ettiğini duyarsın.",
+   "has_audio": true,
+   "duration": 3.55
+  },
+  {
+   "file": "defne_98061976a3.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Duydum! Hışırdadı!",
+   "has_audio": true,
+   "duration": 1.36
+  },
+  {
+   "file": "toprak_6a3f65e06b.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Bence o sadece rüzgârdı.",
+   "has_audio": true,
+   "duration": 1.46
+  },
+  {
+   "file": "defne_cb343e5916.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Rüzgâr da benim, teşekkür de!",
+   "has_audio": true,
+   "duration": 1.78
+  },
+  {
+   "file": "mese_08d069850b.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Şşş! Dinleyin...",
+   "has_audio": true,
+   "duration": 1.54
+  },
+  {
+   "file": "toprak_ac2cea4cda.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Kuşlar! Kuşlar geri döndü!",
+   "has_audio": true,
+   "duration": 2.3
+  },
+  {
+   "file": "defne_5664d850f1.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Demek onlar da ağaç için endişelenmiş.",
+   "has_audio": true,
+   "duration": 2.14
+  },
+  {
+   "file": "mese_69cbc3285e.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Orman tek bir aile gibidir. Biri incinirse, hepsi hisseder.",
+   "has_audio": true,
+   "duration": 3.81
+  },
+  {
+   "file": "toprak_0997d584f4.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "O zaman geyikler de geri gelir, değil mi?",
+   "has_audio": true,
+   "duration": 2.25
+  },
+  {
+   "file": "mese_a4f431a6d2.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Gelirler. Korkuları geçince.",
+   "has_audio": true,
+   "duration": 2.01
+  },
+  {
+   "file": "mese_7ef21d9e68.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Yine de bir şey içimi rahatsız ediyor.",
+   "has_audio": true,
+   "duration": 2.3
+  },
+  {
+   "file": "toprak_34af03d1f9.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "Kesik mi?",
+   "has_audio": true,
+   "duration": 0.94
+  },
+  {
+   "file": "mese_5f7f826825.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Evet. Kim yaptıysa, bir sebebi vardı.",
+   "has_audio": true,
+   "duration": 2.72
+  },
+  {
+   "file": "defne_41f7bdff8c.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Ve muhtemelen hâlâ ormanda bir yerde.",
+   "has_audio": true,
+   "duration": 2.01
+  },
+  {
+   "file": "toprak_1fe30457cb.mp3",
+   "who": "toprak",
+   "voice": "xDppd78rqTGY8ICN7M4n",
+   "text": "O zaman gözümüzü daha da dört açacağız.",
+   "has_audio": true,
+   "duration": 2.01
+  },
+  {
+   "file": "defne_28e4b9ded7.mp3",
+   "who": "defne",
+   "voice": "KbaseEXyT9EE0CQLEfbB",
+   "text": "Ormanın bekçileri her zaman nöbette!",
+   "has_audio": true,
+   "duration": 2.19
+  },
+  {
+   "file": "mese_5035a0239f.mp3",
+   "who": "mese",
+   "voice": "KAGDtM2gzDrjWlUp2KNe",
+   "text": "Hadi, devriyeye devam edelim. Ama birlikte.",
+   "has_audio": true,
+   "duration": 2.9
+  }
+ ]
+}

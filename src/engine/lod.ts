@@ -35,3 +35,55 @@ export function setupLods(root: THREE.Object3D): number {
   }
   return owners.size;
 }
+
+/**
+ * Ağaç ayrıntı seviyelerini çekim boyunca sabitler. THREE.LOD seviyeyi her karede kamera uzaklığına göre seçer;
+ * kamera hareket ederken (kuş uçuşu, takip) ağaçların modeli çekimin ortasında değişiyor, ağaçlar kaybolup geri
+ * geliyormuş gibi görünüyordu (açılışın kuş uçuşunda 4 sn'de ~100 değişim). Her çekimde ağacın seviyesi, o çekimin
+ * kamera yolunun ağaca en yakın noktasına göre bir kez seçilir (çekim boyunca hiç kaba görünmez); değişim yalnızca
+ * kesmelerde olur. Sonuç yalnızca çekime ve formata bağlıdır, kareler deterministik kalır.
+ */
+export class LodLock {
+  private readonly lods: THREE.LOD[] = [];
+  private readonly cache = new Map<string, Uint8Array>();
+  private readonly pos: THREE.Vector3[] = [];
+
+  constructor(root: THREE.Object3D) {
+    root.traverse((o) => {
+      if ((o as THREE.LOD).isLOD) {
+        const lod = o as THREE.LOD;
+        lod.autoUpdate = false;
+        this.lods.push(lod);
+      }
+    });
+  }
+
+  get count() {
+    return this.lods.length;
+  }
+
+  /** key: çekim + format; cameras: çekim boyunca kamera konumları (yalnızca ilk kez istenir). */
+  apply(key: string, cameras: () => THREE.Vector3[]) {
+    if (!this.lods.length) return;
+    let levels = this.cache.get(key);
+    if (!levels) {
+      const cams = cameras();
+      levels = new Uint8Array(this.lods.length);
+      this.lods.forEach((lod, i) => {
+        const p = (this.pos[i] ??= new THREE.Vector3());
+        lod.getWorldPosition(p);
+        let d = Infinity;
+        for (const c of cams) d = Math.min(d, c.distanceTo(p));
+        let level = 0;
+        for (let k = 1; k < lod.levels.length; k++) if (d >= lod.levels[k].distance) level = k;
+        levels![i] = level;
+      });
+      this.cache.set(key, levels);
+    }
+    this.lods.forEach((lod, i) => {
+      const level = levels![i];
+      lod.levels.forEach((l, k) => (l.object.visible = k === level));
+      (lod as unknown as { _currentLevel: number })._currentLevel = level;
+    });
+  }
+}
