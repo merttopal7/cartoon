@@ -49,8 +49,8 @@ export interface CoverageWorld {
 /** Konuşanın çekimi replikten bu kadar önce başlar (nefes alışı, ağız hazırlığı görünsün). */
 const LEAD = 0.3;
 /** Bu süreden uzun repliklere dinleyen tepkisi girer; tepki çekiminin süresi. */
-const REACTION_AFTER = 4.0;
-const REACTION_LEN = 1.2;
+const REACTION_AFTER = 3.2;
+const REACTION_LEN = 1.0;
 /** Omuz üstü açısı: kamera konuşan–dinleyen çizgisinden bu kadar yana açılır (derece). */
 const OTS = 30;
 /** Bundan kısa kalan "ara" kamera parçası ayrı çekim yapılmaz, komşu çekime katılır (sn). */
