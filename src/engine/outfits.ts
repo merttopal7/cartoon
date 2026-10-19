@@ -83,8 +83,8 @@ function readStoredOutfit(charId: FemaleCharacterId, fallback: FemaleOutfitId): 
 }
 
 const activeOutfits: Record<FemaleCharacterId, FemaleOutfitId> = {
-  defne: readStoredOutfit('defne', 'ninja'),
-  mese: readStoredOutfit('mese', 'beyaz_kislik'),
+  defne: readStoredOutfit('defne', 'varsayilan'),
+  mese: readStoredOutfit('mese', 'varsayilan'),
 };
 
 export function getCharacterOutfit(charId: FemaleCharacterId): FemaleOutfitId {
@@ -584,7 +584,21 @@ export async function applySharedFemaleOutfit(
 
       const sZ = centerZ(srcL, y, ax);
       const dZ = centerZ(dstL, ny, Math.abs(nx));
-      const nz = dZ + (z - sZ) * lerp(1.0, torsoScale, 0.35);
+      let nz = dZ + (z - sZ) * lerp(1.0, torsoScale, 0.35);
+
+      // Çocuk çizgi filmine uygunluk: göğüs çıkıntısını tamamen düzleştir
+      if (role === 'body' && ny >= dstL.spine1Y && ny <= dstL.neckY && Math.abs(nx) <= 15.0) {
+        const t = (ny - dstL.spine1Y) / Math.max(1e-4, dstL.neckY - dstL.spine1Y);
+        const zMaxOffset = lerp(5.8, 3.2, t);
+        if (nz > dZ + zMaxOffset) {
+          const edgeY = Math.min(
+            smoothstep(dstL.spine1Y, dstL.spine1Y + 3.0, ny),
+            1 - smoothstep(dstL.neckY - 3.0, dstL.neckY, ny),
+          );
+          const edgeX = 1 - smoothstep(11.0, 15.0, Math.abs(nx));
+          nz = lerp(nz, dZ + zMaxOffset, edgeY * edgeX * 0.95);
+        }
+      }
 
       pos.setXYZ(i, nx, ny, nz);
     }

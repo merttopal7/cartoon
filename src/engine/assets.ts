@@ -643,14 +643,19 @@ async function customizeErikaModel(root: THREE.Object3D) {
               const kWaist = Math.sin(THREE.MathUtils.clamp((vy - 88.0) / (150.5 - 88.0), 0, 1) * Math.PI);
               vx *= 1 - (0.14 + 0.05 * kWaist);
             }
-            // Çocuk çizgi filmine uygunluk: göğüs çıkıntısını yumuşakça geriye çekerek düzleştir
-            if (vy >= 110.0 && vy <= 132.0 && ax <= 14.0 && vz > 8.5) {
-              const yWeight = vy < 118.0
-                ? THREE.MathUtils.smoothstep(vy, 110.0, 118.0)
-                : 1 - THREE.MathUtils.smoothstep(vy, 118.0, 132.0);
-              const xWeight = 1 - THREE.MathUtils.smoothstep(ax, 9.8, 14.0);
-              const zExcess = vz - 8.5;
-              vz -= zExcess * 0.55 * yWeight * xWeight;
+            // Çocuk çizgi filmine uygunluk: göğüs çıkıntısını tamamen düzleştirip çocuk tunik çizgisine çek
+            if (vy >= 104.0 && vy <= 145.0 && ax <= 16.0) {
+              const t = (vy - 104.0) / (145.0 - 104.0);
+              const zRef = THREE.MathUtils.lerp(10.8, 6.5, t);
+              if (vz > zRef) {
+                const edgeY = Math.min(
+                  THREE.MathUtils.smoothstep(vy, 104.0, 107.0),
+                  1 - THREE.MathUtils.smoothstep(vy, 142.0, 145.0),
+                );
+                const edgeX = 1 - THREE.MathUtils.smoothstep(ax, 12.0, 16.0);
+                const weight = edgeY * edgeX * 0.95;
+                vz = THREE.MathUtils.lerp(vz, zRef, weight);
+              }
             }
             newPos.push(vx, vy, vz);
             newNorm.push(norm.getX(idx), norm.getY(idx), norm.getZ(idx));
@@ -703,7 +708,7 @@ async function customizeJackieModel(root: THREE.Object3D) {
       }
     });
 
-    // Çocuk çizgi filmine uygunluk: göğüs çıkıntısını yumuşakça geriye çekerek düzleştir
+    // Çocuk çizgi filmine uygunluk: göğüs çıkıntısını tamamen düzleştirip çocuk tunik/tişört çizgisine çek
     root.traverse((o) => {
       const mesh = o as THREE.SkinnedMesh;
       if (!mesh.isSkinnedMesh || !/ch29/i.test(mesh.name)) return;
@@ -715,13 +720,18 @@ async function customizeJackieModel(root: THREE.Object3D) {
         const y = pos.getY(i);
         const z = pos.getZ(i);
         const ax = Math.abs(x);
-        if (y >= 106.0 && y <= 125.0 && ax <= 13.0 && z > 7.8) {
-          const yWeight = y < 116.0
-            ? THREE.MathUtils.smoothstep(y, 106.0, 116.0)
-            : 1 - THREE.MathUtils.smoothstep(y, 116.0, 125.0);
-          const xWeight = 1 - THREE.MathUtils.smoothstep(ax, 9.1, 13.0);
-          const zExcess = z - 7.8;
-          pos.setZ(i, z - zExcess * 0.55 * yWeight * xWeight);
+        if (y >= 104.0 && y <= 128.0 && ax <= 14.0) {
+          const t = (y - 104.0) / (128.0 - 104.0);
+          const zRef = THREE.MathUtils.lerp(10.2, 7.6, t);
+          if (z > zRef) {
+            const edgeY = Math.min(
+              THREE.MathUtils.smoothstep(y, 104.0, 107.0),
+              1 - THREE.MathUtils.smoothstep(y, 125.0, 128.0),
+            );
+            const edgeX = 1 - THREE.MathUtils.smoothstep(ax, 10.5, 14.0);
+            const weight = edgeY * edgeX * 0.95;
+            pos.setZ(i, THREE.MathUtils.lerp(z, zRef, weight));
+          }
         }
       }
       pos.needsUpdate = true;
