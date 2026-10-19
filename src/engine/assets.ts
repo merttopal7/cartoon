@@ -633,18 +633,21 @@ async function customizeErikaModel(root: THREE.Object3D) {
               if (vx < -5.2) vx = -5.2 + (vx + 5.2) * 0.4;
             }
             const ax = Math.abs(vx);
-            // Çocuk çizgi filmine uygunluk: göğüs çıkıntısını tamamen düzleştirip çocuk tunik çizgisine çek
+            // Çocuk çizgi filmine uygunluk: göğüs hattını öne çıkmayacak şekilde yumuşak oval kavise uyarla
             if (vy >= 104.0 && vy <= 145.0 && ax <= 16.0) {
               const t = (vy - 104.0) / (145.0 - 104.0);
-              const zRef = THREE.MathUtils.lerp(10.8, 6.5, t);
-              if (vz > zRef) {
+              const zBase = THREE.MathUtils.lerp(10.8, 6.8, t);
+              const ovalY = Math.sin(t * Math.PI);
+              const ovalX = Math.cos(Math.min(1, ax / 16.0) * (Math.PI * 0.45));
+              const zTarget = zBase + 0.85 * ovalY * ovalX;
+              if (vz > zTarget) {
                 const edgeY = Math.min(
                   THREE.MathUtils.smoothstep(vy, 104.0, 107.0),
                   1 - THREE.MathUtils.smoothstep(vy, 142.0, 145.0),
                 );
                 const edgeX = 1 - THREE.MathUtils.smoothstep(ax, 12.0, 16.0);
                 const weight = edgeY * edgeX * 0.95;
-                vz = THREE.MathUtils.lerp(vz, zRef, weight);
+                vz = THREE.MathUtils.lerp(vz, zTarget, weight);
               }
             }
             newPos.push(vx, vy, vz);
@@ -698,7 +701,7 @@ async function customizeJackieModel(root: THREE.Object3D) {
       }
     });
 
-    // Çocuk çizgi filmine uygunluk: göğüs çıkıntısını tamamen düzleştirip çocuk tunik/tişört çizgisine çek
+    // Çocuk çizgi filmine uygunluk: göğüs hattını öne çıkmayacak şekilde yumuşak oval kavise uyarla
     root.traverse((o) => {
       const mesh = o as THREE.SkinnedMesh;
       if (!mesh.isSkinnedMesh || !/ch29/i.test(mesh.name)) return;
@@ -712,15 +715,18 @@ async function customizeJackieModel(root: THREE.Object3D) {
         const ax = Math.abs(x);
         if (y >= 104.0 && y <= 128.0 && ax <= 14.0) {
           const t = (y - 104.0) / (128.0 - 104.0);
-          const zRef = THREE.MathUtils.lerp(10.2, 7.6, t);
-          if (z > zRef) {
+          const zBase = THREE.MathUtils.lerp(10.2, 7.8, t);
+          const ovalY = Math.sin(t * Math.PI);
+          const ovalX = Math.cos(Math.min(1, ax / 14.0) * (Math.PI * 0.45));
+          const zTarget = zBase + 0.8 * ovalY * ovalX;
+          if (z > zTarget) {
             const edgeY = Math.min(
               THREE.MathUtils.smoothstep(y, 104.0, 107.0),
               1 - THREE.MathUtils.smoothstep(y, 125.0, 128.0),
             );
             const edgeX = 1 - THREE.MathUtils.smoothstep(ax, 10.5, 14.0);
             const weight = edgeY * edgeX * 0.95;
-            pos.setZ(i, THREE.MathUtils.lerp(z, zRef, weight));
+            pos.setZ(i, THREE.MathUtils.lerp(z, zTarget, weight));
           }
         }
       }

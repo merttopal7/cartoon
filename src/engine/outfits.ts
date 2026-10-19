@@ -486,6 +486,57 @@ export async function applySharedFemaleOutfit(
 
   const pos = geom.attributes.position as THREE.BufferAttribute;
 
+  // Çocuk çizgi filmine uygunluk: ortak kadın kostümlerinin göğüs çıkıntısını
+  // öne fırlamayacak şekilde yumuşak oval bir kavise çevir (çocuk çizgi film standardı)
+  const isBodyVertex = new Uint8Array(pos.count);
+  for (const grp of geom.groups) {
+    if (matRoles[grp.materialIndex ?? 0] === 'body') {
+      const end = Math.min(pos.count, grp.start + grp.count);
+      for (let i = grp.start; i < end; i++) isBodyVertex[i] = 1;
+    }
+  }
+  const hasBodyFilter = geom.groups.length > 0;
+
+  const chestYMin = 104.0;
+  const chestYMax = 130.0;
+  const chestXMax = 14.0;
+
+  for (let i = 0; i < pos.count; i++) {
+    if (hasBodyFilter && !isBodyVertex[i]) continue;
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const ax = Math.abs(x);
+
+    // 1. Göğüs bölgesi: Kemerden (104 cm) atkı altına (130 cm) yumuşak oval kavis (öne çıkmaz, çok dik de kalmaz)
+    if (y >= chestYMin && y <= chestYMax && ax <= chestXMax) {
+      const t = (y - chestYMin) / (chestYMax - chestYMin);
+      const zBase = lerp(10.6, 10.8, t);
+      const ovalY = Math.sin(t * Math.PI);
+      const ovalX = Math.cos(Math.min(1, ax / chestXMax) * (Math.PI * 0.45));
+      const zTarget = zBase + 0.9 * ovalY * ovalX;
+
+      if (z > zTarget) {
+        const edgeY = Math.min(
+          smoothstep(chestYMin, chestYMin + 2.5, y),
+          1 - smoothstep(chestYMax - 2.5, chestYMax, y),
+        );
+        const edgeX = 1 - smoothstep(chestXMax * 0.75, chestXMax, ax);
+        const weight = edgeY * edgeX * 0.95;
+        pos.setZ(i, lerp(z, zTarget, weight));
+      }
+    }
+
+    // 2. Boyun atkısının alt ucundaki aşırı çıkıntıyı göğüsle yumuşakça birleştir
+    if (y > 128.0 && y <= 135.0 && ax <= 8.0 && z > 12.8) {
+      const kScarf = smoothstep(0, 8.0, ax);
+      const targetScarfZ = lerp(12.2, 14.5, (y - 128.0) / 7.0);
+      pos.setZ(i, lerp(z, targetScarfZ, (1 - kScarf) * 0.75));
+    }
+  }
+  pos.needsUpdate = true;
+  geom.computeVertexNormals();
+
   // Hedef karakter kanonik ölçüden farklıysa (ör. Meşe 172 cm vs Defne 168 cm) köşeleri anatomik olarak uyarla
   const needsRetarget =
     Math.abs(srcL.hipY - dstL.hipY) > 0.5 ||
@@ -588,21 +639,7 @@ export async function applySharedFemaleOutfit(
 
       const sZ = centerZ(srcL, y, ax);
       const dZ = centerZ(dstL, ny, Math.abs(nx));
-      let nz = dZ + (z - sZ) * lerp(1.0, torsoScale, 0.35);
-
-      // Çocuk çizgi filmine uygunluk: göğüs çıkıntısını tamamen düzleştir
-      if (role === 'body' && ny >= dstL.spine1Y && ny <= dstL.neckY && Math.abs(nx) <= 15.0) {
-        const t = (ny - dstL.spine1Y) / Math.max(1e-4, dstL.neckY - dstL.spine1Y);
-        const zMaxOffset = lerp(5.8, 3.2, t);
-        if (nz > dZ + zMaxOffset) {
-          const edgeY = Math.min(
-            smoothstep(dstL.spine1Y, dstL.spine1Y + 3.0, ny),
-            1 - smoothstep(dstL.neckY - 3.0, dstL.neckY, ny),
-          );
-          const edgeX = 1 - smoothstep(11.0, 15.0, Math.abs(nx));
-          nz = lerp(nz, dZ + zMaxOffset, edgeY * edgeX * 0.95);
-        }
-      }
+      const nz = dZ + (z - sZ) * lerp(1.0, torsoScale, 0.35);
 
       pos.setXYZ(i, nx, ny, nz);
     }
