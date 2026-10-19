@@ -899,16 +899,23 @@ function windLayer(r: () => number, dur: number, wind: number): Float32Array {
  * Döngülü orman ortamı (stereo): gerçekçi rüzgâr (iki kanal ayrı tohumlu: geniş stereo), kuşlar (gece cırcır
  * böcekleri). Sonu başına çapraz geçişle bağlanır; döngü noktasında dikiş duyulmaz.
  */
-export function ambience(seed: number, preset: AmbiencePreset, wind = 0, loop = 24): [Float32Array, Float32Array] {
+export function ambience(
+  seed: number,
+  preset: AmbiencePreset,
+  wind = 0,
+  loop = 24,
+  /** all: hepsi; base: kuşlar hariç (rüzgâr, gece cırcır böcekleri); birds: yalnızca kuşlar (senaryoda açılıp kapanır) */
+  layer: 'all' | 'base' | 'birds' = 'all',
+): [Float32Array, Float32Array] {
   const r = rng(seed);
   const xf = 3;
   const dur = loop + xf;
-  const chan = (s: number) => windLayer(rng(s), dur, wind);
+  const chan = (s: number) => (layer === 'birds' ? new Float32Array(samples(dur)) : windLayer(rng(s), dur, wind));
   const L = chan(seed * 7 + 1);
   const R = chan(seed * 7 + 2);
   if (preset === 'night') {
-    for (let k = 0; k < 4; k++) cricket(r, L, R, lerp(0.03, 0.07, r()), lerp(-0.8, 0.8, r()));
-  } else {
+    if (layer !== 'birds') for (let k = 0; k < 4; k++) cricket(r, L, R, lerp(0.03, 0.07, r()), lerp(-0.8, 0.8, r()));
+  } else if (layer !== 'base') {
     const rate = preset === 'day' ? 0.45 : 0.22;
     for (let t = 0.5; t < dur - 1; t += 0.1) {
       if (r() < rate * 0.1) bird(r, L, R, t, lerp(0.05, 0.16, r()), lerp(-0.9, 0.9, r()));

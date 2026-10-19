@@ -285,7 +285,7 @@ export class AudioTimeline {
   /** Ortam sesinin t anındaki kazancı: sahne kenarlarında açılıp kapanır, konuşmada kısılır, film sonunda söner. */
   private ambienceGainAt(cue: AmbienceCue, t: number): number {
     if (t < cue.start || t >= cue.end) return 0;
-    let g = cue.gain * Math.min(1, (t - cue.start) / AMBIENCE_EDGE, (cue.end - t) / AMBIENCE_EDGE);
+    let g = cue.gain * Math.min(1, (t - cue.start) / AMBIENCE_EDGE, (cue.end - t) / AMBIENCE_EDGE) * (cue.level ? cue.level(t) : 1);
     if (this.isVoiceActive(t)) g *= AMBIENCE_DUCK;
     const fadeOut = this.musicConfig.fadeOut;
     if (this.filmDuration > 0 && fadeOut > 0) g *= Math.max(0, Math.min(1, (this.filmDuration - t) / fadeOut));

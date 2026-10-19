@@ -1,0 +1,45 @@
+# =============================================================================
+# ORTAK KARAKTERLER — Ormanın Bekçileri'nin karakterleri yalnızca burada tanımlanır.
+# -----------------------------------------------------------------------------
+# Senaryoda kullanmak için tanım yazmak gerekmez: sahnede `asset: toprak` demek yeterli. Bir alanı yalnızca o
+# senaryoda değiştirmek için yalnızca o alan yazılır, gerisi buradan gelir:
+#
+#   assets:
+#     defne: { height: 1.7 }               # Defne, boyu 1.7
+#     kucuk_toprak: { base: toprak, height: 1.1 }   # Toprak'tan türetilmiş ayrı bir varlık
+#
+# `src` ya da `placeholder` içeren bir tanım bu dosyayı kullanmaz (tamamen senaryonun kendi tanımı).
+# Alanlar senaryodaki model varlığıyla aynıdır (src/schema.ts → modelAsset). `animations` alanları birleştirilir.
+# Ses kimliği (voice) ElevenLabs seslendirmesinde kullanılır (tools/elevenlabs-tts.mjs, tools/build_bolum1.py).
+# =============================================================================
+
+toprak:
+  src: models/characters/main-character/kid.fbx
+  height: 1.4
+  voice: xDppd78rqTGY8ICN7M4n
+  element: toprak
+
+defne:
+  src: models/characters/Jackie/character.fbx
+  height: 1.68
+  brightness: 0.3    # pastel dokusu aynı ışıkta diğerlerinden fırlıyordu
+  saturation: 0.88
+  voice: KbaseEXyT9EE0CQLEfbB
+  element: hava
+  animations:
+    idle: models/animations/Neutral Idle.fbx   # sakin bekleme (Happy Idle çok sallanıyordu)
+
+mese:
+  src: models/characters/Erika/character.fbx
+  height: 1.72
+  voice: KAGDtM2gzDrjWlUp2KNe
+  element: su
+  fill: 0.3          # kendi ten renginde dolgu ışığı: yüz gölgede yeşile kaymasın, göz çukurları kararmasın
+  # Modelde ağız şekli yok: yüklemede çene açma / gülümseme / üzgün şekilleri üretilir (bağlama uzayı, cm)
+  face: { mesh: Body_Mesh, seam: 159.0, hinge: [161.5, 0.5], width: 5.3, corner: [2.3, 10.1], front: 11.45 }
+
+karabey:
+  src: models/characters/sword-and-shield/Paladin WProp J Nordstrom.fbx
+  height: 1.95
+  voice: mF7tIc9VLrznhGooGjaT
+  element: ates

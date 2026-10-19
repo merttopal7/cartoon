@@ -11,7 +11,7 @@ import {
 import { buildFilm, type Film } from './engine/film';
 import { withIntro } from './engine/intro';
 import { loadOverlayFonts } from './engine/motion-graphics';
-import { exportMp4, webCodecsSupported } from './export/mp4';
+import { exportMp4, exportMp4ToStream, webCodecsSupported } from './export/mp4';
 import { FORMATS, type FormatPreset } from './formats';
 import { Viewport } from './render/viewport';
 import { parseScenario } from './schema';
@@ -1225,6 +1225,11 @@ function initTimelineUI() {
 }
 
 // ---------------------------------------------------------------- yerleşim
+/** Yetenek bandının CSS'teki doğal genişliği (ikon 72 + metin 256 + dolgu, kenar, gölge, yıldız süsü) ve kenar payları. */
+const HUD_BANNER_W = 410;
+const HUD_MARGIN_X = 22;
+const HUD_MARGIN_Y = 20;
+
 function layout() {
   const r = ui.stage.getBoundingClientRect();
   const pad = 24;
@@ -1254,6 +1259,15 @@ function layout() {
       right: `${s.right * 100}%`,
     });
   }
+
+  // Yetenek bandı (HUD): dar çerçevede (Reels 9:16) küçülür ve güvenli alanın köşesine oturur, kırpılmaz
+  const hudLeft = s ? s.left * w : HUD_MARGIN_X;
+  const hudTop = s ? s.top * h : HUD_MARGIN_Y;
+  const hudAvailW = w - hudLeft - (s ? s.right * w : HUD_MARGIN_X);
+  const hudScale = Math.max(0.25, Math.min(1, hudAvailW / HUD_BANNER_W));
+  ui.frame.style.setProperty('--hud-scale', hudScale.toFixed(3));
+  ui.frame.style.setProperty('--hud-x', `${(hudLeft / hudScale).toFixed(1)}px`);
+  ui.frame.style.setProperty('--hud-y', `${(hudTop / hudScale).toFixed(1)}px`);
 }
 
 // ---------------------------------------------------------------- oynatma
@@ -1418,6 +1432,32 @@ async function runExport(formats: FormatPreset[]) {
   }
   const current = film;
   const previousFormat = format;
+  const exportFps = ui.exportFps.value ? Number(ui.exportFps.value) : current.fps;
+  const fileName = (f: FormatPreset) => `${current.title}-${f.id}${exportFps !== 30 ? `-${exportFps}fps` : ''}.mp4`;
+  // Kaydetme yeri dışa aktarım başlamadan (tıklamanın kullanıcı izni geçerliyken) sorulur: video bellekte toplanmadan
+  // doğrudan dosyaya yazılır. Tek format: dosya kaydetme penceresi; çoklu: klasör seçimi. Tarayıcı desteklemiyorsa
+  // eski yol (bellekte üretip indirme).
+  let saveTo: ((f: FormatPreset) => Promise<FileSystemWritableFileStream>) | null = null;
+  try {
+    const w = window as unknown as {
+      showSaveFilePicker?: (o: object) => Promise<FileSystemFileHandle>;
+      showDirectoryPicker?: (o: object) => Promise<FileSystemDirectoryHandle>;
+    };
+    if (formats.length === 1 && w.showSaveFilePicker) {
+      const handle = await w.showSaveFilePicker({
+        suggestedName: fileName(formats[0]),
+        types: [{ description: 'MP4 video', accept: { 'video/mp4': ['.mp4'] } }],
+      });
+      saveTo = () => handle.createWritable();
+    } else if (formats.length > 1 && w.showDirectoryPicker) {
+      const dir = await w.showDirectoryPicker({ mode: 'readwrite' });
+      saveTo = async (f) => (await dir.getFileHandle(fileName(f), { create: true })).createWritable();
+    }
+  } catch (e) {
+    // Kullanıcı pencereyi kapattı: dışa aktarım başlamaz
+    if (e instanceof DOMException && e.name === 'AbortError') return;
+    saveTo = null;
+  }
   exporting = true;
   // Başlık yazı tipi inmeden kare çizilirse ilk karelerdeki yazılar yedek yazı tipiyle çıkar
   await loadOverlayFonts();
@@ -1433,20 +1473,26 @@ async function runExport(formats: FormatPreset[]) {
       ui.exportLabel.textContent = `${f.label} (${f.width}×${f.height})${formats.length > 1 ? ` · ${i + 1}/${formats.length}` : ''}`;
       layout();
       const started = performance.now();
-      const exportFps = ui.exportFps.value ? Number(ui.exportFps.value) : current.fps;
-      const blob = await exportMp4({
+      const options = {
         film: current,
         viewport,
         format: f,
         fps: exportFps,
         signal: abort.signal,
-        onProgress: (n, total) => (ui.exportProgress.value = n / total),
-      });
-      const name = `${current.title}-${f.id}${exportFps !== 30 ? `-${exportFps}fps` : ''}.mp4`;
-      download(blob, name);
-      done.push(`${name} · ${(blob.size / 1e6).toFixed(1)} MB · ${((performance.now() - started) / 1000).toFixed(1)} sn`);
+        onProgress: (n: number, total: number) => (ui.exportProgress.value = n / total),
+      };
+      const name = fileName(f);
+      let bytes: number;
+      if (saveTo) {
+        bytes = await exportMp4ToStream(options, await saveTo(f));
+      } else {
+        const blob = await exportMp4(options);
+        download(blob, name);
+        bytes = blob.size;
+      }
+      done.push(`${name} · ${(bytes / 1e6).toFixed(1)} MB · ${((performance.now() - started) / 1000).toFixed(1)} sn`);
     }
-    showMessages(done.map((text) => ({ level: 'ok', text: `İndirildi: ${text}` })));
+    showMessages(done.map((text) => ({ level: 'ok', text: `${saveTo ? 'Kaydedildi' : 'İndirildi'}: ${text}` })));
   } catch (e) {
     const aborted = e instanceof DOMException && e.name === 'AbortError';
     showMessages([

@@ -11,7 +11,7 @@ import { disposeTree } from './toon';
 import { setupVegetationWind, type WindSystem } from './wind';
 import { AudioTimeline, type AudioCue } from './audio';
 import { buildSceneRenderDetails } from './details';
-import { loadOverlayFonts, renderMotionGraphicsLayer, type TransitionCue } from './motion-graphics';
+import { loadOverlayFonts, renderMotionGraphicsLayer, type SafeInsets, type TransitionCue } from './motion-graphics';
 import { AbilitySystem, type AbilityRecipe, type ActiveAbilityHUDInfo } from './abilities';
 import { buildRecipe, resolveAbility } from './ability-registry';
 import { showcaseAnchor, showcaseLift } from './ability-fx/showcase';
@@ -291,6 +291,8 @@ export class Film {
   currentSceneLocalTime = 0;
   currentOverlays: OverlayDef[] = [];
   currentActiveAbilities: ActiveAbilityHUDInfo[] = [];
+  /** Son değerlendirilen formatın güvenli alanı; 2B katmanlar bunun içinde kalır. */
+  currentSafe: SafeInsets | undefined;
   /** Çekim başına örneklenen kamera yolu (kamera açıklığı ve ağaç ayrıntı kilidi ortak kullanır). */
   private readonly shotSamples = new Map<string, CameraSample[]>();
   readonly transitionCues: TransitionCue[] = [];
@@ -337,6 +339,7 @@ export class Film {
 
   /** t anındaki kareyi hazırlar. Aynı (t, format) her zaman aynı görüntüyü verir. */
   evaluate(t: number, format: FormatPreset): FrameInfo {
+    this.currentSafe = format.safe;
     t = clamp(t, 0, this.duration - 1e-6);
     const sc = this.scenes.find((s) => t < s.start + s.duration) ?? this.scenes[this.scenes.length - 1];
     // Her karede yalnızca etkin sahne görünür: yalnızca bir öncekini gizlemek, ısıtma ya da örnekleme sonrası açık
@@ -557,6 +560,7 @@ export class Film {
       this.transitionCues,
       this.currentActiveAbilities,
       this.camera,
+      this.currentSafe,
     );
   }
 
@@ -1317,6 +1321,7 @@ export async function buildFilm(
       s.film.sfx,
       // Ortam rüzgârı sahnenin rüzgâr ayarını izler (kapalıysa hafif esinti)
       s.scenes.map((d) => (d.environment.wind?.enabled ? (d.environment.wind.strength ?? 0.5) : 0)),
+      s.scenes.map((d) => d.environment.birds),
     ),
     battle,
     music,

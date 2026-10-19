@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
-import { ArrayBufferTarget, Muxer } from 'mp4-muxer';
+import { EncodedAudioPacketSource, EncodedPacket, EncodedVideoPacketSource, FilePathTarget, Mp4OutputFormat, Output } from 'mediabunny';
 
 // ---------------------------------------------------------------- argümanlar
 function parseArgs(argv) {
@@ -224,15 +224,37 @@ const renderSec = (performance.now() - renderStart) / 1000;
 log(`render bitti: ${renderSec.toFixed(1)} sn (${(totalFrames / renderSec).toFixed(1)} kare/sn)`);
 
 // ---------------------------------------------------------------- birleştirme
+// Mediabunny ile doğrudan dosyaya (bellekte toplamadan); meta veri başta (Fast Start, paket sayıları bilindiği için
+// yer ayrılır). Ses önce yazılır: izler zamana göre iç içe yazıldığından video paketleri ses beklemeden akar.
 const { width, height } = info.format;
-const target = new ArrayBufferTarget();
-const muxer = new Muxer({
-  target,
-  video: { codec: 'avc', width, height, frameRate: fps },
-  audio: useAudio ? { codec: 'aac', numberOfChannels: info.audio.numberOfChannels, sampleRate: info.audio.sampleRate } : undefined,
-  fastStart: 'in-memory',
-  firstTimestampBehavior: 'offset',
-});
+const outPath = path.resolve(
+  String(args.out ?? path.join('output', 'render', `${scenario}-${formatId}${fps !== 30 ? `-${fps}fps` : ''}.mp4`)),
+);
+fs.mkdirSync(path.dirname(outPath), { recursive: true });
+const output = new Output({ format: new Mp4OutputFormat({ fastStart: 'reserve' }), target: new FilePathTarget(outPath) });
+const videoSource = new EncodedVideoPacketSource('avc');
+output.addVideoTrack(videoSource, { frameRate: fps, maximumPacketCount: totalFrames + 2 });
+const audioSource = useAudio ? new EncodedAudioPacketSource('aac') : null;
+if (audioSource) output.addAudioTrack(audioSource, { maximumPacketCount: audioPackets.length + 2 });
+await output.start();
+
+/** avcC'den (AVCDecoderConfigurationRecord) codec dizesi: avc1.PPCCLL (profil, uyumluluk, seviye) */
+const avcCodec = (avcC) => `avc1.${[avcC[1], avcC[2], avcC[3]].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+const us = (v) => v / 1e6;
+
+if (audioSource) {
+  let firstAudio = true;
+  const audioEndUs = (totalFrames / fps) * 1e6;
+  for (const p of audioPackets) {
+    if (p.timestamp >= audioEndUs) break; // --limit: sesi video süresine kırp
+    const meta = firstAudio && p.description
+      ? { decoderConfig: { codec: 'mp4a.40.2', numberOfChannels: info.audio.numberOfChannels, sampleRate: info.audio.sampleRate, description: fromB64(p.description) } }
+      : undefined;
+    await audioSource.add(new EncodedPacket(fromB64(p.data), p.type, us(p.timestamp), us(p.duration)), meta);
+    firstAudio = false;
+  }
+  audioSource.close();
+}
 
 let videoDescription = null;
 let firstVideo = true;
@@ -251,28 +273,17 @@ for (let i = 0; i < segments.length; i++) {
     throw new Error(`segment ${i} zaman damgası ${packets[0].timestamp}µs, beklenen ${startTs}µs`);
   }
   for (const p of packets) {
-    const meta = firstVideo ? { decoderConfig: { codec: 'avc1', description: fromB64(videoDescription) } } : undefined;
-    muxer.addVideoChunkRaw(fromB64(p.data), p.type, p.timestamp, p.duration, meta);
+    let meta;
+    if (firstVideo) {
+      const avcC = fromB64(videoDescription);
+      meta = { decoderConfig: { codec: avcCodec(avcC), codedWidth: width, codedHeight: height, description: avcC } };
+    }
+    await videoSource.add(new EncodedPacket(fromB64(p.data), p.type, us(p.timestamp), us(p.duration)), meta);
     firstVideo = false;
   }
   segPackets.set(i, null); // belleği bırak
 }
-if (useAudio) {
-  let firstAudio = true;
-  const audioEndUs = (totalFrames / fps) * 1e6;
-  for (const p of audioPackets) {
-    if (p.timestamp >= audioEndUs) break; // --limit: sesi video süresine kırp
-    const meta = firstAudio && p.description ? { decoderConfig: { codec: 'mp4a.40.2', description: fromB64(p.description) } } : undefined;
-    muxer.addAudioChunkRaw(fromB64(p.data), p.type, p.timestamp, p.duration, meta);
-    firstAudio = false;
-  }
-}
-muxer.finalize();
-
-const outPath = path.resolve(
-  String(args.out ?? path.join('output', 'render', `${scenario}-${formatId}${fps !== 30 ? `-${fps}fps` : ''}.mp4`)),
-);
-fs.mkdirSync(path.dirname(outPath), { recursive: true });
-fs.writeFileSync(outPath, Buffer.from(target.buffer));
-const mb = target.buffer.byteLength / 1e6;
+videoSource.close();
+await output.finalize();
+const mb = fs.statSync(outPath).size / 1e6;
 log(`yazıldı: ${outPath} · ${mb.toFixed(1)} MB · ${((mb * 8) / (totalFrames / fps)).toFixed(1)} Mbps · toplam ${((performance.now() - t0) / 1000).toFixed(1)} sn`);

@@ -325,6 +325,50 @@ function drawPuffyStar(
 // 1. Bölüm Açılış Başlığı (title_card) — Ahşap Orman Tabelası & Yapraklı Kurdele
 // ---------------------------------------------------------------------------
 
+/** Formatın platform arayüzünün kapattığı kenar payları (kenar boyuna oran). */
+export interface SafeInsets {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
+/** Katmanların taşmaması gereken piksel sınırları. */
+interface Bounds {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/**
+ * Güvenli alanın piksel sınırları. Formatta güvenli alan yoksa (16:9 vb.) kenarlardan %3 pay bırakılır; katmanlar bu
+ * payın içinde kaldığı sürece konum ve boyutları değişmez.
+ */
+function boundsOf(width: number, height: number, safe?: SafeInsets): Bounds {
+  const s = safe ?? { top: 0.03, bottom: 0.03, left: 0.03, right: 0.03 };
+  return { x0: s.left * width, y0: s.top * height, x1: width * (1 - s.right), y1: height * (1 - s.bottom) };
+}
+
+/** Metni, ctx.font ile ölçerek en çok `maxLines` satıra ve `maxW` piksel genişliğe sözcük sınırlarından böler. */
+function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxW: number, maxLines: number): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length <= 1 || ctx.measureText(text).width <= maxW) return [text];
+  const lines: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    const next = cur ? `${cur} ${w}` : w;
+    if (cur && ctx.measureText(next).width > maxW && lines.length < maxLines - 1) {
+      lines.push(cur);
+      cur = w;
+    } else {
+      cur = next;
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
 function renderTitleCard(
   ctx: CanvasRenderingContext2D,
   ov: Extract<OverlayDef, { type: 'title_card' }>,
@@ -333,6 +377,7 @@ function renderTitleCard(
   width: number,
   height: number,
   u: number,
+  b: Bounds,
 ) {
   const frame = localTime * fps;
   const totalFrames = ov.duration * fps;
@@ -375,15 +420,38 @@ function renderTitleCard(
 
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.translate(cx, baseCy + dropOffsetY);
-  ctx.rotate(swingAngle);
-  ctx.scale(squashX, stretchY);
 
+  // Ölçüler: kart yatayda çerçevenin ortasında kalır, güvenli alanın dar tarafına sığar
   const titleFont = `800 ${Math.round(46 * u)}px ${CARTOON_FONT}`;
+  const halfAvail = Math.max(1, Math.min(cx - b.x0, b.x1 - cx));
   ctx.font = titleFont;
-  const titleWidth = ctx.measureText(ov.title).width;
-  const boardW = Math.max(520 * u, titleWidth + 140 * u);
-  const boardH = (ov.subtitle ? 148 : 112) * u;
+  // Uzun başlık önce satırlara bölünür (en çok 3), küçültme son çaredir
+  const titleLines = wrapLines(ctx, ov.title, halfAvail * 2 - 240 * u, 3);
+  const titleWidth = Math.max(...titleLines.map((l) => ctx.measureText(l).width));
+  const lineH = 52 * u;
+  const extraH = (titleLines.length - 1) * lineH;
+
+  ctx.font = `700 ${Math.round(21 * u)}px ${CARTOON_FONT}`;
+  const subPillW = ov.subtitle ? ctx.measureText(ov.subtitle).width + 58 * u : 0;
+  ctx.font = `800 ${Math.round(18 * u)}px ${CARTOON_FONT}`;
+  const badgeW = ov.badge ? ctx.measureText(ov.badge).width + 64 * u : 0;
+
+  const boardW = Math.max(520 * u, titleWidth + 140 * u, subPillW + 90 * u);
+  const boardH = (ov.subtitle ? 148 : 112) * u + extraH;
+  // Taşma (yapraklar, kurdele kulakları, alt başlık yıldızları dahil) güvenli alana sığmıyorsa tüm kart küçülür
+  const extentW = Math.max(boardW + 100 * u, badgeW + 52 * u, subPillW + 56 * u);
+  const fit = Math.min(1, (halfAvail * 2) / extentW);
+
+  // Dikeyde de güvenli alanın içinde kalır (ör. Reels'te alt arayüz bölgesine inmez)
+  const upExtent = boardH / 2 + (ov.badge ? 24 * u : 8 * u);
+  const downExtent = boardH / 2 + 14 * u;
+  const lo = b.y0 + upExtent * fit;
+  const hi = b.y1 - downExtent * fit;
+  const cy = lo <= hi ? clamp(baseCy, lo, hi) : (lo + hi) / 2;
+
+  ctx.translate(cx, cy + dropOffsetY);
+  ctx.rotate(swingAngle);
+  ctx.scale(squashX * fit, stretchY * fit);
 
   // 1) Üstten sarkan çizgi film halatları (yalnızca üst konumdayken)
   if (ov.position === 'top') {
@@ -522,23 +590,26 @@ function renderTitleCard(
     ctx.restore();
   }
 
-  // 7) Ana Başlık ("BÖLÜM 1: İLK DEVRİYE") — Sıcak Turuncu/Altın 3B Çizgi Film Harfleri
+  // 7) Ana Başlık ("BÖLÜM 1: İLK DEVRİYE") — Sıcak Turuncu/Altın 3B Çizgi Film Harfleri (uzunsa satırlara bölünür)
   ctx.font = titleFont;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const titleY = ov.subtitle ? -12 * u : 4 * u;
 
-  const textGrad = ctx.createLinearGradient(0, titleY - 22 * u, 0, titleY + 22 * u);
-  textGrad.addColorStop(0, '#fde047');
-  textGrad.addColorStop(0.55, '#f59e0b');
-  textGrad.addColorStop(1, '#ea580c');
+  titleLines.forEach((line, i) => {
+    const ly = titleY + (i - (titleLines.length - 1) / 2) * lineH;
+    const textGrad = ctx.createLinearGradient(0, ly - 22 * u, 0, ly + 22 * u);
+    textGrad.addColorStop(0, '#fde047');
+    textGrad.addColorStop(0.55, '#f59e0b');
+    textGrad.addColorStop(1, '#ea580c');
 
-  drawCartoonText(ctx, ov.title, 0, titleY, {
-    fill: textGrad,
-    stroke: CARTOON_INK,
-    strokeWidth: 8.5 * u,
-    extrudeColor: CARTOON_INK,
-    extrudeY: 5.5 * u,
+    drawCartoonText(ctx, line, 0, ly, {
+      fill: textGrad,
+      stroke: CARTOON_INK,
+      strokeWidth: 8.5 * u,
+      extrudeColor: CARTOON_INK,
+      extrudeY: 5.5 * u,
+    });
   });
 
   // 8) Alt Başlık + İki Yanda Parlayan Şişkin Yıldızlar
@@ -550,7 +621,7 @@ function renderTitleCard(
       config: { damping: 10, stiffness: 140 },
     });
     const subScale = clamp(subSpring, 0, 1.15);
-    const subY = boardH * 0.27;
+    const subY = (boardH - extraH) * 0.27 + extraH / 2;
 
     ctx.save();
     ctx.translate(0, subY);
@@ -596,6 +667,7 @@ function renderLowerThird(
   width: number,
   height: number,
   u: number,
+  b: Bounds,
 ) {
   const frame = localTime * fps;
   const totalFrames = ov.duration * fps;
@@ -617,16 +689,25 @@ function renderLowerThird(
   const cardW = 460 * u;
   const cardH = (ov.tag ? 126 : 100) * u;
   const marginX = 68 * u;
-  const baseY = height - cardH - 58 * u;
-  const baseX = isRight ? width - cardW - marginX : marginX;
+  // Sticker gölgesi (10u) karttan karşı yöne taşar, çizgi kalınlığı da her yana ~3u; dar formatta kart küçülür
+  const shadowPad = 13 * u;
+  const strokePad = 3 * u;
+  const fit = Math.min(1, (b.x1 - b.x0) / (cardW + shadowPad));
+  const cw = cardW * fit;
+  const ch = cardH * fit;
+  const tiltPad = 0.022 * cw; // eğim (~2.3°) köşeleri bu kadar aşağı indirir
+  const baseY = Math.min(height - ch - 58 * u, b.y1 - ch - shadowPad - tiltPad);
+  const baseX = isRight
+    ? Math.max(Math.min(width - cw - marginX, b.x1 - cw - strokePad), b.x0 + shadowPad)
+    : Math.max(Math.min(marginX, b.x1 - cw - shadowPad), b.x0);
 
-  const cx = baseX + cardW * 0.5;
-  const cy = baseY + cardH * 0.5;
+  const cx = baseX + cw * 0.5;
+  const cy = baseY + ch * 0.5;
 
   // Squash & Stretch + hafif neşeli eğim
   const tilt = (isRight ? -0.028 : 0.028) + Math.sin(localTime * 3.5) * 0.012;
-  const squashX = s * (1 + (1 - Math.min(1, s)) * 0.18);
-  const stretchY = s;
+  const squashX = s * (1 + (1 - Math.min(1, s)) * 0.18) * fit;
+  const stretchY = s * fit;
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -774,6 +855,7 @@ function renderInterstitial(
   width: number,
   height: number,
   u: number,
+  b: Bounds,
 ) {
   const frame = localTime * fps;
   const totalFrames = ov.duration * fps;
@@ -809,6 +891,7 @@ function renderInterstitial(
     width,
     height,
     u,
+    b,
   );
 
   ctx.restore();
@@ -962,6 +1045,8 @@ export function renderMotionGraphicsLayer(
   transitions: readonly TransitionCue[],
   _activeAbilities: readonly ActiveAbilityHUDInfo[] = [],
   _camera?: THREE.Camera,
+  /** Formatın güvenli alanı (Reels vb.); verilmezse kenarlardan %3 pay. */
+  safe?: SafeInsets,
 ): boolean {
   const activeOverlays = overlays.filter(
     (ov) => ov.type !== 'comic_pop' && sceneLocalTime >= ov.at && sceneLocalTime <= ov.at + ov.duration,
@@ -975,6 +1060,7 @@ export function renderMotionGraphicsLayer(
   }
 
   const u = Math.min(width, height) / 1080;
+  const bounds = boundsOf(width, height, safe);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
   ctx.clearRect(0, 0, width, height);
@@ -984,13 +1070,13 @@ export function renderMotionGraphicsLayer(
   for (const ov of activeOverlays) {
     const localTime = sceneLocalTime - ov.at;
     if (ov.type === 'interstitial') {
-      renderInterstitial(ctx, ov, localTime, fps, width, height, u);
+      renderInterstitial(ctx, ov, localTime, fps, width, height, u, bounds);
       drewAnything = true;
     } else if (ov.type === 'title_card') {
-      renderTitleCard(ctx, ov, localTime, fps, width, height, u);
+      renderTitleCard(ctx, ov, localTime, fps, width, height, u, bounds);
       drewAnything = true;
     } else if (ov.type === 'lower_third') {
-      renderLowerThird(ctx, ov, localTime, fps, width, height, u);
+      renderLowerThird(ctx, ov, localTime, fps, width, height, u, bounds);
       drewAnything = true;
     }
   }

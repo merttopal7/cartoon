@@ -21,15 +21,6 @@
 #   4. Kapanış (47.6–55.9 sn): "Birlikte, Ormanın Bekçileriyiz!", sevinçle zıplarlar, başlık.
 # =============================================================================
 
-imports:
-  animations:
-    idle: models/animations/Neutral Idle.fbx
-    run: models/animations/Running.fbx
-    point: models/animations/Kneeling Pointing.fbx
-    jump_joy: models/animations/Joyful Jump.fbx
-    taunt: models/animations/Taunt.fbx
-    fight_idle: models/animations/Action Idle To Fight Idle.fbx
-
 film:
   title: acilis
   look:
@@ -47,31 +38,7 @@ film:
     fade_out: 1.2
 
 assets:
-  toprak:
-    src: models/characters/main-character/kid.fbx
-    height: 1.4
-    voice: xDppd78rqTGY8ICN7M4n
-    element: toprak
-  defne:
-    src: models/characters/Jackie/character.fbx
-    height: 1.68
-    brightness: 0.3
-    saturation: 0.88
-    voice: KbaseEXyT9EE0CQLEfbB
-    element: hava
-    animations:
-      idle: models/animations/Neutral Idle.fbx   # sakin bekleme (Happy Idle çok sallanıyordu)
-  mese:
-    src: models/characters/Erika/character.fbx
-    height: 1.72
-    voice: KAGDtM2gzDrjWlUp2KNe
-    element: su
-    fill: 0.3
-    face: { mesh: Body_Mesh, seam: 159.0, hinge: [161.5, 0.5], width: 5.3, corner: [2.3, 10.1], front: 11.45 }
-  harita:
-    src: models/maps/dirt-road.glb
-    align: none
-    road: roads/dirt-road.json
+  # toprak, defne, mese, karabey (src/data/characters.yaml) ve harita (src/data/maps.yaml): ortak tanımlar; burada yalnızca farklı olan alan yazılır
 
 scenes:
   - id: acilis

@@ -21,6 +21,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import struct
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -30,7 +31,21 @@ AUDIO_DIR = os.path.join(ROOT, "public", AUDIO_REL)
 LINES_JSON = os.path.join(ROOT, "tools", "data", "bolum1_lines.json")
 ROAD = json.load(open(os.path.join(ROOT, "public", "roads", "dirt-road.json")))["points"]
 
-VOICES = {"toprak": "xDppd78rqTGY8ICN7M4n", "defne": "KbaseEXyT9EE0CQLEfbB", "mese": "KAGDtM2gzDrjWlUp2KNe"}
+# Ses kimlikleri ortak karakter kataloğundan (src/data/characters.yaml; tek kaynak)
+def _shared_voices():
+    voices = {}
+    who = None
+    for line in open(os.path.join(ROOT, "src", "data", "characters.yaml"), encoding="utf8"):
+        m = re.match(r"^([a-z_]+):\s*$", line)
+        if m:
+            who = m.group(1)
+        m = re.match(r"^\s+voice:\s*(\S+)", line)
+        if m and who:
+            voices[who] = m.group(1)
+    return voices
+
+
+VOICES = _shared_voices()
 # Tahmini konuşma hızı (karakter/sn; açılış repliklerinden ölçüldü) ve replik sonu payı
 RATE = {"toprak": 11.5, "defne": 12.5, "mese": 13.0}
 TAIL = 0.25
@@ -123,6 +138,7 @@ class Script:
         self.walk_end = 0.0
         self.busy = {c: 0.0 for c in CAST}  # karakterin son eylem/yürüyüş bitişi
         self.looks = []
+        self.birds = []  # kuş sesi anahtarları (sahne zamanı): susma / yeniden ötme
 
     def act(self, who, do, at=None, **kw):
         a = {"who": who, "at": round(self.t if at is None else at, 2), "do": do}
@@ -393,6 +409,8 @@ S.wait_walk(-0.3)
 # --- 5. Sessizlik (durak 2, s≈96) --------------------------------------------------------------
 S.cam({"target": "mese", "size": {"from": 2.2, "to": 1.8}, "angle": {"from": -20, "to": -8}, "elevation": 6,
        "relative": True, "ease": "inOut"}, coverage="dialogue")
+# Kuşlar koridora yaklaştıkça yavaş yavaş susar (izleyici farkına varmadan); "Şşş" anında tam sessizlik
+S.birds.append({"at": round(S.t - 12.0, 2), "on": False, "fade": 11.0})
 S.say("mese", "Şşş. Durun bir saniye.", gap=0.3)
 S.act("mese", "clip", name="idle_2", duration=6.0, loop=False, fade=0.4)
 for who in ["toprak", "defne"]:
@@ -555,7 +573,9 @@ S.say("defne", "Duydum! Hışırdadı!", emote="happy")
 S.say("toprak", "Bence o sadece rüzgârdı.")
 S.say("defne", "Rüzgâr da benim, teşekkür de!")
 S.pause(2.8)
-S.say("mese", "Şşş! Dinleyin...", gap=0.3, emote="surprised")
+st_birds = S.say("mese", "Şşş! Dinleyin...", gap=0.3, emote="surprised")
+# Ağaç dikildi: kuşlar yeniden öter (Toprak "Kuşlar geri döndü!" demeden hemen önce)
+S.birds.append({"at": round(st_birds + 1.2, 2), "on": True, "fade": 2.5})
 S.pause(2.6)
 S.say("toprak", "Kuşlar! Kuşlar geri döndü!", emote="happy", clip=("jump_joy", 1.85))
 S.say("defne", "Demek onlar da ağaç için endişelenmiş.")
@@ -646,6 +666,7 @@ mm, ss = divmod(END, 60)
 CLEAR = [((P0["toprak"][0] + P0["mese"][0]) / 2, (P0["toprak"][1] + P0["mese"][1]) / 2, 7.0),
          (*road_at(165.0), 5.0), (*road_at(157.0), 4.5), (*road_at(150.0), 4.0), (*road_at(128.0), 6.0),
          (*road_at(112.0), 5.0), (*road_at(96.0), 5.0)]
+birds_yaml = "\n".join(f"        - {{ at: {b['at']}, on: {str(b['on']).lower()}, fade: {b['fade']} }}" for b in S.birds)
 clear_yaml = "\n".join(f"      - {{ at: [{round(x, 2)}, {round(z, 2)}], radius: {r} }}" for x, z, r in CLEAR)
 char_yaml = "\n".join(
     f"      - {{ id: {c}, asset: {c}, at: [{P0[c][0]}, 0, {P0[c][1]}], facing: {NORTH0 if c != 'defne' else NORTH0} }}" for c in CAST
@@ -667,16 +688,6 @@ yaml = f"""# senaryo: Bölüm 1 — Devrilen Çamın Sırrı
 # {talk_n} replik, toplam konuşma ≈{talk_s:.0f} sn.
 # =============================================================================
 
-imports:
-  animations:
-    idle: models/animations/Neutral Idle.fbx
-    walk: models/animations/Walking.fbx
-    run: models/animations/Running.fbx
-    point: models/animations/Kneeling Pointing.fbx
-    jump_joy: models/animations/Joyful Jump.fbx
-    taunt: models/animations/Taunt.fbx
-    surprised: models/animations/Surprised.fbx
-
 film:
   title: bolum-1-ormanin-bekcileri
   intro: acilis        # açılış klibi (public/scenarios/acilis.yaml) bölümün başına eklenir
@@ -695,31 +706,7 @@ film:
     fade_out: 1.5
 
 assets:
-  toprak:
-    src: models/characters/main-character/kid.fbx
-    height: 1.4
-    voice: {VOICES['toprak']}
-    element: toprak
-  defne:
-    src: models/characters/Jackie/character.fbx
-    height: 1.68
-    brightness: 0.3
-    saturation: 0.88
-    voice: {VOICES['defne']}
-    element: hava
-    animations:
-      idle: models/animations/Neutral Idle.fbx   # sakin bekleme (Happy Idle çok sallanıyordu)
-  mese:
-    src: models/characters/Erika/character.fbx
-    height: 1.72
-    voice: {VOICES['mese']}
-    element: su
-    fill: 0.3
-    face: {{ mesh: Body_Mesh, seam: 159.0, hinge: [161.5, 0.5], width: 5.3, corner: [2.3, 10.1], front: 11.45 }}
-  harita:
-    src: models/maps/dirt-road.glb
-    align: none
-    road: roads/dirt-road.json
+  # toprak, defne, mese, karabey (src/data/characters.yaml) ve harita (src/data/maps.yaml): ortak tanımlar; burada yalnızca farklı olan alan yazılır
 
 scenes:
   - id: devriye
@@ -730,6 +717,9 @@ scenes:
       fog_far: 450
       wind:
         enabled: true
+      # Kuşlar: koridorda susar (gizemli sessizlik), ağaç dikilince yeniden öter
+      birds:
+{birds_yaml}
     props:
       - asset: harita
         at: [0, 0, 0]

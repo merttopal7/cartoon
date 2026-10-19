@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { parse as parseYaml, YAMLParseError } from 'yaml';
 import { abilityNames, casterClipNames, resolveAbility, targetClipNames } from './engine/ability-registry';
+import sharedCharactersText from './data/characters.yaml?raw';
+import sharedMapsText from './data/maps.yaml?raw';
 
 // ---------------------------------------------------------------------------
 // Senaryo şeması. YAML (veya JSON) önce bu şemaya göre doğrulanır; motorun geri
@@ -333,6 +335,16 @@ const scene = z
         /** Sisin başladığı ve tamamen kapattığı mesafeler (m). Büyük haritalarda uzatın. */
         fog_near: z.number().positive().default(30),
         fog_far: z.number().positive().default(90),
+        /**
+         * Kuş sesleri (gündüz ve gün batımı ortam sesinde): true = sürekli (varsayılan), false = hiç yok, liste = sahne
+         * zamanında açılıp kapanır, ör. [{ at: 290, on: false, fade: 2 }, { at: 535, on: true, fade: 3 }]. Açık başlar.
+         */
+        birds: z
+          .union([
+            z.boolean(),
+            z.array(z.object({ at: z.number().min(0), on: z.boolean(), fade: z.number().min(0).default(2) }).strict()),
+          ])
+          .default(true),
         /** Rüzgar ayarları (bitki salınımı ve uçuşan yapraklar). */
         wind: z
           .object({
@@ -475,7 +487,11 @@ export const scenarioSchema = z
       })
       .strict()
       .default({}),
-    /** Dosya başında tanımlanan ortak içe aktarmalar (tüm karakterlere otomatik dağıtılır) */
+    /**
+     * İsteğe bağlı: ortak klip adı → dosya eşlemesi (tüm karakterlere dağıtılır, kataloğu ezer). Genel katalogdaki klipler
+     * (SHARED_MIXAMO_ANIMATIONS vb.) senaryoda kullanıldıkları için otomatik bağlanır; bu yüzden katalogdakini
+     * tekrar yazmak gerekmez, yalnızca katalogda olmayan ya da farklı dosyaya yönlendirilecek klipler için kullanın.
+     */
     imports: z
       .union([
         z.object({
@@ -717,6 +733,54 @@ const ERIKA_BOW_CORE_KEYS = [
 ] as const;
 
 /** YAML veya JSON metnini ayrıştırır ve doğrular. JSON geçerli bir YAML olduğundan ikisi de kabul edilir. */
+/**
+ * Ortak varlık kataloğu: karakterler (src/data/characters.yaml) ve haritalar (src/data/maps.yaml). Senaryolar bu
+ * varlıkları yeniden tanımlamadan kullanır.
+ */
+const SHARED_ASSETS = {
+  ...((parseYaml(sharedCharactersText) ?? {}) as Record<string, Record<string, unknown>>),
+  ...((parseYaml(sharedMapsText) ?? {}) as Record<string, Record<string, unknown>>),
+};
+
+/** Senaryoda tanımsız kullanılabilen ortak varlık adları (karakterler ve haritalar). */
+export function sharedAssetIds(): string[] {
+  return Object.keys(SHARED_ASSETS);
+}
+
+/**
+ * Senaryonun varlıklarını ortak varlık kataloğuyla tamamlar (doğrulamadan önce, ham nesne üzerinde):
+ * - `src` ya da `placeholder` içermeyen tanım katalogdaki karakterle birleştirilir: aynı adlı karakter ya da
+ *   `base: <ad>`; senaryodaki alanlar öncelikli, `animations` alan alan birleştirilir.
+ * - Sahnelerde (karakter ya da dekor/harita olarak) kullanılıp hiç tanımlanmamış varlık katalogda varsa oradan alınır.
+ */
+function resolveSharedCharacters(rawObj: Record<string, any>) {
+  const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
+  const merge = (base: Record<string, unknown>, over: Record<string, any>) => {
+    const { base: _b, ...rest } = over;
+    const out: Record<string, any> = { ...clone(base), ...rest };
+    if (base.animations && rest.animations && typeof rest.animations === 'object') {
+      out.animations = { ...(base.animations as object), ...rest.animations };
+    }
+    return out;
+  };
+  // Yalnızca yorum içeren `assets:` bölümü null okunur: boş tanım sayılır
+  if (rawObj.assets !== undefined && rawObj.assets !== null && (typeof rawObj.assets !== 'object' || Array.isArray(rawObj.assets))) return;
+  const assets: Record<string, any> = (rawObj.assets ??= {});
+  for (const [key, def] of Object.entries(assets)) {
+    if (!def || typeof def !== 'object' || Array.isArray(def) || 'src' in def || 'placeholder' in def) continue;
+    const baseId = typeof def.base === 'string' ? def.base : key;
+    const base = SHARED_ASSETS[baseId];
+    if (base) assets[key] = merge(base, def);
+  }
+  for (const sc of Array.isArray(rawObj.scenes) ? rawObj.scenes : []) {
+    const used = [...(Array.isArray(sc?.characters) ? sc.characters : []), ...(Array.isArray(sc?.props) ? sc.props : [])];
+    for (const item of used) {
+      const id = item?.asset;
+      if (typeof id === 'string' && !(id in assets) && SHARED_ASSETS[id]) assets[id] = clone(SHARED_ASSETS[id]);
+    }
+  }
+}
+
 export function parseScenario(text: string): ParseResult {
   let raw: unknown;
   try {
@@ -733,6 +797,7 @@ export function parseScenario(text: string): ParseResult {
   // Ortak animasyonları (imports veya animations) tüm karakter modellerine otomatik aktar
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
     const rawObj = raw as Record<string, any>;
+    resolveSharedCharacters(rawObj);
     let sharedAnimations: Record<string, string> = {};
 
     if (rawObj.animations && typeof rawObj.animations === 'object') {
@@ -780,6 +845,10 @@ export function parseScenario(text: string): ParseResult {
               const whoAsset = typeof a.who === 'string' ? charToAsset.get(a.who) : undefined;
               if (a.do === 'clip' && typeof a.name === 'string') {
                 addAssetClip(whoAsset, a.name);
+              }
+              // `jump` eylemi motorda "jump" klibini örtük sürer (rigs/model.ts), klip adı YAML'da yazılmaz
+              if (a.do === 'jump') {
+                addAssetClip(whoAsset, 'jump');
               }
               if (a.do === 'walk_to' && typeof a.clip === 'string') {
                 addAssetClip(whoAsset, a.clip);

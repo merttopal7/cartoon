@@ -4,12 +4,6 @@
 # 2. Aşırı yakınlaştırma yasaktır; dengeli büst/orta plan (size: medium) kullanılır.
 # 3. Diyalog değişimlerinde konuşan karaktere kesme ve odak (shot-reverse-shot).
 
-# Ortak animasyon importları (tüm karakterler otomatik olarak devralır):
-imports:
-  animations:
-    idle: models/animations/Neutral Idle.fbx
-    walk: models/animations/Walking.fbx
-
 film:
   title: harita-toprak-yol
   fps: 30
@@ -25,25 +19,11 @@ film:
     fade_out: 1.5
 
 assets:
-  cocuk:
-    src: models/characters/main-character/kid.fbx
-    height: 1.4
-    voice: xDppd78rqTGY8ICN7M4n
-  jackie:
-    src: models/characters/Jackie/character.fbx
-    height: 1.68
-    voice: KbaseEXyT9EE0CQLEfbB
-  amy:
-    src: models/characters/Erika/character.fbx
-    height: 1.72
-    voice: A2XgcJ6lQVEFeIaIUyrc
-  karabey:
-    src: models/characters/sword-and-shield/Paladin WProp J Nordstrom.fbx
-    height: 1.95
-  harita:
-    src: models/maps/dirt-road.glb
-    align: none
-    road: roads/dirt-road.json   # yol orta çizgisi: walk_to { road: true } ile yol boyunca yürünür
+  # Ortak karakterlerden türetilir (src/data/characters.yaml); yalnızca farklı alanlar yazılır. harita: src/data/maps.yaml
+  cocuk: { base: toprak }
+  jackie: { base: defne }
+  amy: { base: mese, voice: A2XgcJ6lQVEFeIaIUyrc }
+  karabey: {}
 
 scenes:
   - id: toprak-yol

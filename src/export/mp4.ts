@@ -1,4 +1,14 @@
-import { ArrayBufferTarget, Muxer } from 'mp4-muxer';
+import {
+  BufferTarget,
+  EncodedAudioPacketSource,
+  EncodedPacket,
+  EncodedVideoPacketSource,
+  Mp4OutputFormat,
+  Output,
+  StreamTarget,
+  type StreamTargetChunk,
+  type Target,
+} from 'mediabunny';
 import type { Film } from '../engine/film';
 import type { FormatPreset } from '../formats';
 import type { Viewport } from '../render/viewport';
@@ -83,6 +93,8 @@ export interface VideoRangeOptions {
   onChunk: (chunk: EncodedVideoChunk, meta?: EncodedVideoChunkMetadata) => void;
   onProgress?: (done: number, total: number) => void;
   signal?: AbortSignal;
+  /** Her kareden sonra beklenir: paketleri yazan taraf (dosya akışı) geride kalırsa render beklesin. */
+  backpressure?: () => Promise<void>;
 }
 
 /**
@@ -100,6 +112,7 @@ export async function encodeVideoRange({
   onChunk,
   onProgress,
   signal,
+  backpressure,
 }: VideoRangeOptions): Promise<void> {
   const { width, height } = format;
   let encodeError: unknown = null;
@@ -127,6 +140,7 @@ export async function encodeVideoRange({
       onProgress?.(i - from + 1, count);
 
       while (encoder.encodeQueueSize > 6) await sleep(1);
+      if (backpressure) await backpressure();
       if (i % 4 === 0) await sleep(0); // arayüz nefes alsın
     }
     await encoder.flush();
@@ -214,41 +228,94 @@ export async function encodeAudio(
 }
 
 /**
- * Filmi kare kare (gerçek zamandan bağımsız) render edip MP4 (H.264 + isteğe bağlı AAC ses) üretir.
- * Kodlama tarayıcının donanım kodlayıcısıyla yapılır, sunucu gerekmez.
+ * Filmi kare kare (gerçek zamandan bağımsız) render edip MP4'e (H.264 + isteğe bağlı AAC ses) yazar. Kodlama tarayıcının
+ * donanım kodlayıcısıyla yapılır, sunucu gerekmez; birleştirme (MP4 muxer) Mediabunny ile.
+ *
+ * Meta veri dosyanın başında (Fast Start: oynatıcılar ve paylaşım siteleri hemen oynatabilir). Paket sayıları baştan
+ * bilindiği için yer ayrılır ('reserve'): kodlanan paketler bellekte toplanmadan sırayla hedefe yazılır. Dosyaya
+ * akıtıldığında (StreamTarget) bellek kullanımı film uzunluğundan bağımsızdır (10 dk 1080p ≈ 750 MB, 60 fps'te iki katı).
+ * Ses önce kodlanır (birkaç MB): MP4 izleri zamana göre iç içe yazıldığından video paketleri ses beklemeden akar.
  */
-export async function exportMp4({ film, viewport, format, fps: fpsOverride, onProgress, signal }: ExportOptions): Promise<Blob> {
+async function writeMp4(target: Target, { film, viewport, format, fps: fpsOverride, onProgress, signal }: ExportOptions): Promise<void> {
   const { width, height } = format;
   const fps = fpsOverride ?? film.fps;
   const total = Math.max(1, Math.round(film.duration * fps));
   const config = await pickConfig(width, height, fps);
   const audio = await planAudio(film);
 
-  const target = new ArrayBufferTarget();
-  const muxer = new Muxer({
-    target,
-    video: { codec: 'avc', width, height, frameRate: fps },
-    audio: audio ? { codec: 'aac', numberOfChannels: audio.numberOfChannels, sampleRate: audio.sampleRate } : undefined,
-    fastStart: 'in-memory',
-    firstTimestampBehavior: 'offset',
-  });
+  const output = new Output({ format: new Mp4OutputFormat({ fastStart: 'reserve' }), target });
+  const video = new EncodedVideoPacketSource('avc');
+  output.addVideoTrack(video, { frameRate: fps, maximumPacketCount: total + 2 });
+  let sound: EncodedAudioPacketSource | null = null;
+  if (audio) {
+    sound = new EncodedAudioPacketSource('aac');
+    // AAC: 1024 örnek/paket; kodlayıcının başa eklediği paket(ler) için pay
+    output.addAudioTrack(sound, { maximumPacketCount: Math.ceil((film.duration * audio.sampleRate) / 1024) + 16 });
+  }
+  await output.start();
 
-  await encodeVideoRange({
-    film,
-    viewport,
-    format,
-    fps,
-    config,
-    from: 0,
-    to: total,
-    onChunk: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-    onProgress,
-    signal,
-  });
-  if (audio) await encodeAudio(film, audio, (chunk, meta) => muxer.addAudioChunk(chunk, meta), signal);
+  // Kodlayıcı paketleri eşzamanlı verir; yazıcıya sırayla aktarılır, yazıcı geride kalırsa render bekler
+  let queue = Promise.resolve();
+  let queued = 0;
+  const enqueue = (add: () => Promise<void>) => {
+    queued++;
+    queue = queue.then(add).finally(() => queued--);
+  };
+  try {
+    if (audio && sound) {
+      const src = sound;
+      await encodeAudio(film, audio, (chunk, meta) => enqueue(() => src.add(EncodedPacket.fromEncodedChunk(chunk), meta)), signal);
+      await queue;
+      src.close();
+    }
+    await encodeVideoRange({
+      film,
+      viewport,
+      format,
+      fps,
+      config,
+      from: 0,
+      to: total,
+      onChunk: (chunk, meta) => enqueue(() => video.add(EncodedPacket.fromEncodedChunk(chunk), meta)),
+      onProgress,
+      signal,
+      backpressure: async () => {
+        if (queued > 8) await queue;
+      },
+    });
+    await queue;
+    video.close();
+    await output.finalize();
+  } catch (e) {
+    await output.cancel().catch(() => {});
+    throw e;
+  }
+}
 
-  muxer.finalize();
-  return new Blob([target.buffer], { type: 'video/mp4' });
+/** Filmi MP4 olarak bellekte üretip Blob döndürür (kısa filmler ve testler; uzun filmlerde exportMp4ToStream). */
+export async function exportMp4(options: ExportOptions): Promise<Blob> {
+  const target = new BufferTarget();
+  await writeMp4(target, options);
+  return new Blob([target.buffer!], { type: 'video/mp4' });
+}
+
+/**
+ * Filmi MP4 olarak doğrudan bir yazma akışına (ör. tarayıcının kaydetme penceresinden alınan dosya,
+ * FileSystemWritableFileStream) yazar; yazılan bayt sayısını döndürür. Akış, bitince kapatılır.
+ */
+export async function exportMp4ToStream(options: ExportOptions, writable: WritableStream<StreamTargetChunk>): Promise<number> {
+  let bytes = 0;
+  const counting = new WritableStream<StreamTargetChunk>({
+    write: async (chunk) => {
+      bytes = Math.max(bytes, chunk.position + chunk.data.byteLength);
+      await writer.write(chunk);
+    },
+    close: () => writer.close(),
+    abort: (reason) => writer.abort(reason),
+  });
+  const writer = writable.getWriter();
+  await writeMp4(new StreamTarget(counting, { chunked: true }), options);
+  return bytes;
 }
 
 /**

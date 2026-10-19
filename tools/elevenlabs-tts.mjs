@@ -160,6 +160,7 @@ async function main() {
   console.log(`[TTS] Senaryo okunuyor: ${scenarioPath}`);
   const yamlText = fs.readFileSync(scenarioPath, 'utf8');
   const scenario = parseYaml(yamlText);
+  const SHARED_CHARACTERS = parseYaml(fs.readFileSync(path.resolve('src/data/characters.yaml'), 'utf8')) ?? {};
 
   const scenarioName = path.basename(scenarioPath, path.extname(scenarioPath));
   const audioDir = path.resolve('public/audio', scenarioName);
@@ -171,10 +172,15 @@ async function main() {
     const processAction = async (action, labelPrefix, fileTag) => {
       if (action.do === 'talk' && action.text) {
         const who = action.who;
-        const characterAsset = scenario.assets?.[who];
+        // Karakterin varlığı (sahnedeki asset adı); ses senaryodaki tanımdan, yoksa ortak katalogdan
+        // (src/data/characters.yaml: aynı adlı karakter ya da `base`)
+        const assetKey = (scene.characters || []).find((c) => c.id === who)?.asset ?? who;
+        const characterAsset = scenario.assets?.[assetKey];
+        const shared = SHARED_CHARACTERS[characterAsset?.base ?? assetKey];
         const voiceId =
           action.voice ||
           characterAsset?.voice ||
+          shared?.voice ||
           DEFAULT_VOICES[who.toLowerCase()] ||
           DEFAULT_VOICES.rachel;
 

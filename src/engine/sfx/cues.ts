@@ -51,6 +51,27 @@ export interface AmbienceCue {
   end: number;
   buffer: AudioBuffer;
   gain: number;
+  /** Film zamanında seviye çarpanı (0–1; ör. kuşlar susup yeniden öter). Verilmezse 1. */
+  level?: (t: number) => number;
+}
+
+/** Kuş sesi anahtarı (sahne yerel zamanı): `on` durumuna `fade` saniyede geçer. */
+export interface BirdSwitch {
+  at: number;
+  on: boolean;
+  fade: number;
+}
+
+/** Kuş katmanının sahne yerel zamanındaki seviyesi (0–1): açık başlar, anahtarlarla yumuşakça açılıp kapanır. */
+export function birdLevel(switches: BirdSwitch[], lt: number): number {
+  let v = 1;
+  for (const s of [...switches].sort((a, b) => a.at - b.at)) {
+    if (lt < s.at) break;
+    const k = s.fade > 0 ? Math.min(1, (lt - s.at) / s.fade) : 1;
+    const e = k * k * (3 - 2 * k);
+    v += ((s.on ? 1 : 0) - v) * e;
+  }
+  return v;
 }
 
 export interface SfxConfig {
@@ -102,6 +123,8 @@ export async function buildSfx(
   cfg: SfxConfig,
   /** Sahne başına rüzgâr gücü (0 = rüzgâr kapalı, hafif esinti; 0.5 varsayılan; 1 sert) */
   winds: number[] = [],
+  /** Sahne başına kuş sesi: false = hiç yok, true = sürekli, liste = senaryoya göre açılıp kapanır */
+  birds: (boolean | BirdSwitch[])[] = [],
 ): Promise<{ cues: SfxCue[]; ambience: AmbienceCue[] }> {
   const pending: { cue: Omit<SfxCue, 'buffer'>; key: string; make: Make }[] = [];
   const pendingAmb: { cue: Omit<AmbienceCue, 'buffer'>; key: string; make: Make }[] = [];
@@ -162,11 +185,27 @@ export async function buildSfx(
       const preset = presets[si] ?? 'day';
       // Rüzgâr gücü 0.1 adımlarla (aynı güçteki sahneler aynı sesi paylaşır); güçlü rüzgâr biraz daha yüksek
       const wind = Math.round(THREE.MathUtils.clamp(winds[si] ?? 0, 0, 1) * 10) / 10;
-      pendingAmb.push({
-        cue: { start: sc.start, end: sc.start + sc.duration, gain: cfg.ambience * cfg.volume * (0.85 + 0.4 * wind) },
-        key: `amb|${preset}|${wind}`,
-        make: () => S.ambience(7, preset, wind),
-      });
+      const gain = cfg.ambience * cfg.volume * (0.85 + 0.4 * wind);
+      const b = birds[si] ?? true;
+      if (preset === 'night') {
+        pendingAmb.push({ cue: { start: sc.start, end: sc.start + sc.duration, gain }, key: `amb|${preset}|${wind}`, make: () => S.ambience(7, preset, wind) });
+      } else {
+        // Kuşlar ayrı katman: senaryo onları susturup yeniden öttürebilir (ör. ormanda tuhaf bir sessizlik)
+        pendingAmb.push({
+          cue: { start: sc.start, end: sc.start + sc.duration, gain },
+          key: `amb|${preset}|${wind}|base`,
+          make: () => S.ambience(7, preset, wind, 24, 'base'),
+        });
+        if (b !== false) {
+          const switches = Array.isArray(b) ? b : [];
+          const start = sc.start;
+          pendingAmb.push({
+            cue: { start, end: start + sc.duration, gain, level: switches.length ? (t) => birdLevel(switches, t - start) : undefined },
+            key: `amb|${preset}|birds`,
+            make: () => S.ambience(7, preset, wind, 24, 'birds'),
+          });
+        }
+      }
     }
 
     // --- Ayak sesleri ve düşüşler

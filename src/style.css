@@ -1219,8 +1219,14 @@ progress { width: 100%; accent-color: var(--accent); }
    YETENEK (SKILL) İKONLARI VE AKTİF YETENEK ÇİZGİ FİLM HUD GÖSTERGESİ
    ============================================================================ */
 .ability-hud {
+  /* Çerçeve genişliğine göre ölçeklenir (layout() --hud-scale, --hud-x, --hud-y verir): dar 9:16 çerçevede banner kırpılmaz */
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: calc(100% / var(--hud-scale, 1));
+  height: calc(100% / var(--hud-scale, 1));
+  transform: scale(var(--hud-scale, 1));
+  transform-origin: 0 0;
   pointer-events: none;
   z-index: 35;
   overflow: hidden;
@@ -1281,8 +1287,8 @@ progress { width: 100%; accent-color: var(--accent); }
 /* Üst Sol: Çizgi Film Sticker Kartı (Yarı Saydam Sıcak Krem Gövde + Kalın Mürekkep Kontur + 3B Renkli Gölge) */
 .ability-active-banner {
   position: absolute;
-  top: 20px;
-  left: 22px;
+  top: var(--hud-y, 20px);
+  left: var(--hud-x, 22px);
   display: flex;
   align-items: center;
   gap: 14px;

@@ -6,7 +6,7 @@ import puppeteer from 'puppeteer-core';
 const [scenario = 'harita-toprak-yol', secs = '5', w = '1920', h = '1080'] = process.argv.slice(2);
 
 const browser = await puppeteer.launch({
-  executablePath: 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+  executablePath: process.env.CHROME_PATH ?? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
   headless: true,
   args: ['--no-sandbox', '--enable-gpu', '--ignore-gpu-blocklist'],
 });

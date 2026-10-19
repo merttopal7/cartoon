@@ -1,0 +1,13 @@
+# =============================================================================
+# ORTAK HARİTALAR — senaryolarda tekrar eden harita varlıkları yalnızca burada tanımlanır.
+# -----------------------------------------------------------------------------
+# Senaryoda tanım yazmak gerekmez: sahnede `props: [{ asset: harita, at: [0, 0, 0], terrain: [...] }]` yeterli.
+# Karakterlerdeki gibi (src/data/characters.yaml) yalnızca değişen alan yazılabilir ya da `base` ile türetilebilir;
+# `src` içeren tanım bu dosyayı kullanmaz.
+# =============================================================================
+
+# Orman yolu: bekçilerin devriye haritası (toprak yol, çam koridoru, kıvrımlar)
+harita:
+  src: models/maps/dirt-road.glb
+  align: none
+  road: roads/dirt-road.json   # yol orta çizgisi: walk_to { road: true } ile yol boyunca yürünür
