@@ -69,15 +69,15 @@ const STORAGE_KEYS: Record<FemaleCharacterId, string> = {
 function readStoredOutfit(charId: FemaleCharacterId, fallback: FemaleOutfitId): FemaleOutfitId {
   try {
     if (typeof localStorage === 'undefined') return fallback;
+    // Eski testlerden kalma ninja / beyaz_kislik anahtarlarını silerek orijinal hikaye kıyafetine döndür
+    const legacy = localStorage.getItem('cartoon-engine.defne_outfit');
+    if (legacy) localStorage.removeItem('cartoon-engine.defne_outfit');
     const raw = localStorage.getItem(STORAGE_KEYS[charId]);
-    if (raw === 'varsayilan' || raw === 'beyaz_kislik' || raw === 'ninja') return raw;
-    // Eski anahtar uyumluluğu
-    if (charId === 'defne') {
-      const legacy = localStorage.getItem('cartoon-engine.defne_outfit');
-      if (legacy === 'beyaz') return 'beyaz_kislik';
-      if (legacy === 'ninja') return 'ninja';
-      if (legacy === 'hava') return 'varsayilan';
+    if (raw === 'ninja' || raw === 'beyaz_kislik') {
+      localStorage.removeItem(STORAGE_KEYS[charId]);
+      return fallback;
     }
+    if (raw === 'varsayilan') return raw;
   } catch {}
   return fallback;
 }
@@ -95,7 +95,11 @@ export function setCharacterOutfit(charId: FemaleCharacterId, outfitId: FemaleOu
   activeOutfits[charId] = outfitId;
   try {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEYS[charId], outfitId);
+      if (outfitId === 'varsayilan') {
+        localStorage.removeItem(STORAGE_KEYS[charId]);
+      } else {
+        localStorage.setItem(STORAGE_KEYS[charId], outfitId);
+      }
     }
   } catch {}
 }

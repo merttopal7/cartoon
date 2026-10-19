@@ -559,11 +559,6 @@ async function customizeErikaModel(root: THREE.Object3D) {
               let vy = bPos.getY(i);
               let vz = bPos.getZ(i);
               const ax = Math.abs(vx);
-              // Gövde ve omuz başlarını (boyun altı y < 149.2) yatayda incelt
-              if (vy < 149.2 && ax < 20.0) {
-                const kTorso = 1 - THREE.MathUtils.smoothstep(vy, 145.5, 149.2);
-                vx *= 1 - 0.16 * kTorso;
-              }
               // Kolların kalınlığını (pazu/önkol) kol ekseni (y=141.7, z=-3.5) etrafında incelt
               if (ax >= 16.0 && ax <= 62.0 && vy >= 132.0 && vy <= 150.0) {
                 const kArm = THREE.MathUtils.smoothstep(ax, 16.0, 22.0) * (1 - THREE.MathUtils.smoothstep(ax, 54.0, 62.0));
@@ -637,12 +632,7 @@ async function customizeErikaModel(root: THREE.Object3D) {
               if (vx > 5.2) vx = 5.2 + (vx - 5.2) * 0.4;
               if (vx < -5.2) vx = -5.2 + (vx + 5.2) * 0.4;
             }
-            // Varsayılan kostümde bel, göğüs ve omuz genişliğini zarif kadın silüetine incelt
             const ax = Math.abs(vx);
-            if (vy >= 88.0 && vy <= 150.5 && ax < 22.0) {
-              const kWaist = Math.sin(THREE.MathUtils.clamp((vy - 88.0) / (150.5 - 88.0), 0, 1) * Math.PI);
-              vx *= 1 - (0.14 + 0.05 * kWaist);
-            }
             // Çocuk çizgi filmine uygunluk: göğüs çıkıntısını tamamen düzleştirip çocuk tunik çizgisine çek
             if (vy >= 104.0 && vy <= 145.0 && ax <= 16.0) {
               const t = (vy - 104.0) / (145.0 - 104.0);
