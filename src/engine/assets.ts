@@ -632,24 +632,6 @@ async function customizeErikaModel(root: THREE.Object3D) {
               if (vx > 5.2) vx = 5.2 + (vx - 5.2) * 0.4;
               if (vx < -5.2) vx = -5.2 + (vx + 5.2) * 0.4;
             }
-            const ax = Math.abs(vx);
-            // Çocuk çizgi filmine uygunluk: göğüs hattını öne çıkmayacak şekilde yumuşak oval kavise uyarla
-            if (vy >= 104.0 && vy <= 145.0 && ax <= 16.0) {
-              const t = (vy - 104.0) / (145.0 - 104.0);
-              const zBase = THREE.MathUtils.lerp(10.8, 6.8, t);
-              const ovalY = Math.sin(t * Math.PI);
-              const ovalX = Math.cos(Math.min(1, ax / 16.0) * (Math.PI * 0.45));
-              const zTarget = zBase + 0.85 * ovalY * ovalX;
-              if (vz > zTarget) {
-                const edgeY = Math.min(
-                  THREE.MathUtils.smoothstep(vy, 104.0, 107.0),
-                  1 - THREE.MathUtils.smoothstep(vy, 142.0, 145.0),
-                );
-                const edgeX = 1 - THREE.MathUtils.smoothstep(ax, 12.0, 16.0);
-                const weight = edgeY * edgeX * 0.95;
-                vz = THREE.MathUtils.lerp(vz, zTarget, weight);
-              }
-            }
             newPos.push(vx, vy, vz);
             newNorm.push(norm.getX(idx), norm.getY(idx), norm.getZ(idx));
             newUV.push(uv.getX(idx), uv.getY(idx));
@@ -699,38 +681,6 @@ async function customizeJackieModel(root: THREE.Object3D) {
         std.map = tex;
         std.needsUpdate = true;
       }
-    });
-
-    // Çocuk çizgi filmine uygunluk: göğüs hattını öne çıkmayacak şekilde yumuşak oval kavise uyarla
-    root.traverse((o) => {
-      const mesh = o as THREE.SkinnedMesh;
-      if (!mesh.isSkinnedMesh || !/ch29/i.test(mesh.name)) return;
-      const geom = mesh.geometry;
-      const pos = geom?.attributes?.position;
-      if (!pos) return;
-      for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i);
-        const y = pos.getY(i);
-        const z = pos.getZ(i);
-        const ax = Math.abs(x);
-        if (y >= 104.0 && y <= 128.0 && ax <= 14.0) {
-          const t = (y - 104.0) / (128.0 - 104.0);
-          const zBase = THREE.MathUtils.lerp(10.2, 7.8, t);
-          const ovalY = Math.sin(t * Math.PI);
-          const ovalX = Math.cos(Math.min(1, ax / 14.0) * (Math.PI * 0.45));
-          const zTarget = zBase + 0.8 * ovalY * ovalX;
-          if (z > zTarget) {
-            const edgeY = Math.min(
-              THREE.MathUtils.smoothstep(y, 104.0, 107.0),
-              1 - THREE.MathUtils.smoothstep(y, 125.0, 128.0),
-            );
-            const edgeX = 1 - THREE.MathUtils.smoothstep(ax, 10.5, 14.0);
-            const weight = edgeY * edgeX * 0.95;
-            pos.setZ(i, THREE.MathUtils.lerp(z, zTarget, weight));
-          }
-        }
-      }
-      pos.needsUpdate = true;
     });
   } catch (err) {
     console.warn('Jackie (Defne) hava kıyafeti uygulanamadı:', err);
